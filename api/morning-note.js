@@ -1,12 +1,12 @@
 /**
  * JSE Conflict Watch — AI Morning Note Generator
- * Netlify Serverless Function — CommonJS
+ * Vercel Serverless Function — CommonJS
  *
  * Uses Google Gemini Flash (FREE tier — no billing required).
  * Get a free key at: https://aistudio.google.com/app/apikey
- * Add GEMINI_API_KEY to Netlify → Site settings → Environment variables.
+ * Add GEMINI_API_KEY to Vercel → Project Settings → Environment Variables
  *
- * POST /.netlify/functions/morning-note
+ * POST /api/morning-note
  */
 
 const https = require('https');

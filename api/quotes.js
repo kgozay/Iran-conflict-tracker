@@ -1,12 +1,16 @@
 /**
  * JSE Conflict Watch — Yahoo Finance Bulk Quote Proxy
- * Netlify Serverless Function — CommonJS — NO API KEY REQUIRED
+ * Vercel Serverless Function — CommonJS — NO API KEY REQUIRED
  *
- * FIXES (v7 → v8, 2025-04):
- *  1. gzip decompression — was sending Accept-Encoding: gzip but never decompressing → JSON.parse failed silently
- *  2. Cookie + crumb handshake — Yahoo Finance now requires this for server-side requests from cloud IPs
- *  3. Switched to v8/finance/quote endpoint (v7 deprecated + now requires crumb)
- *  4. Module-level crumb cache — reused across warm Lambda invocations (crumbs last ~1 hr)
+ * v9 STRATEGY (2026-04 rewrite):
+ *   Primary: /v8/finance/chart/{symbol}?interval=1d&range=5d — per symbol, in parallel.
+ *            Does NOT require cookie+crumb, reliable from Vercel edge IPs,
+ *            works for all symbols incl. ^ZA10Y (which the quote endpoint does NOT resolve).
+ *   Fallback: /v8/finance/quote bulk (requires crumb) — tried FIRST as a fast path,
+ *             chart endpoint tops up anything missing. Kept because when bulk works
+ *             it costs 1 HTTP call instead of 40.
+ *
+ *   All requests use gzip decompression + redirect following.
  */
 
 const https = require('https');
@@ -18,9 +22,7 @@ const CORS = {
   'Cache-Control':               'public, max-age=60, s-maxage=60',
 };
 
-/* ── Crumb cache (module-level — survives warm Lambda restarts) ──── */
-let _crumbCache = null;   // { crumb: string, cookie: string, ts: number }
-const CRUMB_TTL = 55 * 60 * 1000;  // 55 min (Yahoo crumbs last ~1 hr)
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 /* ── HTTP GET with automatic gzip/deflate/br decompression ────────── */
 function get(url, reqHeaders, followRedirects) {
@@ -28,10 +30,9 @@ function get(url, reqHeaders, followRedirects) {
   return new Promise((resolve, reject) => {
     const options = {
       headers: Object.assign({
-        'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'User-Agent':      UA,
         'Accept':          'application/json, text/plain, */*',
         'Accept-Language': 'en-US,en;q=0.9',
-        /* No Accept-Encoding here — we handle decompression explicitly below */
       }, reqHeaders || {}),
     };
 
@@ -57,52 +58,129 @@ function get(url, reqHeaders, followRedirects) {
       stream.on('error', reject);
     });
 
-    req.setTimeout(12000, function() { req.destroy(new Error('Yahoo Finance request timed out after 12s')); });
+    req.setTimeout(10000, function() { req.destroy(new Error('Yahoo Finance request timed out after 10s')); });
     req.on('error', reject);
   });
 }
 
-/* ── Step 1: Fetch Yahoo Finance homepage cookies ────────────────── */
+/* ─────────────────────────────────────────────────────────────────────
+ * CHART ENDPOINT — primary path (no crumb required)
+ * Returns the same data shape as the quote endpoint by reading chart.result[0].meta.
+ * ────────────────────────────────────────────────────────────────────── */
+const YF_CHART_HOSTS = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+
+async function fetchChartOne(symbol) {
+  const encoded = encodeURIComponent(symbol);
+  for (const host of YF_CHART_HOSTS) {
+    try {
+      const url = `https://${host}/v8/finance/chart/${encoded}?interval=1d&range=5d`;
+      const res = await get(url, {
+        Referer: 'https://finance.yahoo.com/',
+        Origin:  'https://finance.yahoo.com',
+      });
+      if (res.status !== 200 || !res.json) continue;
+
+      const result = res.json.chart && res.json.chart.result && res.json.chart.result[0];
+      if (!result || !result.meta) continue;
+
+      const m = result.meta;
+      const price     = m.regularMarketPrice;
+      const prevClose = m.chartPreviousClose != null ? m.chartPreviousClose
+                       : m.previousClose     != null ? m.previousClose
+                       : price;
+      if (price == null) continue;
+
+      const change    = +(price - prevClose).toFixed(4);
+      const changePct = prevClose !== 0 ? +(((price - prevClose) / prevClose) * 100).toFixed(4) : 0;
+
+      const ind   = result.indicators && result.indicators.quote && result.indicators.quote[0];
+      const highs = ind && ind.high   ? ind.high.filter(v  => v != null) : [];
+      const lows  = ind && ind.low    ? ind.low.filter(v   => v != null) : [];
+      const vols  = ind && ind.volume ? ind.volume.filter(v => v != null) : [];
+
+      return {
+        symbol:      symbol,
+        name:        m.shortName || m.longName || symbol,
+        price:       price,
+        change:      change,
+        changePct:   changePct,
+        prevClose:   prevClose,
+        dayHigh:     m.regularMarketDayHigh ?? (highs.length ? Math.max(...highs) : null),
+        dayLow:      m.regularMarketDayLow  ?? (lows.length  ? Math.min(...lows)  : null),
+        volume:      m.regularMarketVolume  ?? (vols.length  ? vols[vols.length - 1] : 0),
+        currency:    m.currency    || 'USD',
+        marketState: m.marketState || 'CLOSED',
+        week52High:  m.fiftyTwoWeekHigh ?? null,
+        week52Low:   m.fiftyTwoWeekLow  ?? null,
+        timestamp:   new Date().toISOString(),
+      };
+    } catch (e) {
+      // try next host
+    }
+  }
+  return null;
+}
+
+/* Run chart requests with bounded concurrency */
+async function fetchAllFromChart(symbols, concurrency) {
+  concurrency = concurrency || 8;
+  const results = {};
+  let idx = 0;
+
+  async function worker() {
+    while (idx < symbols.length) {
+      const mine = idx++;
+      const sym  = symbols[mine];
+      try {
+        const q = await fetchChartOne(sym);
+        if (q) results[sym] = q;
+      } catch (e) { /* per-symbol failure must not fail the batch */ }
+    }
+  }
+
+  const workers = [];
+  for (let i = 0; i < Math.min(concurrency, symbols.length); i++) workers.push(worker());
+  await Promise.all(workers);
+  return results;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * QUOTE ENDPOINT (bulk, crumb-auth) — optional fast path
+ * ────────────────────────────────────────────────────────────────────── */
+let _crumbCache = null;
+const CRUMB_TTL = 55 * 60 * 1000;
+
 async function fetchCookies() {
   const res = await get('https://finance.yahoo.com/', {
-    'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
   });
   const raw = res.headers['set-cookie'] || [];
-  if (!raw.length) throw new Error('Yahoo Finance: no Set-Cookie headers received');
-  const cookie = raw.map(function(c) { return c.split(';')[0].trim(); }).filter(Boolean).join('; ');
-  return cookie;
+  if (!raw.length) return '';
+  return raw.map(c => c.split(';')[0].trim()).filter(Boolean).join('; ');
 }
 
-/* ── Step 2: Exchange cookies for a crumb ────────────────────────── */
 async function fetchCrumb(cookie) {
-  const res = await get(
-    'https://query2.finance.yahoo.com/v1/test/getcrumb',
-    { Cookie: cookie, Accept: 'text/plain, */*' }
-  );
-  if (res.status !== 200) throw new Error('getcrumb returned HTTP ' + res.status);
-  /* Crumb endpoint returns plain text — res.json will be null, use res.raw */
+  const res = await get('https://query2.finance.yahoo.com/v1/test/getcrumb',
+                        { Cookie: cookie, Accept: 'text/plain, */*' });
+  if (res.status !== 200) return '';
   const crumb = (res.raw || (res.json != null ? String(res.json) : '')).trim();
-  if (!crumb || crumb.length < 2) throw new Error('getcrumb returned empty or invalid crumb: ' + JSON.stringify(crumb));
-  return crumb;
+  return (crumb && crumb.length >= 2) ? crumb : '';
 }
 
-/* ── Get or refresh crumb (cached) ──────────────────────────────── */
 async function getOrRefreshCrumb() {
   const now = Date.now();
-  if (_crumbCache && (now - _crumbCache.ts) < CRUMB_TTL) {
-    console.log('[quotes] Using cached crumb (age ' + Math.round((now - _crumbCache.ts) / 1000) + 's)');
+  if (_crumbCache && (now - _crumbCache.ts) < CRUMB_TTL) return _crumbCache;
+  try {
+    const cookie = await fetchCookies();
+    if (!cookie) return null;
+    const crumb = await fetchCrumb(cookie);
+    if (!crumb) return null;
+    _crumbCache = { cookie, crumb, ts: now };
     return _crumbCache;
-  }
-  console.log('[quotes] Fetching fresh cookie + crumb from Yahoo Finance…');
-  const cookie = await fetchCookies();
-  const crumb  = await fetchCrumb(cookie);
-  _crumbCache  = { cookie: cookie, crumb: crumb, ts: now };
-  console.log('[quotes] Crumb acquired: ' + crumb.slice(0, 10) + '… (cookie: ' + cookie.slice(0, 40) + '…)');
-  return _crumbCache;
+  } catch (e) { return null; }
 }
 
-/* ── Normalise a Yahoo Finance quote object ──────────────────────── */
-function normalise(q) {
+function normaliseQuote(q) {
   if (!q || q.regularMarketPrice == null) return null;
   return {
     symbol:      q.symbol,
@@ -111,140 +189,107 @@ function normalise(q) {
     change:      q.regularMarketChange        != null ? q.regularMarketChange        : 0,
     changePct:   q.regularMarketChangePercent != null ? q.regularMarketChangePercent : 0,
     prevClose:   q.regularMarketPreviousClose != null ? q.regularMarketPreviousClose : q.regularMarketPrice,
-    dayHigh:     q.regularMarketDayHigh       != null ? q.regularMarketDayHigh       : null,
-    dayLow:      q.regularMarketDayLow        != null ? q.regularMarketDayLow        : null,
-    volume:      q.regularMarketVolume        != null ? q.regularMarketVolume        : 0,
-    currency:    q.currency                   != null ? q.currency                   : 'USD',
-    marketState: q.marketState                != null ? q.marketState                : 'CLOSED',
-    week52High:  q.fiftyTwoWeekHigh           != null ? q.fiftyTwoWeekHigh           : null,
-    week52Low:   q.fiftyTwoWeekLow            != null ? q.fiftyTwoWeekLow            : null,
+    dayHigh:     q.regularMarketDayHigh       ?? null,
+    dayLow:      q.regularMarketDayLow        ?? null,
+    volume:      q.regularMarketVolume        ?? 0,
+    currency:    q.currency                   || 'USD',
+    marketState: q.marketState                || 'CLOSED',
+    week52High:  q.fiftyTwoWeekHigh           ?? null,
+    week52Low:   q.fiftyTwoWeekLow            ?? null,
     timestamp:   new Date().toISOString(),
   };
 }
 
-const FIELDS = [
-  'regularMarketPrice', 'regularMarketChange', 'regularMarketChangePercent',
-  'regularMarketPreviousClose', 'regularMarketDayHigh', 'regularMarketDayLow',
-  'regularMarketVolume', 'fiftyTwoWeekHigh', 'fiftyTwoWeekLow',
-  'shortName', 'longName', 'currency', 'marketState',
-].join(',');
+async function fetchBulkQuotes(symbols) {
+  const auth = await getOrRefreshCrumb();
+  if (!auth) return null;
 
-const YF_HOSTS = [
-  'query2.finance.yahoo.com',
-  'query1.finance.yahoo.com',
-];
+  const FIELDS = 'regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketPreviousClose,regularMarketDayHigh,regularMarketDayLow,regularMarketVolume,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName,longName,currency,marketState';
+  const encoded = encodeURIComponent(symbols.join(','));
+  const url = `https://query2.finance.yahoo.com/v8/finance/quote?symbols=${encoded}&fields=${FIELDS}&lang=en-US&region=US&corsDomain=finance.yahoo.com&crumb=${encodeURIComponent(auth.crumb)}`;
 
-/* ── Main Yahoo Finance fetch ─────────────────────────────────────── */
-async function fetchYahoo(symbols) {
-  let auth = { cookie: '', crumb: '' };
   try {
-    auth = await getOrRefreshCrumb();
-  } catch (e) {
-    console.error('[quotes] Crumb acquisition failed: ' + e.message + ' — attempting without crumb');
-  }
+    const res = await get(url, {
+      Cookie:  auth.cookie,
+      Referer: 'https://finance.yahoo.com/',
+      Origin:  'https://finance.yahoo.com',
+    });
+    if (res.status === 401) { _crumbCache = null; return null; }
+    if (res.status !== 200 || !res.json) return null;
+    const results = res.json.quoteResponse && res.json.quoteResponse.result;
+    if (!Array.isArray(results)) return null;
 
-  const encodedSymbols = encodeURIComponent(symbols);
-  const crumbParam     = auth.crumb ? ('&crumb=' + encodeURIComponent(auth.crumb)) : '';
-
-  /* Try v8 (preferred, requires crumb) then v7 (legacy fallback) */
-  const apiVersions = [
-    '/v8/finance/quote?symbols=' + encodedSymbols + '&fields=' + FIELDS + '&lang=en-US&region=US&corsDomain=finance.yahoo.com' + crumbParam,
-    '/v7/finance/quote?symbols=' + encodedSymbols + '&fields=' + FIELDS + '&lang=en-US&region=US&corsDomain=finance.yahoo.com' + crumbParam,
-  ];
-
-  for (const endpoint of apiVersions) {
-    for (const host of YF_HOSTS) {
-      try {
-        const url = 'https://' + host + endpoint;
-        console.log('[quotes] Trying ' + host + endpoint.slice(0, 70) + '…');
-
-        const res = await get(url, {
-          Cookie:  auth.cookie,
-          Referer: 'https://finance.yahoo.com/',
-          Origin:  'https://finance.yahoo.com',
-        });
-
-        if (res.status === 401) {
-          console.warn('[quotes] ' + host + ' 401 Unauthorized — invalidating crumb cache');
-          _crumbCache = null; // force re-fetch on next call
-          continue;
-        }
-        if (res.status !== 200) {
-          console.warn('[quotes] ' + host + ' returned HTTP ' + res.status + ' — ' + (res.raw || ''));
-          continue;
-        }
-        if (!res.json) {
-          console.warn('[quotes] ' + host + ' returned non-JSON after decompression: ' + (res.raw || '').slice(0, 200));
-          continue;
-        }
-
-        const results = res.json && res.json.quoteResponse && res.json.quoteResponse.result;
-        if (!Array.isArray(results)) {
-          const yErr = res.json && res.json.quoteResponse && res.json.quoteResponse.error;
-          console.warn('[quotes] ' + host + ' no results array — ' + (yErr ? yErr.description : JSON.stringify(res.json).slice(0, 150)));
-          continue;
-        }
-
-        console.log('[quotes] ✓ ' + host + ' returned ' + results.length + ' results');
-        return results;
-      } catch (e) {
-        console.warn('[quotes] ' + host + ' threw: ' + e.message);
-      }
+    const out = {};
+    for (const q of results) {
+      const n = normaliseQuote(q);
+      if (n) out[q.symbol] = n;
     }
-  }
-
-  return null; // all attempts failed
+    return out;
+  } catch (e) { return null; }
 }
 
+/* ─────────────────────────────────────────────────────────────────────
+ * Handler
+ * ────────────────────────────────────────────────────────────────────── */
 const setCors = function(res) {
-  for (const [key, value] of Object.entries(CORS)) {
-    res.setHeader(key, value);
-  }
+  for (const [key, value] of Object.entries(CORS)) res.setHeader(key, value);
 };
-
 const ok  = function(res, body)   { setCors(res); return res.status(200).json(body); };
 const err = function(res, msg, c) { setCors(res); return res.status(c || 502).json({ error: msg }); };
 
 module.exports = async function(req, res) {
-  if (req.method === 'OPTIONS') {
-    setCors(res);
-    return res.status(204).end();
-  }
+  if (req.method === 'OPTIONS') { setCors(res); return res.status(204).end(); }
 
   const qs      = typeof req.query === 'object' ? req.query : {};
   const symbols = ((qs.symbols !== undefined ? String(qs.symbols) : Object.keys(qs)[0]) || '').trim();
-
   if (!symbols) return err(res, 'symbols query param required', 400);
 
-  const symList = symbols.split(',').filter(Boolean);
+  const symList = symbols.split(',').map(s => s.trim()).filter(Boolean);
   if (symList.length > 120) return err(res, 'Max 120 symbols per request', 400);
 
   try {
-    const results = await fetchYahoo(symList.join(','));
+    /* Strategy: try bulk quote first (1 request for all symbols).
+     * If it returns < 100% coverage, top up via chart endpoint per-symbol.
+     * Chart endpoint is the reliable primary — bulk is an optimisation. */
 
-    if (!results) {
-      return err(res, 
-        'Yahoo Finance unavailable on all endpoints. ' +
-        'Check Vercel function logs. ' +
-        'JSE may be closed, or Yahoo may be blocking this IP. Try again in 5 minutes.'
+    console.log(`[quotes] Fetching ${symList.length} symbols…`);
+
+    let quotes = {};
+    let primarySource = 'chart';
+
+    const bulk = await fetchBulkQuotes(symList);
+    if (bulk && Object.keys(bulk).length > 0) {
+      quotes = bulk;
+      primarySource = 'bulk';
+      console.log(`[quotes] Bulk endpoint returned ${Object.keys(bulk).length}/${symList.length} symbols`);
+    } else {
+      console.log('[quotes] Bulk endpoint unavailable — falling back to chart endpoint');
+    }
+
+    const missing = symList.filter(s => !quotes[s]);
+    if (missing.length > 0) {
+      console.log(`[quotes] Fetching ${missing.length} remaining via chart endpoint…`);
+      const chartResults = await fetchAllFromChart(missing, 8);
+      Object.assign(quotes, chartResults);
+    }
+
+    const resolved = Object.keys(quotes).length;
+    console.log(`[quotes] ✓ Resolved ${resolved}/${symList.length} (primary: ${primarySource})`);
+
+    if (resolved === 0) {
+      return err(res,
+        'Yahoo Finance unavailable on both bulk and chart endpoints. ' +
+        'The exchange may be closed or Yahoo may be blocking this region. ' +
+        'Try again in 5 minutes.'
       );
     }
-
-    const quotes = {};
-    let resolved = 0, empty = 0;
-    for (const q of results) {
-      const n = normalise(q);
-      if (n) { quotes[q.symbol] = n; resolved++; }
-      else     empty++;
-    }
-
-    console.log('[quotes] ✓ ' + resolved + ' resolved, ' + empty + ' empty, ' + (symList.length - results.length) + ' not returned by Yahoo');
 
     return ok(res, {
       quotes:    quotes,
       requested: symList.length,
       returned:  resolved,
-      empty:     empty,
+      missing:   symList.length - resolved,
+      source:    primarySource,
       timestamp: new Date().toISOString(),
     });
 

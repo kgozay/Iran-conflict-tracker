@@ -56,7 +56,7 @@ export default function App() {
   const [timeframe,  setTimeframe]  = useState('1D');
   const [returnMode, setReturnMode] = useState('ABS');
 
-  const { assets, stocks, status, error, lastFetch, progress, fetchLive, initFromCache } =
+  const { assets, stocks, status, error, lastFetch, progress, fetchLive, initFromCache, clearError } =
     useMarketData();
 
   const { chartData: cisChartData, addReading, clearHistory } = useCISHistory();
@@ -64,12 +64,17 @@ export default function App() {
 
   const prevStatusRef = useRef(status);
 
-  /* On mount: show cache immediately, refetch if stale */
+  /* On mount: show cache immediately, then fetch as needed.
+   * 'empty' -> no cache at all  -> fetch immediately (loading overlay shown)
+   * 'stale' -> cache is old     -> fetch silently in background
+   * 'fresh' -> cache is fresh   -> no fetch needed
+   */
   useEffect(() => {
-    const isStale = initFromCache();
-    if (isStale) {
-      // Small delay so UI paints the cached data first
-      setTimeout(() => fetchLive(true), 600);
+    const cacheState = initFromCache();
+    if (cacheState === 'empty') {
+      fetchLive(false);                        // full loading overlay
+    } else if (cacheState === 'stale') {
+      setTimeout(() => fetchLive(true), 600);  // silent background refresh
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -106,13 +111,14 @@ export default function App() {
   }, [status, hasData, cis, addReading]);
 
   /* Wrapped fetch — adds toast feedback */
-  const handleFetch = useCallback(async (silent = false) => {
-    const result = await fetchLive(silent);
+  const handleFetch = useCallback(async (silentParam) => {
+    const isSilent = silentParam === true;
+    const result = await fetchLive(isSilent);
     if (result?.success) {
       const src = result.assets?.r2035?.source;
       const bondLabel = src ? ` · R2035 via ${src}` : '';
       addToast(`↻ Updated · ${new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })} SAST${bondLabel}`, 'success');
-    } else if (result?.error && !silent) {
+    } else if (result?.error && !isSilent) {
       addToast(result.error, 'error', 6000);
     }
   }, [fetchLive, addToast]);
@@ -136,7 +142,7 @@ export default function App() {
   return (
     <div className="flex h-screen overflow-hidden bg-bg text-tp font-sans">
       <Toast toasts={toasts} onRemove={removeToast} />
-      <LoadingOverlay status={status} progress={progress} error={error} env={null} onDismiss={() => {}} />
+      <LoadingOverlay status={status} progress={progress} error={error} onDismiss={clearError} />
       <Sidebar page={page} setPage={setPage} cis={cis} status={status} lastFetch={lastFetch} />
 
       <div className="flex flex-col flex-1 overflow-hidden" style={{ marginLeft: 220 }}>

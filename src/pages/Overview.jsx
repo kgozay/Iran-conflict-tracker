@@ -63,14 +63,19 @@ export default function Overview({
       <div className="flex items-center justify-between mb-3.5 gap-3 flex-wrap">
         <MarketHours />
         <div className="flex items-center gap-3 font-mono text-[9px] text-tm">
-          {assets.r2035?.isProxy && (
-            <span className="text-warn border border-warn/30 bg-warn/8 px-2 py-0.5 rounded-sm">
-              ⚠ R2035 using FRED proxy — SARB API unavailable
+          {assets.r2035?.isStale && (
+            <span className="text-bear border border-bear/30 bg-bear/8 px-2 py-0.5 rounded-sm">
+              ⚠ R2035 static fallback — all live sources unreachable
             </span>
           )}
-          {assets.r2035?.isLive && !assets.r2035?.isProxy && (
+          {assets.r2035?.isProxy && !assets.r2035?.isStale && (
+            <span className="text-warn border border-warn/30 bg-warn/8 px-2 py-0.5 rounded-sm">
+              ⚠ R2035 using {assets.r2035.source || 'FRED'} proxy (monthly)
+            </span>
+          )}
+          {assets.r2035?.isLive && !assets.r2035?.isProxy && !assets.r2035?.isStale && (
             <span className="text-bull border border-bull/30 bg-bull/8 px-2 py-0.5 rounded-sm">
-              ● R2035 live from SARB · {assets.r2035.date ?? ''}
+              ● R2035 live from {assets.r2035.source || 'Yahoo'} · {assets.r2035.date ?? ''}
             </span>
           )}
           <span className="text-ts">Yahoo Finance · Auto-refresh available</span>

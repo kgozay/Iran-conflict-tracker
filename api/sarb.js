@@ -1,16 +1,15 @@
 /**
- * JSE Conflict Watch — SARB R2035 Bond Yield Proxy
- * Netlify Serverless Function — CommonJS — NO API KEY REQUIRED
+ * JSE Conflict Watch — SA 10Y Bond Yield Proxy
+ * Vercel Serverless Function — CommonJS — NO API KEY REQUIRED
  *
- * FIXES (2025-04):
- *  1. Added rejectUnauthorized: false for SARB (resbank.co.za has intermittent SSL chain issues from non-SA IPs)
- *  2. Added gzip decompression (same fix as quotes.js)
- *  3. Added FRED as a reliable secondary source (no key needed for basic access)
- *  4. Better error messages in logs
+ * v3 STRATEGY (2026-04 rewrite):
+ *   1. Yahoo Finance chart endpoint ^ZA10Y (primary — no crumb needed, reliable)
+ *   2. Stooq CSV  10zay.b           (fallback — free, no auth, SA yield curve)
+ *   3. FRED     IRLTLT01ZAM156N     (fallback — SA long-term govt rate, monthly)
+ *   4. Static 11.5%                 (last-resort so the dashboard never renders blank)
  *
- * Primary:  SARB REST API — custom.resbank.co.za/SarbWebApi/WebIndicators/
- *           Tries R2035 → MMRBGB10Y → MMRBGBR2030 in order
- * Fallback: FRED API (set FRED_API_KEY env var in Netlify for reliability)
+ *   SARB's custom.resbank.co.za endpoint was removed from primary path — it has
+ *   intermittent SSL chain + IP blocklist issues from Vercel edge IPs.
  */
 
 const https = require('https');
@@ -22,16 +21,17 @@ const CORS = {
   'Cache-Control':               'public, max-age=300, s-maxage=300',
 };
 
-/* ── HTTP GET with gzip support and optional SSL relaxation ───────── */
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36';
+
 function get(url, opts) {
   opts = opts || {};
   return new Promise(function(resolve, reject) {
     const options = {
       headers: Object.assign({
-        'User-Agent': 'Mozilla/5.0 (compatible; JSE-ConflictWatch/4.0)',
+        'User-Agent': UA,
         'Accept':     'application/json, text/plain, */*',
       }, opts.headers || {}),
-      rejectUnauthorized: opts.rejectUnauthorized !== false, // default true
+      rejectUnauthorized: opts.rejectUnauthorized !== false,
     };
 
     const req = https.get(url, options, function(res) {
@@ -50,167 +50,197 @@ function get(url, opts) {
       stream.on('data', function(c) { chunks.push(c); });
       stream.on('end', function() {
         const body = Buffer.concat(chunks).toString('utf8');
-        try   { resolve({ status: res.statusCode, json: JSON.parse(body) }); }
-        catch { resolve({ status: res.statusCode, json: null, raw: body.slice(0, 300) }); }
+        try   { resolve({ status: res.statusCode, json: JSON.parse(body), raw: body }); }
+        catch { resolve({ status: res.statusCode, json: null, raw: body }); }
       });
       stream.on('error', reject);
     });
 
-    req.setTimeout(10000, function() { req.destroy(new Error('SARB/FRED request timed out')); });
+    req.setTimeout(10000, function() { req.destroy(new Error('Bond yield request timed out')); });
     req.on('error', reject);
   });
 }
 
 const setCors = function(res) {
-  for (const [key, value] of Object.entries(CORS)) {
-    res.setHeader(key, value);
-  }
+  for (const [key, value] of Object.entries(CORS)) res.setHeader(key, value);
 };
-
 const ok  = function(res, body)   { setCors(res); return res.status(200).json(body); };
 const err = function(res, msg, c) { setCors(res); return res.status(c || 502).json({ error: msg }); };
 
-/* ── Parse SARB WebIndicators JSON ───────────────────────────────── */
-function parseSARB(json, series) {
-  if (!json || !Array.isArray(json.data) || json.data.length === 0) {
-    throw new Error('SARB ' + series + ': empty or invalid data');
-  }
-  const rows = json.data
-    .filter(function(d) { return d.Value !== null && d.Value !== '' && d.Value !== undefined; })
-    .sort(function(a, b) { return new Date(b.Date) - new Date(a.Date); });
-
-  if (!rows.length) throw new Error('SARB ' + series + ': all values are null');
-
-  const latest    = rows[0];
-  const prev      = rows[1] || rows[0];
-  const price     = parseFloat(latest.Value);
-  const prevClose = parseFloat(prev.Value);
-  const change    = parseFloat((price - prevClose).toFixed(4));
-  const changePct = prevClose !== 0 ? parseFloat(((change / prevClose) * 100).toFixed(4)) : 0;
-
-  return {
-    symbol:    series,
-    name:      json.Description || (series + ' Bond Yield'),
-    price:     price,
-    change:    change,
-    changePct: changePct,
-    prevClose: prevClose,
-    date:      latest.Date,
-    frequency: json.Frequency || 'Daily',
-    source:    'SARB',
-    unit:      '%',
-    currency:  'ZAR',
-    timestamp: new Date().toISOString(),
-  };
-}
-
-/* ── Parse FRED observations ─────────────────────────────────────── */
-function parseFRED(json) {
-  const obs = ((json && json.observations) || []).filter(function(o) { return o.value !== '.' && o.value; });
-  if (!obs.length) throw new Error('FRED: no valid observations in response');
-  const sorted    = obs.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
-  const latest    = sorted[0];
-  const prev      = sorted[1] || sorted[0];
-  const price     = parseFloat(latest.value);
-  const prevClose = parseFloat(prev.value);
-  const change    = parseFloat((price - prevClose).toFixed(4));
-  const changePct = prevClose !== 0 ? parseFloat(((change / prevClose) * 100).toFixed(4)) : 0;
-
-  return {
-    symbol:    'IRLTLT01ZAM156N',
-    name:      'SA Long-Term Government Bond Rate (FRED)',
-    price:     price,
-    change:    change,
-    changePct: changePct,
-    prevClose: prevClose,
-    date:      latest.date,
-    source:    'FRED',
-    unit:      '%',
-    currency:  'ZAR',
-    isProxy:   true,
-    timestamp: new Date().toISOString(),
-  };
-}
-
-module.exports = async function(req, res) {
-  if (req.method === 'OPTIONS') {
-    setCors(res);
-    return res.status(204).end();
-  }
-
-  /* ── SARB REST API — try multiple series ─────────────────────── */
-  const SARB_SERIES = ['MMRBGBR2035', 'MMRBGB10Y', 'MMRBGBR2030'];
-
-  for (const series of SARB_SERIES) {
+/* ─── Source 1: Yahoo chart endpoint for ^ZA10Y ──────────────────── */
+async function fromYahooChart() {
+  const hosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+  for (const host of hosts) {
     try {
-      const url = 'https://custom.resbank.co.za/SarbWebApi/WebIndicators/' + series + '/';
-      console.log('[sarb] Trying SARB series:', series);
-
-      /* Try with normal SSL first */
-      let resHttp;
-      try {
-        resHttp = await get(url);
-      } catch (sslErr) {
-        /* If SSL fails (chain issue from non-SA IP), retry with relaxed SSL */
-        console.warn('[sarb] SSL error for ' + series + ', retrying with rejectUnauthorized=false: ' + sslErr.message);
-        resHttp = await get(url, { rejectUnauthorized: false });
-      }
-
-      if (resHttp.status === 200 && resHttp.json) {
-        const bond = parseSARB(resHttp.json, series);
-        console.log('[sarb] ✓ ' + series + ' → ' + bond.price + '% (' + bond.date + ')');
-        return ok(res, { bond: bond, series: series });
-      }
-      console.warn('[sarb] ' + series + ' → HTTP ' + resHttp.status + (resHttp.raw ? ' — ' + resHttp.raw.slice(0, 100) : ''));
-    } catch (e) {
-      console.warn('[sarb] ' + series + ' → ' + e.message);
-    }
-  }
-
-  /* ── FRED fallback ───────────────────────────────────────────── */
-  const FRED_KEY = process.env.FRED_API_KEY || '';
-  const keyParam = FRED_KEY ? ('&api_key=' + FRED_KEY) : '';
-
-  try {
-    const fredUrl = 'https://api.stlouisfed.org/fred/series/observations' +
-      '?series_id=IRLTLT01ZAM156N' + keyParam +
-      '&sort_order=desc&limit=5&file_type=json';
-    console.log('[sarb] Trying FRED fallback (key:', FRED_KEY ? 'present' : 'absent', ')');
-    const resHttp = await get(fredUrl);
-    if (resHttp.status === 200 && resHttp.json) {
-      const bond = parseFRED(resHttp.json);
-      console.log('[sarb] ✓ FRED → ' + bond.price + '% (' + bond.date + ')');
-      return ok(res, {
-        bond:    bond,
-        series:  'FRED_FALLBACK',
-        warning: 'SARB API unreachable — using FRED proxy (monthly). Set FRED_API_KEY env var in Vercel for higher rate limits.',
+      const url = `https://${host}/v8/finance/chart/%5EZA10Y?interval=1d&range=5d`;
+      const r = await get(url, {
+        headers: {
+          Referer: 'https://finance.yahoo.com/',
+          Origin:  'https://finance.yahoo.com',
+        },
       });
-    }
-    console.warn('[sarb] FRED → HTTP ' + resHttp.status + (resHttp.raw ? ' — ' + resHttp.raw.slice(0, 100) : ''));
-  } catch (e) {
-    console.warn('[sarb] FRED → ' + e.message);
-  }
+      if (r.status !== 200 || !r.json) continue;
+      const result = r.json.chart && r.json.chart.result && r.json.chart.result[0];
+      if (!result || !result.meta) continue;
 
-  /* ── Hard fallback: return a reasonable static estimate ─────── */
-  /* R2035 yield has been roughly in the 11-12% range in 2025 */
-  /* This allows the dashboard to show something rather than failing completely */
-  console.warn('[sarb] All sources failed — returning static fallback yield');
+      const m = result.meta;
+      const price     = m.regularMarketPrice;
+      const prevClose = m.chartPreviousClose != null ? m.chartPreviousClose : m.previousClose;
+      if (price == null || prevClose == null) continue;
+
+      const change    = +(price - prevClose).toFixed(4);
+      const changePct = prevClose !== 0 ? +(((price - prevClose) / prevClose) * 100).toFixed(4) : 0;
+
+      return {
+        symbol:    '^ZA10Y',
+        name:      'SA 10Y Government Bond Yield',
+        price:     price,
+        change:    change,
+        changePct: changePct,
+        prevClose: prevClose,
+        date:      new Date((m.regularMarketTime || Date.now() / 1000) * 1000).toISOString().slice(0, 10),
+        source:    'Yahoo',
+        unit:      '%',
+        currency:  'ZAR',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (e) { /* try next host */ }
+  }
+  return null;
+}
+
+/* ─── Source 2: Stooq CSV 10zay.b ────────────────────────────────── */
+/* Stooq returns CSV: Date,Open,High,Low,Close,Volume
+ * We take the last two non-empty rows for price + prev close. */
+async function fromStooq() {
+  try {
+    const url = 'https://stooq.com/q/d/l/?s=10zay.b&i=d';
+    const r = await get(url, { headers: { Accept: 'text/csv, text/plain, */*' } });
+    if (r.status !== 200 || !r.raw) return null;
+
+    const lines = r.raw.trim().split(/\r?\n/);
+    if (lines.length < 3) return null;  // need header + 2 data rows
+
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const parts = lines[i].split(',');
+      if (parts.length < 5) continue;
+      const close = parseFloat(parts[4]);
+      if (!isNaN(close)) rows.push({ date: parts[0], close });
+    }
+    if (rows.length < 2) return null;
+
+    const latest    = rows[rows.length - 1];
+    const prev      = rows[rows.length - 2];
+    const price     = latest.close;
+    const prevClose = prev.close;
+    const change    = +(price - prevClose).toFixed(4);
+    const changePct = prevClose !== 0 ? +(((price - prevClose) / prevClose) * 100).toFixed(4) : 0;
+
+    return {
+      symbol:    '10ZAY.B',
+      name:      'SA 10Y Government Bond Yield (Stooq)',
+      price:     price,
+      change:    change,
+      changePct: changePct,
+      prevClose: prevClose,
+      date:      latest.date,
+      source:    'Stooq',
+      unit:      '%',
+      currency:  'ZAR',
+      timestamp: new Date().toISOString(),
+    };
+  } catch (e) { return null; }
+}
+
+/* ─── Source 3: FRED IRLTLT01ZAM156N (monthly) ───────────────────── */
+async function fromFred() {
+  const key = process.env.FRED_API_KEY || '';
+  const keyParam = key ? `&api_key=${key}` : '';
+  try {
+    const url = 'https://api.stlouisfed.org/fred/series/observations' +
+                '?series_id=IRLTLT01ZAM156N' + keyParam +
+                '&sort_order=desc&limit=5&file_type=json';
+    const r = await get(url);
+    if (r.status !== 200 || !r.json) return null;
+
+    const obs = (r.json.observations || []).filter(o => o.value !== '.' && o.value);
+    if (obs.length < 2) return null;
+
+    const sorted    = obs.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const latest    = sorted[0];
+    const prev      = sorted[1];
+    const price     = parseFloat(latest.value);
+    const prevClose = parseFloat(prev.value);
+    const change    = +(price - prevClose).toFixed(4);
+    const changePct = prevClose !== 0 ? +(((price - prevClose) / prevClose) * 100).toFixed(4) : 0;
+
+    return {
+      symbol:    'IRLTLT01ZAM156N',
+      name:      'SA Long-Term Govt Bond Rate (FRED, monthly)',
+      price:     price,
+      change:    change,
+      changePct: changePct,
+      prevClose: prevClose,
+      date:      latest.date,
+      source:    'FRED',
+      unit:      '%',
+      currency:  'ZAR',
+      isProxy:   true,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (e) { return null; }
+}
+
+/* ─── Handler ────────────────────────────────────────────────────── */
+module.exports = async function(req, res) {
+  if (req.method === 'OPTIONS') { setCors(res); return res.status(204).end(); }
+
+  /* 1. Yahoo chart endpoint (primary) */
+  const yahoo = await fromYahooChart();
+  if (yahoo) {
+    console.log(`[sarb] ✓ Yahoo ^ZA10Y → ${yahoo.price}% (${yahoo.date})`);
+    return ok(res, { bond: yahoo, source: 'Yahoo' });
+  }
+  console.warn('[sarb] Yahoo ^ZA10Y failed, trying Stooq…');
+
+  /* 2. Stooq (fallback) */
+  const stooq = await fromStooq();
+  if (stooq) {
+    console.log(`[sarb] ✓ Stooq 10zay.b → ${stooq.price}% (${stooq.date})`);
+    return ok(res, { bond: stooq, source: 'Stooq' });
+  }
+  console.warn('[sarb] Stooq failed, trying FRED…');
+
+  /* 3. FRED (fallback — monthly, lower freshness) */
+  const fred = await fromFred();
+  if (fred) {
+    console.log(`[sarb] ✓ FRED → ${fred.price}% (${fred.date})`);
+    return ok(res, {
+      bond:    fred,
+      source:  'FRED',
+      warning: 'Live sources unreachable — using FRED monthly proxy.',
+    });
+  }
+  console.warn('[sarb] All sources failed — returning static fallback');
+
+  /* 4. Static fallback — dashboard must render something */
   return ok(res, {
     bond: {
-      symbol:    'MMRBGBR2035',
-      name:      'R2035 Bond Yield (static fallback — live fetch failed)',
+      symbol:    '^ZA10Y',
+      name:      'SA 10Y Bond Yield (static fallback — live fetch failed)',
       price:     11.5,
       change:    0,
       changePct: 0,
       prevClose: 11.5,
       date:      new Date().toISOString().slice(0, 10),
-      source:    'STATIC_FALLBACK',
+      source:    'STATIC',
       unit:      '%',
       currency:  'ZAR',
       isStale:   true,
       timestamp: new Date().toISOString(),
     },
-    series:  'STATIC_FALLBACK',
-    warning: 'Could not reach SARB or FRED. Showing approximate static value. Check Vercel logs.',
+    source:  'STATIC',
+    warning: 'Could not reach Yahoo, Stooq or FRED. Showing approximate static value. Check Vercel function logs.',
   });
 };

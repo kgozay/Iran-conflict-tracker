@@ -11,7 +11,7 @@ function getEnv() {
   const h = window.location.hostname;
   if (h.includes('stackblitz') || h.includes('webcontainer')) return 'stackblitz';
   if (h === 'localhost' || h === '127.0.0.1') return 'local';
-  return 'netlify';
+  return 'vercel';
 }
 
 /* ─── empty baselines (no fake prices) ───────────────────────────── */
@@ -101,14 +101,16 @@ export function useMarketData() {
   const lastFetchTs = useRef(null);
   const envRef      = useRef(null);  // always-current env without stale closure
 
-  /* Show cached data immediately on mount, return true if stale */
+  /* Show cached data immediately on mount.
+   * Returns: 'empty' | 'stale' | 'fresh'
+   */
   const initFromCache = useCallback(() => {
     const e = getEnv();
     setEnv(e);
     envRef.current = e;
 
     const cached = loadCache();
-    if (!cached?.quotes) return false;
+    if (!cached?.quotes) return 'empty';   // was: return false
 
     const isStale = Date.now() - cached.ts > CACHE_TTL;
     const empty   = { assets: makeEmptyAssets(), stocks: makeEmptyStocks() };
@@ -123,7 +125,7 @@ export function useMarketData() {
     setStatus(isStale ? 'cached' : 'live');
     setLastFetch(new Date(cached.ts));
     lastFetchTs.current = cached.ts;
-    return isStale;
+    return isStale ? 'stale' : 'fresh';   // was: return isStale
   }, []);
 
   /* Main fetch — Yahoo Finance (stocks, commodities, ^ZA10Y bond yield) */
@@ -247,5 +249,6 @@ export function useMarketData() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [fetchLive]);
 
-  return { assets, stocks, status, error, lastFetch, progress, fetchLive, initFromCache, env };
+  return { assets, stocks, status, error, lastFetch, progress, fetchLive, initFromCache, env,
+           clearError: () => { setError(null); setStatus('empty'); } };
 }

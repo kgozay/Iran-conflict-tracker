@@ -44,7 +44,7 @@ export default function LoadingOverlay({ status, progress, error, onDismiss }) {
               </div>
             </div>
             <div className="font-mono text-[9px] text-tm text-center leading-relaxed">
-              Common causes: Netlify function not deployed,<br />
+              Common causes: Vercel function not deployed,<br />
               or Yahoo Finance temporarily unavailable.
             </div>
             <button
