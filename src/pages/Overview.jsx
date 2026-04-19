@@ -39,6 +39,7 @@ function FetchPrompt({ onFetch }) {
 export default function Overview({
   assets, stocks, sectors, cis, alerts, timeframe,
   status, hasData, onFetch, cisChartData, clearHistory,
+  sparklines, sparkLoading,
 }) {
   const isLoading = status === 'loading';
 
@@ -83,7 +84,7 @@ export default function Overview({
       </div>
 
       <RegimeBanner cis={cis} hasData={hasData} />
-      <KpiGrid assets={assets} cis={cis} hasData={hasData} />
+      <KpiGrid assets={assets} cis={cis} hasData={hasData} sparklines={sparklines} sparkLoading={sparkLoading} />
       <HeatStrip sectors={sectors} />
 
       {/* Score decomp + sector chart */}
@@ -100,7 +101,7 @@ export default function Overview({
       {/* Alerts + morning note */}
       <div className="grid grid-cols-2 gap-3.5 mb-3.5">
         <AlertsFeed alerts={alerts} hasData={hasData} />
-        <MorningNote assets={assets} sectors={sectors} cis={cis} stocks={stocks} hasData={hasData} />
+        <MorningNote assets={assets} sectors={sectors} cis={cis} stocks={stocks} alerts={alerts} hasData={hasData} />
       </div>
 
       {/* Watchlist */}

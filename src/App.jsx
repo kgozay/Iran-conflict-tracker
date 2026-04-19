@@ -7,6 +7,7 @@ import { useMarketData }  from './hooks/useMarketData.js';
 import { useAutoRefresh } from './hooks/useAutoRefresh.js';
 import { useCISHistory }  from './hooks/useCISHistory.js';
 import { useToast }       from './hooks/useToast.js';
+import { useSparklines }  from './hooks/useSparklines.js';
 import Sidebar            from './components/Sidebar.jsx';
 import TopBar             from './components/TopBar.jsx';
 import LoadingOverlay     from './components/LoadingOverlay.jsx';
@@ -59,6 +60,8 @@ export default function App() {
   const { assets, stocks, status, error, lastFetch, progress, fetchLive, initFromCache, clearError } =
     useMarketData();
 
+  const { sparklines, sparkLoading, fetchSparklines } = useSparklines();
+
   const { chartData: cisChartData, addReading, clearHistory } = useCISHistory();
   const { toasts, addToast, removeToast } = useToast();
 
@@ -70,12 +73,15 @@ export default function App() {
    * 'fresh' -> cache is fresh   -> no fetch needed
    */
   useEffect(() => {
+    const macroSymbols = ['BZ=F','GC=F','PL=F','PA=F','USDZAR=X','MTF=F','^ZA10Y'];
     const cacheState = initFromCache();
     if (cacheState === 'empty') {
-      fetchLive(false);                        // full loading overlay
+      fetchLive(false);
     } else if (cacheState === 'stale') {
-      setTimeout(() => fetchLive(true), 600);  // silent background refresh
+      setTimeout(() => fetchLive(true), 600);
     }
+    // Always attempt sparklines on mount (uses its own cache internally)
+    fetchSparklines(macroSymbols);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* Derived values */
@@ -118,10 +124,14 @@ export default function App() {
       const src = result.assets?.r2035?.source;
       const bondLabel = src ? ` · R2035 via ${src}` : '';
       addToast(`↻ Updated · ${new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })} SAST${bondLabel}`, 'success');
+
+      // Fetch intraday sparklines for all macro KPI symbols
+      const macroSymbols = ['BZ=F','GC=F','PL=F','PA=F','USDZAR=X','MTF=F','^ZA10Y'];
+      fetchSparklines(macroSymbols);
     } else if (result?.error && !isSilent) {
       addToast(result.error, 'error', 6000);
     }
-  }, [fetchLive, addToast]);
+  }, [fetchLive, addToast, fetchSparklines]);
 
   const autoRefresh = useAutoRefresh(handleFetch);
 
@@ -137,6 +147,7 @@ export default function App() {
     timeframe, returnMode, status, hasData,
     onFetch: handleFetch,
     cisChartData, clearHistory,
+    sparklines, sparkLoading,
   };
 
   return (

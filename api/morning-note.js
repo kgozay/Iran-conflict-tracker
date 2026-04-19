@@ -75,7 +75,7 @@ function fmt(val, decimals, prefix, suffix) {
 }
 
 /* ── Build structured prompt ─────────────────────────────────────── */
-function buildPrompt(assets, sectors, cis, stocks) {
+function buildPrompt(assets, sectors, cis, stocks, alerts) {
   const now  = new Date();
   const date = now.toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const time = now.toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit' });
@@ -103,6 +103,24 @@ function buildPrompt(assets, sectors, cis, stocks) {
       'Top losers:  ' + topLosers.map(function(s)  { return s.display + ' (' + pct(s.changePct) + ')'; }).join(', ')
     : 'Individual stock data unavailable';
 
+  // Per-sector top mover
+  const SECTOR_ORDER = ['Gold Miners','PGMs','Energy','Banks','Retailers','Industrials','Mining','Telecoms'];
+  const sectorMovers = SECTOR_ORDER.map(function(sec) {
+    const ss = liveStocks.filter(function(s) { return s.sector === sec; });
+    if (!ss.length) return null;
+    ss.sort(function(a, b) { return Math.abs(b.changePct) - Math.abs(a.changePct); });
+    const leader = ss[0];
+    return sec + ': ' + leader.display + ' ' + pct(leader.changePct) + ' (leads)';
+  }).filter(Boolean).join('\n');
+
+  // Active alerts summary
+  const activeAlerts = (alerts || []);
+  const alertsText = activeAlerts.length > 0
+    ? activeAlerts.map(function(a) {
+        return '[' + (a.lvl || '').toUpperCase() + '] ' + a.label + ': ' + a.text;
+      }).join('\n')
+    : 'No threshold alerts triggered';
+
   return `You are a senior South African equity strategist writing the morning market note for JSE Conflict Watch — a dashboard tracking Iran-Middle East geopolitical risk transmission into South African markets.
 
 Write a concise, intelligent morning note of 5–7 short paragraphs. Your audience is institutional investors and sophisticated retail traders on the JSE. Tone: analytical, direct, slightly Bloomberg-terminal style. No bullet points. No fluff. Real insights only.
@@ -127,8 +145,14 @@ Banks:           ${pct(banks.chg)}   (rel to mkt: ${banks.rel != null ? pct(bank
 Retailers:       ${pct(retail.chg)}  (rel to mkt: ${retail.rel != null ? pct(retail.rel) : '—'})
 Industrials:     ${pct(ind.chg)}     (rel to mkt: ${ind.rel != null ? pct(ind.rel) : '—'})
 
-━━ INDIVIDUAL MOVERS ━━
+━━ INDIVIDUAL MOVERS (Global Top 3) ━━
 ${moversText}
+
+━━ SECTOR LEADERS (biggest mover per sector) ━━
+${sectorMovers || 'Sector data unavailable'}
+
+━━ ACTIVE RISK ALERTS ━━
+${alertsText}
 
 ━━ CIS COMPONENTS ━━
 Macro Shock Score (40%):     ${cis.components?.macro?.score?.toFixed(1) ?? '—'}
@@ -139,8 +163,9 @@ Address these themes:
 1. Oil price transmission into JSE via Sasol, energy sector, and ZAR weakness
 2. ZAR move vs gold hedge — are miners offsetting EM risk-off pressure?
 3. Bond yield direction and implications for bank sector valuations
-4. Which sector is best positioned as a hedge or most exposed today?
-5. One specific risk or trading setup to watch into the close
+4. Interpret the active risk alerts — composite signal or single-factor noise?
+5. Call out today's most significant sector leader and explain the driver
+6. One specific risk or trading setup to watch into the close
 
 End with: "— JSE Conflict Watch · ${date}"`;
 }
@@ -169,10 +194,10 @@ module.exports = async function(req, res) {
     catch (e) { return err(res, 'Invalid JSON body', 400); }
   }
 
-  const { assets, sectors, cis, stocks } = payload;
+  const { assets, sectors, cis, stocks, alerts } = payload;
   if (!assets || !sectors || !cis) return err(res, 'Missing assets, sectors, or cis in request body', 400);
 
-  const prompt = buildPrompt(assets, sectors, cis, stocks || []);
+  const prompt = buildPrompt(assets, sectors, cis, stocks || [], alerts || []);
   const model  = 'gemini-2.5-flash';
 
   console.log('[morning-note] Calling Gemini API (' + model + ')…');

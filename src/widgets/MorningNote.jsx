@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Card, CardHeader } from './Card.jsx';
 
-export default function MorningNote({ assets, sectors, cis, stocks, hasData }) {
+export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasData }) {
   const [note,      setNote]      = useState(null);   // generated text
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState(null);
@@ -26,7 +26,7 @@ export default function MorningNote({ assets, sectors, cis, stocks, hasData }) {
       const res = await fetch('/api/morning-note', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ assets, sectors, cis, stocks }),
+        body:    JSON.stringify({ assets, sectors, cis, stocks, alerts }),
         signal:  ctrl.signal,
       });
 
@@ -49,7 +49,7 @@ export default function MorningNote({ assets, sectors, cis, stocks, hasData }) {
     } finally {
       setLoading(false);
     }
-  }, [assets, sectors, cis, stocks, hasData]);
+  }, [assets, sectors, cis, stocks, alerts, hasData]);
 
   /* ── Copy to clipboard ──────────────────────────────────────────── */
   async function handleCopy() {
