@@ -6,6 +6,7 @@ import {
 import clsx from 'clsx';
 import { Card, CardHeader } from '../widgets/Card.jsx';
 import StockCard from '../widgets/StockCard.jsx';
+import { ChartIcon, BoltIcon } from '../components/Icons.jsx';
 
 const SECTOR_TABS = ['All','Gold Miners','PGMs','Energy','Banks','Retailers','Industrials','Mining','Telecoms'];
 
@@ -15,7 +16,7 @@ const SECTOR_READS = {
   'Gold Miners': '**Gold miners** are the standout conflict beneficiaries. Rising gold prices combined with ZAR weakness create a double tailwind — USD gold prices up and ZAR-translated revenues elevated simultaneously. Anglo Gold Ashanti and Gold Fields are the most sensitive to this dynamic.',
   PGMs:          '**PGM miners** benefit moderately. Platinum and palladium get a safe-haven bid but autocatalyst demand concerns from potential global slowdown partially offset the move. Impala Platinum and Anglo American Platinum lead; Sibanye-Stillwater typically lags on balance-sheet concerns.',
   Energy:        '**Energy-linked stocks** are primary conflict beneficiaries. Sasol is the key name — oil price elevation directly feeds into Secunda synfuels margins. Exxaro and Thungela benefit from coal price spillover. Risk is a sharp reversal on any de-escalation signal.',
-  Banks:         '**Banks face pressure** in oil-shock conflict scenarios. ZAR weakness tightens financial conditions, rising yields compress net interest income outlook, and credit quality concerns build on consumer-facing books. Watch the SA 10Y yield — 11.0% is the key de-rating level.',
+  Banks:         '**Banks face pressure** in oil-shock conflict scenarios. ZAR weakness tightens financial conditions, rising yields compress net interest income outlook, and credit quality concerns build on consumer-facing books. Watch the SA 10Y yield — 10.0% is the key de-rating stress level.',
   Retailers:     '**Retailers are the most exposed** domestic sector. The transmission is direct: ZAR weakness → import cost inflation → margin squeeze → lower consumer spending. Lower-income retailers (Pepkor, Shoprite) are most vulnerable. TFG and Mr Price have some offshore revenue offset.',
   Industrials:   '**Industrials split** between offshore and domestic. Naspers and Richemont have international earnings that buffer against ZAR weakness. Domestic industrials like Barloworld and Bidvest are more exposed to local demand conditions and input cost pressures.',
   Mining:        '**Diversified miners** benefit from commodity price elevation broadly. Anglo American and BHP have gold, copper and iron ore exposure that generally responds positively to geopolitical risk. Dollar-denominated revenues insulate them from ZAR weakness.',
@@ -44,7 +45,6 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
   const [active, setActive] = useState('All');
 
-  const liveStocks = stocks.filter(s => s.isLive);
   const filtered   = useMemo(() =>
     active === 'All' ? stocks : stocks.filter(s => s.sector === active),
     [stocks, active]
@@ -76,14 +76,14 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
   if (!hasData) {
     return (
       <div className="p-[18px] animate-fadeUp flex flex-col items-center justify-center py-20 text-center">
-        <div className="text-5xl mb-4">📊</div>
+        <div className="mb-4 text-ts"><ChartIcon className="w-12 h-12" /></div>
         <div className="font-display text-[24px] tracking-[3px] text-ts mb-2">NO LIVE DATA YET</div>
         <div className="font-mono text-[10px] text-tm mb-6 max-w-sm leading-relaxed">
           Fetch live data to see individual stock prices, sector performance charts, and constituent analysis.
         </div>
-        <button onClick={onFetch}
-          className="px-8 py-3 bg-warn text-bg font-mono text-[12px] font-semibold rounded hover:bg-warn/80 transition-colors cursor-pointer">
-          ⚡ FETCH LIVE DATA
+        <button onClick={() => onFetch()}
+          className="inline-flex items-center gap-2 px-8 py-3 bg-warn text-bg font-mono text-[12px] font-semibold rounded hover:bg-warn/80 transition-colors cursor-pointer">
+          <BoltIcon className="w-3.5 h-3.5" /> FETCH LIVE DATA
         </button>
       </div>
     );

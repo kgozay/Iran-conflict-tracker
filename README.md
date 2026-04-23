@@ -6,7 +6,7 @@ Full-stack React + Tailwind dashboard for real-time monitoring of Iran conflict 
 
 ---
 
-## ⚡ Deploy in 5 minutes
+## Deploy in 5 minutes
 
 ### 1 — Push to GitHub
 ```bash
@@ -27,7 +27,7 @@ git push -u origin main
 
 ---
 
-## 🖥 Run locally
+## Run locally
 
 ```bash
 npm install
@@ -42,7 +42,7 @@ netlify dev          # Runs everything on http://localhost:8888
 
 ---
 
-## 📡 Yahoo Finance API
+## Yahoo Finance API
 
 No API key required. The `netlify/functions/quotes.js` serverless function proxies:
 
@@ -56,7 +56,7 @@ https://query1.finance.yahoo.com/v7/finance/quote?symbols=SOL.JO,GC=F,USDZAR=X,.
 
 ---
 
-## 🗂 Project structure
+## Project structure
 
 ```
 jse-conflict-watch/
@@ -102,7 +102,7 @@ jse-conflict-watch/
 
 ---
 
-## 🔧 Customisation
+## Customisation
 
 **Add/remove stocks:** Edit `src/data/stocks.js` — the `JSE_STOCKS` array. Each entry needs a valid Yahoo Finance ticker (`.JO` suffix for JSE).
 
@@ -114,7 +114,7 @@ jse-conflict-watch/
 
 ---
 
-## 🗺 Roadmap
+## Roadmap
 
 - [ ] Auto-refresh every N minutes toggle
 - [ ] Email/Slack webhook on threshold breach

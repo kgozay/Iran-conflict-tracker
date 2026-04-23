@@ -9,35 +9,39 @@ import MorningNote     from '../widgets/MorningNote.jsx';
 import CISHistoryChart from '../widgets/CISHistoryChart.jsx';
 import Watchlist       from '../widgets/Watchlist.jsx';
 import MarketHours     from '../components/MarketHours.jsx';
+import { RadarIcon, BoltIcon, DotIcon } from '../components/Icons.jsx';
 
 function FetchPrompt({ onFetch }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="text-5xl mb-5">📡</div>
+      <div className="mb-5 text-ts">
+        <RadarIcon className="w-14 h-14" />
+      </div>
       <div className="font-display text-[30px] tracking-[3px] text-ts mb-2">NO LIVE DATA YET</div>
       <div className="font-mono text-[11px] text-tm mb-2 leading-relaxed max-w-md">
-        Click the button below to fetch real-time prices for all 33 JSE stocks,
+        Click below to fetch real-time prices for all 33 JSE stocks,
         Brent crude, gold, platinum, palladium, USD/ZAR, coal — plus the{' '}
-        <span className="text-warn">SA 10Y bond yield (^ZA10Y)</span>.
+        <span className="text-warn">SA 10Y bond yield</span>.
       </div>
       <div className="font-mono text-[9px] text-tm mb-6">
-        All fetched in one request · No API key required · Yahoo Finance
+        Single request · No API key required · Yahoo Finance + Stooq
       </div>
       <button
-        onClick={onFetch}
-        className="px-10 py-3.5 bg-warn text-bg font-mono text-[13px] font-semibold rounded hover:bg-warn/80 transition-colors cursor-pointer shadow-lg"
+        onClick={() => onFetch()}
+        className="inline-flex items-center gap-2 px-10 py-3.5 bg-warn text-bg font-mono text-[13px] font-semibold rounded hover:bg-warn/80 transition-colors cursor-pointer shadow-lg"
       >
-        ⚡ FETCH LIVE DATA NOW
+        <BoltIcon className="w-4 h-4" />
+        FETCH LIVE DATA NOW
       </button>
       <div className="font-mono text-[9px] text-tm mt-4">
-        After fetching, use the AUTO refresh buttons (1M/5M/15M/30M) to stay live all morning.
+        After fetching, use the AUTO refresh buttons (1M / 5M / 15M / 30M) to stay live.
       </div>
     </div>
   );
 }
 
 export default function Overview({
-  assets, stocks, sectors, cis, alerts, timeframe,
+  assets, stocks, sectors, cis, alerts, timeframe, returnMode,
   status, hasData, onFetch, cisChartData, clearHistory,
   sparklines, sparkLoading,
 }) {
@@ -49,8 +53,8 @@ export default function Overview({
         <div className="flex items-center justify-between mb-4">
           <MarketHours />
           <div className="font-mono text-[9px] text-tm">
-            Data sources: <span className="text-ts">Yahoo Finance (stocks/commodities)</span>{' '}
-            + <span className="text-warn">SA 10Y Bond Yield (^ZA10Y via Yahoo Finance)</span>
+            Data: <span className="text-ts">Yahoo Finance (equities + commodities)</span>{' '}
+            + <span className="text-warn">SA 10Y Bond (Stooq primary, Yahoo fallback)</span>
           </div>
         </div>
         <FetchPrompt onFetch={onFetch} />
@@ -65,26 +69,26 @@ export default function Overview({
         <MarketHours />
         <div className="flex items-center gap-3 font-mono text-[9px] text-tm">
           {assets.r2035?.isStale && (
-            <span className="text-bear border border-bear/30 bg-bear/8 px-2 py-0.5 rounded-sm">
-              ⚠ R2035 static fallback — all live sources unreachable
+            <span className="inline-flex items-center gap-1 text-bear border border-bear/30 bg-bear/8 px-2 py-0.5 rounded-sm">
+              <DotIcon className="w-1.5 h-1.5" /> Bond yield static fallback — all live sources unreachable
             </span>
           )}
           {assets.r2035?.isProxy && !assets.r2035?.isStale && (
-            <span className="text-warn border border-warn/30 bg-warn/8 px-2 py-0.5 rounded-sm">
-              ⚠ R2035 using {assets.r2035.source || 'FRED'} proxy (monthly)
+            <span className="inline-flex items-center gap-1 text-warn border border-warn/30 bg-warn/8 px-2 py-0.5 rounded-sm">
+              <DotIcon className="w-1.5 h-1.5" /> Bond yield via {assets.r2035.source || 'FRED'} proxy (monthly)
             </span>
           )}
           {assets.r2035?.isLive && !assets.r2035?.isProxy && !assets.r2035?.isStale && (
-            <span className="text-bull border border-bull/30 bg-bull/8 px-2 py-0.5 rounded-sm">
-              ● R2035 live from {assets.r2035.source || 'Yahoo'} · {assets.r2035.date ?? ''}
+            <span className="inline-flex items-center gap-1 text-bull border border-bull/30 bg-bull/8 px-2 py-0.5 rounded-sm">
+              <DotIcon className="w-1.5 h-1.5" /> Bond yield live from {assets.r2035.source || 'Stooq'} · {assets.r2035.date ?? ''}
             </span>
           )}
-          <span className="text-ts">Yahoo Finance · Auto-refresh available</span>
+          <span className="text-ts">Auto-refresh available</span>
         </div>
       </div>
 
       <RegimeBanner cis={cis} hasData={hasData} />
-      <KpiGrid assets={assets} cis={cis} hasData={hasData} sparklines={sparklines} sparkLoading={sparkLoading} />
+      <KpiGrid assets={assets} cis={cis} hasData={hasData} sparklines={sparklines} sparkLoading={sparkLoading} timeframe={timeframe} />
       <HeatStrip sectors={sectors} />
 
       {/* Score decomp + sector chart */}
@@ -104,8 +108,8 @@ export default function Overview({
         <MorningNote assets={assets} sectors={sectors} cis={cis} stocks={stocks} alerts={alerts} hasData={hasData} />
       </div>
 
-      {/* Watchlist */}
-      <Watchlist stocks={stocks} timeframe={timeframe} />
+      {/* Watchlist — now respects timeframe + returnMode */}
+      <Watchlist stocks={stocks} timeframe={timeframe} returnMode={returnMode} sectors={sectors} />
     </div>
   );
 }

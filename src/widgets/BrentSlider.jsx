@@ -3,17 +3,16 @@ import clsx from 'clsx';
 import { Card, CardHeader } from './Card.jsx';
 
 // Regression coefficients: estimated JSE sector sensitivity per $1 Brent move
-// Derived from historical regression (Gulf War, Libya, Russia-Ukraine episodes)
-const BASE_BRENT = 75; // baseline Brent (no conflict premium)
+const BASE_BRENT = 75;
 const SECTORS = [
-  { name:'Energy / Sasol',   slope:+0.082, baseChg: 0 },
-  { name:'Coal Exporters',   slope:+0.058, baseChg: 0 },
-  { name:'Gold Miners',      slope:+0.018, baseChg: 0 },
-  { name:'PGM Miners',       slope:+0.012, baseChg: 0 },
-  { name:'JSE Top 40',       slope:-0.041, baseChg: 0 },
-  { name:'Banks',            slope:-0.056, baseChg: 0 },
-  { name:'Retailers',        slope:-0.068, baseChg: 0 },
-  { name:'Industrials',      slope:-0.032, baseChg: 0 },
+  { name:'Energy / Sasol',   slope:+0.082 },
+  { name:'Coal Exporters',   slope:+0.058 },
+  { name:'Gold Miners',      slope:+0.018 },
+  { name:'PGM Miners',       slope:+0.012 },
+  { name:'JSE Top 40',       slope:-0.041 },
+  { name:'Banks',            slope:-0.056 },
+  { name:'Retailers',        slope:-0.068 },
+  { name:'Industrials',      slope:-0.032 },
 ];
 
 function getCellCls(pct) {
@@ -27,11 +26,11 @@ function getCellCls(pct) {
 }
 
 export default function BrentSlider({ liveBrent }) {
-  const livePrice  = liveBrent?.price ?? null;
-  const initPrice  = livePrice ? Math.round(livePrice) : 92;
+  const livePrice = liveBrent?.price ?? null;
+  const initPrice = livePrice ? Math.round(livePrice) : 92;
   const [price, setPrice] = useState(initPrice);
 
-  const delta = price - BASE_BRENT; // move from $75 base
+  const delta = price - BASE_BRENT;
 
   const scenarios = SECTORS.map(s => ({
     ...s,
@@ -42,7 +41,6 @@ export default function BrentSlider({ liveBrent }) {
     <Card>
       <CardHeader title="Interactive Brent Sensitivity — Drag to Scenario" badge="LIVE MODEL" badgeVariant="warn" />
 
-      {/* Slider */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <div>
@@ -50,7 +48,7 @@ export default function BrentSlider({ liveBrent }) {
             <span className="font-mono text-[10px] text-tm ml-2">/bbl</span>
             {livePrice && (
               <span className="font-mono text-[9px] text-ts ml-3">
-                Live: ${livePrice.toFixed(2)} · {livePrice > price ? '↓ below live' : livePrice < price ? '↑ above live' : '= live'}
+                Live: ${livePrice.toFixed(2)} · {livePrice > price ? 'below live' : livePrice < price ? 'above live' : 'at live'}
               </span>
             )}
           </div>
@@ -81,13 +79,12 @@ export default function BrentSlider({ liveBrent }) {
         </div>
       </div>
 
-      {/* Scenario markers */}
       <div className="flex gap-1.5 flex-wrap mb-4">
         {[
-          { label:'Base',     p:75,  cls:'border-ts text-ts' },
-          { label:'Amber',    p:92,  cls:'border-warn text-warn' },
-          { label:'Shock',    p:115, cls:'border-bear text-bear' },
-          { label:'Crisis',   p:135, cls:'border-bear text-bear bg-bear/10' },
+          { label:'Base',   p:75,  cls:'border-ts text-ts' },
+          { label:'Amber',  p:92,  cls:'border-warn text-warn' },
+          { label:'Shock',  p:115, cls:'border-bear text-bear' },
+          { label:'Crisis', p:135, cls:'border-bear text-bear bg-bear/10' },
           livePrice && { label:'Live', p:Math.round(livePrice), cls:'border-bull text-bull' },
         ].filter(Boolean).map(s => (
           <button key={s.label} onClick={() => setPrice(s.p)}
@@ -97,7 +94,6 @@ export default function BrentSlider({ liveBrent }) {
         ))}
       </div>
 
-      {/* Results table */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse font-mono text-[10px]">
           <thead>
@@ -129,7 +125,7 @@ export default function BrentSlider({ liveBrent }) {
       </div>
 
       <div className="font-mono text-[8px] text-tm mt-3 pt-2 border-t border-bd-x">
-        Model based on historical regression across 6 major conflict episodes (1990–2024). For indicative purposes only.
+        Model based on historical regression across 6 major conflict episodes (1990–2024). Indicative only.
       </div>
     </Card>
   );

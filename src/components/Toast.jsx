@@ -1,11 +1,12 @@
 import React from 'react';
 import clsx from 'clsx';
+import { CheckIcon, ErrorIcon, AlertIcon, RefreshIcon } from './Icons.jsx';
 
 const TYPE = {
-  success: { icon: '✓', cls: 'border-bull/40 bg-bull/10 text-bull'  },
-  error:   { icon: '✕', cls: 'border-bear/40 bg-bear/10 text-bear'  },
-  warn:    { icon: '⚠', cls: 'border-warn/40 bg-warn/10 text-warn'  },
-  info:    { icon: '↻', cls: 'border-bd bg-bg-s text-ts'             },
+  success: { Icon: CheckIcon,   cls: 'border-bull/40 bg-bull/10 text-bull' },
+  error:   { Icon: ErrorIcon,   cls: 'border-bear/40 bg-bear/10 text-bear' },
+  warn:    { Icon: AlertIcon,   cls: 'border-warn/40 bg-warn/10 text-warn' },
+  info:    { Icon: RefreshIcon, cls: 'border-bd bg-bg-s text-ts'            },
 };
 
 export default function Toast({ toasts, onRemove }) {
@@ -13,7 +14,8 @@ export default function Toast({ toasts, onRemove }) {
   return (
     <div className="fixed bottom-5 right-5 z-[300] flex flex-col gap-2 pointer-events-none">
       {toasts.map(t => {
-        const cfg = TYPE[t.type] ?? TYPE.info;
+        const cfg  = TYPE[t.type] ?? TYPE.info;
+        const Icon = cfg.Icon;
         return (
           <div
             key={t.id}
@@ -24,7 +26,7 @@ export default function Toast({ toasts, onRemove }) {
               cfg.cls,
             )}
           >
-            <span className="text-[12px]">{cfg.icon}</span>
+            <Icon className="w-3.5 h-3.5 flex-shrink-0" />
             <span>{t.message}</span>
           </div>
         );

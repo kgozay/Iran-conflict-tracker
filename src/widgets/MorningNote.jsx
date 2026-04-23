@@ -1,15 +1,15 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Card, CardHeader } from './Card.jsx';
+import { Card } from './Card.jsx';
+import { CopyIcon, CheckIcon, SparkleIcon, RefreshIcon } from '../components/Icons.jsx';
 
 export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasData }) {
-  const [note,      setNote]      = useState(null);   // generated text
-  const [loading,   setLoading]   = useState(false);
-  const [error,     setError]     = useState(null);
-  const [meta,      setMeta]      = useState(null);   // { model, tokens_in, tokens_out, timestamp }
-  const [copied,    setCopied]    = useState(false);
+  const [note,     setNote]     = useState(null);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState(null);
+  const [meta,     setMeta]     = useState(null);
+  const [copied,   setCopied]   = useState(false);
   const abortRef = useRef(null);
 
-  /* ── Generate note via Netlify function ─────────────────────────── */
   const generate = useCallback(async () => {
     if (!hasData) return;
 
@@ -31,10 +31,7 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Function returned HTTP ' + res.status);
-      }
+      if (!res.ok) throw new Error(data.error || 'Function returned HTTP ' + res.status);
 
       setNote(data.note);
       setMeta({
@@ -51,7 +48,6 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
     }
   }, [assets, sectors, cis, stocks, alerts, hasData]);
 
-  /* ── Copy to clipboard ──────────────────────────────────────────── */
   async function handleCopy() {
     if (!note) return;
     try {
@@ -61,11 +57,13 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
     } catch { /* clipboard not available */ }
   }
 
-  /* ── No data state ──────────────────────────────────────────────── */
   if (!hasData) {
     return (
       <Card className="h-full">
-        <CardHeader title="AI Morning Note" badge="GEMINI AI" badgeVariant="live" />
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-mono text-[9px] font-semibold tracking-[2px] text-ts uppercase">AI Morning Note</span>
+          <span className="font-mono text-[8px] bg-bull/10 text-bull border border-bull/30 px-1.5 py-0.5 rounded-sm">GEMINI AI</span>
+        </div>
         <div className="flex items-center justify-center h-32 font-mono text-[10px] text-tm text-center">
           Fetch live data first, then generate your note
         </div>
@@ -87,38 +85,41 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
           {note && (
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1 px-2.5 py-1 font-mono text-[9px] border border-bd bg-bg-c rounded hover:text-tp hover:border-ts transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1 font-mono text-[9px] border border-bd bg-bg-c rounded hover:text-tp hover:border-ts transition-colors cursor-pointer"
             >
-              {copied ? '✓ COPIED' : '📋 COPY'}
+              {copied ? <><CheckIcon className="w-3 h-3" /> COPIED</> : <><CopyIcon className="w-3 h-3" /> COPY</>}
             </button>
           )}
           <button
             onClick={generate}
             disabled={loading}
-            className="flex items-center gap-1.5 px-2.5 py-1 font-mono text-[9px] border border-warn/40 bg-warn/5 text-warn rounded hover:bg-warn/10 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 font-mono text-[9px] border border-warn/40 bg-warn/5 text-warn rounded hover:bg-warn/10 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
                 <span className="inline-block w-2.5 h-2.5 border border-warn border-t-transparent rounded-full animate-spin" />
                 GENERATING…
               </>
-            ) : note ? '↻ REGENERATE' : '✦ GENERATE NOTE'}
+            ) : note ? (
+              <><RefreshIcon className="w-3 h-3" /> REGENERATE</>
+            ) : (
+              <><SparkleIcon className="w-3 h-3" /> GENERATE NOTE</>
+            )}
           </button>
         </div>
       </div>
 
-      {/* Empty state — before first generate */}
       {!loading && !note && !error && (
         <div className="flex flex-col items-center justify-center h-36 gap-3 border border-dashed border-bd/50 rounded">
           <span className="font-mono text-[9px] text-ts text-center leading-relaxed px-4">
-            Generates a real analyst note using Gemini AI,<br />
+            Generates a real analyst note using Gemini,<br />
             grounded in your live JSE + macro data.
           </span>
           <button
             onClick={generate}
-            className="px-4 py-1.5 font-mono text-[9px] border border-warn/50 bg-warn/5 text-warn rounded hover:bg-warn/15 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 font-mono text-[9px] border border-warn/50 bg-warn/5 text-warn rounded hover:bg-warn/15 transition-colors cursor-pointer"
           >
-            ✦ GENERATE NOTE
+            <SparkleIcon className="w-3 h-3" /> GENERATE NOTE
           </button>
           <span className="font-mono text-[7px] text-tm/60">
             Requires free GEMINI_API_KEY — get one at aistudio.google.com
@@ -126,7 +127,6 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
         </div>
       )}
 
-      {/* Loading shimmer */}
       {loading && (
         <div className="space-y-2 mt-1">
           <div className="h-2.5 bg-bd/40 rounded animate-pulse w-3/4" />
@@ -141,14 +141,13 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
         </div>
       )}
 
-      {/* Error state */}
       {error && !loading && (
         <div className="border border-bear/30 bg-bear/5 rounded p-3 space-y-2">
           <p className="font-mono text-[9px] text-bear font-semibold">Generation failed</p>
           <p className="font-mono text-[9px] text-ts leading-relaxed">{error}</p>
           {error.includes('GEMINI_API_KEY') && (
             <p className="font-mono text-[8px] text-tm leading-relaxed">
-              → Get free key at aistudio.google.com/app/apikey → Vercel → Project Settings → Environment Variables → Key: <span className="text-warn">GEMINI_API_KEY</span>
+              Get free key at aistudio.google.com/app/apikey, then set it in Vercel → Project Settings → Environment Variables → <span className="text-warn">GEMINI_API_KEY</span>
             </p>
           )}
           <button
@@ -160,7 +159,6 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
         </div>
       )}
 
-      {/* Generated note */}
       {note && !loading && (
         <div className="space-y-1">
           <div className="font-mono text-[10.5px] leading-[1.85] text-ts whitespace-pre-wrap">
@@ -172,7 +170,7 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
                 {meta.model?.replace('gemini-', 'Gemini ') ?? 'Gemini'}
               </span>
               <span className="font-mono text-[7px] text-tm/60">
-                {meta.tokens_in}↑ {meta.tokens_out}↓ tokens
+                {meta.tokens_in} in / {meta.tokens_out} out tokens
               </span>
               <span className="font-mono text-[7px] text-tm/60 ml-auto">
                 {meta.timestamp ? new Date(meta.timestamp).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit' }) + ' SAST' : ''}

@@ -5,7 +5,7 @@ import { Card, CardHeader } from './Card.jsx';
 const META = {
   macro: { label: 'Macro Shock Score',  weight: '40%', note: 'Brent · USD/ZAR · Gold · SA 10Y'  },
   jse:   { label: 'JSE Reaction Score', weight: '35%', note: 'Top40 · Banks · Retail · Miners'   },
-  conf:  { label: 'Confirmation Score', weight: '25%', note: 'Signal alignment & directionality'  },
+  conf:  { label: 'Confirmation Score', weight: '25%', note: 'Signal alignment & directionality' },
 };
 
 function ScoreBar({ score }) {
@@ -24,7 +24,10 @@ function ScoreBar({ score }) {
 }
 
 export default function ScoreDecomp({ cis, hasData }) {
-  const totalColor = cis.regimeClass === 'bull' ? 'text-bull' : cis.regimeClass === 'warn' ? 'text-warn' : 'text-bear';
+  const totalColor = cis.regimeClass === 'bull' ? 'text-bull'
+    : cis.regimeClass === 'warn' ? 'text-warn'
+    : cis.regimeClass === 'bear' ? 'text-bear'
+    : 'text-ts';
 
   if (!hasData) {
     return (
@@ -57,7 +60,7 @@ export default function ScoreDecomp({ cis, hasData }) {
                     {comp.score > 0 ? '+' : ''}{comp.score}
                   </span>
                   <span className="font-mono text-[8px] text-tm ml-1.5">
-                    → {comp.contrib > 0 ? '+' : ''}{comp.contrib} pts
+                    &rsaquo; {comp.contrib > 0 ? '+' : ''}{comp.contrib} pts
                   </span>
                 </div>
               </div>

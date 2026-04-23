@@ -16,7 +16,8 @@ import Overview           from './pages/Overview.jsx';
 import MacroTransmission  from './pages/MacroTransmission.jsx';
 import SectorDrilldown    from './pages/SectorDrilldown.jsx';
 
-/* Derive sector aggregates from live stock data */
+/* Derive sector aggregates from live stock data. Uses the 1D change;
+ * timeframe switching (5D/20D) happens at display level in the Watchlist. */
 function deriveSectors(stocks) {
   const live = stocks.filter(s => s.isLive && s.changePct != null);
   const sectors = {};
@@ -54,11 +55,14 @@ const EMPTY_CIS = {
 
 export default function App() {
   const [page,       setPage]       = useState('overview');
-  const [timeframe,  setTimeframe]  = useState('1D');
-  const [returnMode, setReturnMode] = useState('ABS');
+  const [timeframe,  setTimeframe]  = useState('1D');     // now actually affects display
+  const [returnMode, setReturnMode] = useState('ABS');    // now actually affects display
 
-  const { assets, stocks, status, error, lastFetch, progress, fetchLive, initFromCache, clearError } =
-    useMarketData();
+  const {
+    assets, stocks, r2035History,
+    status, error, lastFetch, progress,
+    fetchLive, initFromCache, clearError,
+  } = useMarketData();
 
   const { sparklines, sparkLoading, fetchSparklines } = useSparklines();
 
@@ -67,11 +71,7 @@ export default function App() {
 
   const prevStatusRef = useRef(status);
 
-  /* On mount: show cache immediately, then fetch as needed.
-   * 'empty' -> no cache at all  -> fetch immediately (loading overlay shown)
-   * 'stale' -> cache is old     -> fetch silently in background
-   * 'fresh' -> cache is fresh   -> no fetch needed
-   */
+  /* On mount: show cache immediately, then fetch as needed. */
   useEffect(() => {
     const macroSymbols = ['BZ=F','GC=F','PL=F','PA=F','USDZAR=X','MTF=F','^ZA10Y'];
     const cacheState = initFromCache();
@@ -80,7 +80,6 @@ export default function App() {
     } else if (cacheState === 'stale') {
       setTimeout(() => fetchLive(true), 600);
     }
-    // Always attempt sparklines on mount (uses its own cache internally)
     fetchSparklines(macroSymbols);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -116,16 +115,15 @@ export default function App() {
     }
   }, [status, hasData, cis, addReading]);
 
-  /* Wrapped fetch — adds toast feedback */
+  /* Wrapped fetch — accepts explicit boolean, ignores MouseEvent from button clicks */
   const handleFetch = useCallback(async (silentParam) => {
     const isSilent = silentParam === true;
     const result = await fetchLive(isSilent);
     if (result?.success) {
       const src = result.assets?.r2035?.source;
-      const bondLabel = src ? ` · R2035 via ${src}` : '';
-      addToast(`↻ Updated · ${new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })} SAST${bondLabel}`, 'success');
+      const bondLabel = src ? ` · bond via ${src}` : '';
+      addToast(`Updated · ${new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })} SAST${bondLabel}`, 'success');
 
-      // Fetch intraday sparklines for all macro KPI symbols
       const macroSymbols = ['BZ=F','GC=F','PL=F','PA=F','USDZAR=X','MTF=F','^ZA10Y'];
       fetchSparklines(macroSymbols);
     } else if (result?.error && !isSilent) {
@@ -139,11 +137,11 @@ export default function App() {
     if (key === 'watchlist-csv') exportWatchlistCSV(stocks, timeframe);
     if (key === 'macro-csv')     exportMacroCSV(assets);
     if (key === 'snapshot-json') exportSnapshotJSON(assets, stocks, sectors, cis, alerts);
-    addToast('↓ File downloaded', 'info', 2000);
+    addToast('File downloaded', 'info', 2000);
   }, [stocks, assets, sectors, cis, alerts, timeframe, addToast]);
 
   const shared = {
-    assets, stocks, sectors, cis, alerts,
+    assets, stocks, sectors, cis, alerts, r2035History,
     timeframe, returnMode, status, hasData,
     onFetch: handleFetch,
     cisChartData, clearHistory,

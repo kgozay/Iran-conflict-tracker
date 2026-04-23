@@ -1,4 +1,5 @@
 import React from 'react';
+import { ErrorIcon } from './Icons.jsx';
 
 export default function LoadingOverlay({ status, progress, error, onDismiss }) {
   const isLoading = status === 'loading';
@@ -26,16 +27,16 @@ export default function LoadingOverlay({ status, progress, error, onDismiss }) {
               ))}
             </div>
             <div className="font-mono text-[9px] text-tm text-center leading-relaxed">
-              All {' '}<span className="text-warn">40+ symbols</span>{' '} fetched in a single request<br />
-              Yahoo Finance · No API key required
+              All {' '}<span className="text-warn">40+ symbols</span>{' '} fetched concurrently<br />
+              Yahoo Finance + Stooq · No API key required
             </div>
           </>
         )}
 
         {isError && (
           <>
-            <div className="w-12 h-12 rounded-full bg-bear/10 border border-bear/40 flex items-center justify-center text-2xl flex-shrink-0">
-              ⚠️
+            <div className="w-12 h-12 rounded-full bg-bear/10 border border-bear/40 flex items-center justify-center text-bear flex-shrink-0">
+              <ErrorIcon className="w-6 h-6" />
             </div>
             <div className="text-center">
               <div className="font-display text-[22px] tracking-[3px] text-bear mb-2">FETCH FAILED</div>

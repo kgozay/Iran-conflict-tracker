@@ -1,15 +1,21 @@
 /**
- * JSE Conflict Watch — SA 10Y Bond Yield Proxy
+ * JSE Conflict Watch — SA 10Y Bond Yield + 12M History Proxy
  * Vercel Serverless Function — CommonJS — NO API KEY REQUIRED
  *
- * v3 STRATEGY (2026-04 rewrite):
- *   1. Yahoo Finance chart endpoint ^ZA10Y (primary — no crumb needed, reliable)
- *   2. Stooq CSV  10zay.b           (fallback — free, no auth, SA yield curve)
- *   3. FRED     IRLTLT01ZAM156N     (fallback — SA long-term govt rate, monthly)
- *   4. Static 11.5%                 (last-resort so the dashboard never renders blank)
+ * v4 STRATEGY (2026-04 rewrite):
+ *   1. Stooq CSV 10zay.b            — PRIMARY for both live + 12mo history
+ *                                     (more reliable than Yahoo ^ZA10Y which
+ *                                     often returns slightly stale figures).
+ *   2. Yahoo ^ZA10Y chart endpoint  — FALLBACK live + history.
+ *   3. FRED IRLTLT01ZAM156N          — monthly fallback (live only).
+ *   4. Static                        — last-resort so chart renders.
  *
- *   SARB's custom.resbank.co.za endpoint was removed from primary path — it has
- *   intermittent SSL chain + IP blocklist issues from Vercel edge IPs.
+ * Response shape:
+ *   {
+ *     bond:    { price, change, changePct, prevClose, source, date, … },
+ *     history: [ { month:'Apr 25', yield:10.95 }, … ]  // 12 monthly closes
+ *     source:  'Stooq' | 'Yahoo' | 'FRED' | 'STATIC'
+ *   }
  */
 
 const https = require('https');
@@ -28,10 +34,10 @@ function get(url, opts) {
   return new Promise(function(resolve, reject) {
     const options = {
       headers: Object.assign({
-        'User-Agent': UA,
-        'Accept':     'application/json, text/plain, */*',
+        'User-Agent':      UA,
+        'Accept':          'application/json, text/plain, */*',
+        'Accept-Encoding': 'gzip, deflate, br',
       }, opts.headers || {}),
-      rejectUnauthorized: opts.rejectUnauthorized !== false,
     };
 
     const req = https.get(url, options, function(res) {
@@ -67,51 +73,30 @@ const setCors = function(res) {
 const ok  = function(res, body)   { setCors(res); return res.status(200).json(body); };
 const err = function(res, msg, c) { setCors(res); return res.status(c || 502).json({ error: msg }); };
 
-/* ─── Source 1: Yahoo chart endpoint for ^ZA10Y ──────────────────── */
-async function fromYahooChart() {
-  const hosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
-  for (const host of hosts) {
-    try {
-      const url = `https://${host}/v8/finance/chart/%5EZA10Y?interval=1d&range=5d`;
-      const r = await get(url, {
-        headers: {
-          Referer: 'https://finance.yahoo.com/',
-          Origin:  'https://finance.yahoo.com',
-        },
-      });
-      if (r.status !== 200 || !r.json) continue;
-      const result = r.json.chart && r.json.chart.result && r.json.chart.result[0];
-      if (!result || !result.meta) continue;
-
-      const m = result.meta;
-      const price     = m.regularMarketPrice;
-      const prevClose = m.chartPreviousClose != null ? m.chartPreviousClose : m.previousClose;
-      if (price == null || prevClose == null) continue;
-
-      const change    = +(price - prevClose).toFixed(4);
-      const changePct = prevClose !== 0 ? +(((price - prevClose) / prevClose) * 100).toFixed(4) : 0;
-
-      return {
-        symbol:    '^ZA10Y',
-        name:      'SA 10Y Government Bond Yield',
-        price:     price,
-        change:    change,
-        changePct: changePct,
-        prevClose: prevClose,
-        date:      new Date((m.regularMarketTime || Date.now() / 1000) * 1000).toISOString().slice(0, 10),
-        source:    'Yahoo',
-        unit:      '%',
-        currency:  'ZAR',
-        timestamp: new Date().toISOString(),
-      };
-    } catch (e) { /* try next host */ }
-  }
-  return null;
+/* ── Helper: label a date as "MMM YY" for the historical chart ──── */
+function monthLabel(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`;
 }
 
-/* ─── Source 2: Stooq CSV 10zay.b ────────────────────────────────── */
-/* Stooq returns CSV: Date,Open,High,Low,Close,Volume
- * We take the last two non-empty rows for price + prev close. */
+/* ── Helper: reduce daily rows to one (last) row per month ──────── */
+function monthlyFromDaily(rows) {
+  // rows = [{ date:'YYYY-MM-DD', close: Number }, …] ascending
+  const byMonth = new Map();
+  for (const r of rows) {
+    const key = r.date.slice(0, 7); // YYYY-MM
+    byMonth.set(key, r);            // last one wins = month-end
+  }
+  const out = [];
+  for (const [, r] of byMonth) {
+    out.push({ month: monthLabel(r.date), yield: +r.close.toFixed(3), date: r.date });
+  }
+  return out.slice(-13); // keep last 13 months so chart shows 12 full transitions
+}
+
+/* ─── Source 1: Stooq CSV 10zay.b (primary — daily history) ──────── */
 async function fromStooq() {
   try {
     const url = 'https://stooq.com/q/d/l/?s=10zay.b&i=d';
@@ -119,14 +104,14 @@ async function fromStooq() {
     if (r.status !== 200 || !r.raw) return null;
 
     const lines = r.raw.trim().split(/\r?\n/);
-    if (lines.length < 3) return null;  // need header + 2 data rows
+    if (lines.length < 3) return null;
 
     const rows = [];
     for (let i = 1; i < lines.length; i++) {
       const parts = lines[i].split(',');
       if (parts.length < 5) continue;
       const close = parseFloat(parts[4]);
-      if (!isNaN(close)) rows.push({ date: parts[0], close });
+      if (!isNaN(close) && parts[0]) rows.push({ date: parts[0], close });
     }
     if (rows.length < 2) return null;
 
@@ -137,30 +122,94 @@ async function fromStooq() {
     const change    = +(price - prevClose).toFixed(4);
     const changePct = prevClose !== 0 ? +(((price - prevClose) / prevClose) * 100).toFixed(4) : 0;
 
+    const history = monthlyFromDaily(rows);
+
     return {
-      symbol:    '10ZAY.B',
-      name:      'SA 10Y Government Bond Yield (Stooq)',
-      price:     price,
-      change:    change,
-      changePct: changePct,
-      prevClose: prevClose,
-      date:      latest.date,
-      source:    'Stooq',
-      unit:      '%',
-      currency:  'ZAR',
-      timestamp: new Date().toISOString(),
+      bond: {
+        symbol:    '10ZAY.B',
+        name:      'SA 10Y Government Bond Yield',
+        price,
+        change,
+        changePct,
+        prevClose,
+        date:      latest.date,
+        source:    'Stooq',
+        unit:      '%',
+        currency:  'ZAR',
+        timestamp: new Date().toISOString(),
+      },
+      history,
     };
   } catch (e) { return null; }
 }
 
-/* ─── Source 3: FRED IRLTLT01ZAM156N (monthly) ───────────────────── */
+/* ─── Source 2: Yahoo ^ZA10Y chart endpoint (fallback) ──────────── */
+async function fromYahooChart() {
+  const hosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+  for (const host of hosts) {
+    try {
+      // range=1y gives us daily bars we can collapse to 12 monthly points.
+      const url = `https://${host}/v8/finance/chart/%5EZA10Y?interval=1d&range=1y`;
+      const r = await get(url, {
+        headers: {
+          Referer: 'https://finance.yahoo.com/',
+          Origin:  'https://finance.yahoo.com',
+        },
+      });
+      if (r.status !== 200 || !r.json) continue;
+      const result = r.json.chart && r.json.chart.result && r.json.chart.result[0];
+      if (!result || !result.meta) continue;
+
+      const meta      = result.meta;
+      const price     = meta.regularMarketPrice;
+      const prevClose = meta.chartPreviousClose != null ? meta.chartPreviousClose : meta.previousClose;
+      if (price == null || prevClose == null) continue;
+
+      const change    = +(price - prevClose).toFixed(4);
+      const changePct = prevClose !== 0 ? +(((price - prevClose) / prevClose) * 100).toFixed(4) : 0;
+
+      // Build daily rows from timestamps + closes for the monthly rollup
+      const timestamps = result.timestamp || [];
+      const closes = result.indicators && result.indicators.quote && result.indicators.quote[0] &&
+                     result.indicators.quote[0].close ? result.indicators.quote[0].close : [];
+      const rows = [];
+      for (let i = 0; i < timestamps.length; i++) {
+        const c = closes[i];
+        if (c == null || !timestamps[i]) continue;
+        const d = new Date(timestamps[i] * 1000).toISOString().slice(0, 10);
+        rows.push({ date: d, close: c });
+      }
+      const history = rows.length >= 2 ? monthlyFromDaily(rows) : [];
+
+      return {
+        bond: {
+          symbol:    '^ZA10Y',
+          name:      'SA 10Y Government Bond Yield',
+          price,
+          change,
+          changePct,
+          prevClose,
+          date:      new Date((meta.regularMarketTime || Date.now() / 1000) * 1000).toISOString().slice(0, 10),
+          source:    'Yahoo',
+          unit:      '%',
+          currency:  'ZAR',
+          timestamp: new Date().toISOString(),
+        },
+        history,
+      };
+    } catch (e) { /* try next host */ }
+  }
+  return null;
+}
+
+/* ─── Source 3: FRED IRLTLT01ZAM156N (monthly, last resort for live) ─ */
 async function fromFred() {
   const key = process.env.FRED_API_KEY || '';
   const keyParam = key ? `&api_key=${key}` : '';
   try {
     const url = 'https://api.stlouisfed.org/fred/series/observations' +
                 '?series_id=IRLTLT01ZAM156N' + keyParam +
-                '&sort_order=desc&limit=5&file_type=json';
+                '&sort_order=desc&limit=14&file_type=json';
     const r = await get(url);
     if (r.status !== 200 || !r.json) return null;
 
@@ -175,19 +224,28 @@ async function fromFred() {
     const change    = +(price - prevClose).toFixed(4);
     const changePct = prevClose !== 0 ? +(((price - prevClose) / prevClose) * 100).toFixed(4) : 0;
 
+    // FRED already gives us monthly data — straight map, oldest first
+    const history = sorted
+      .slice(0, 13)
+      .reverse()
+      .map(o => ({ month: monthLabel(o.date), yield: +parseFloat(o.value).toFixed(3), date: o.date }));
+
     return {
-      symbol:    'IRLTLT01ZAM156N',
-      name:      'SA Long-Term Govt Bond Rate (FRED, monthly)',
-      price:     price,
-      change:    change,
-      changePct: changePct,
-      prevClose: prevClose,
-      date:      latest.date,
-      source:    'FRED',
-      unit:      '%',
-      currency:  'ZAR',
-      isProxy:   true,
-      timestamp: new Date().toISOString(),
+      bond: {
+        symbol:    'IRLTLT01ZAM156N',
+        name:      'SA Long-Term Govt Bond Rate (FRED, monthly)',
+        price,
+        change,
+        changePct,
+        prevClose,
+        date:      latest.date,
+        source:    'FRED',
+        unit:      '%',
+        currency:  'ZAR',
+        isProxy:   true,
+        timestamp: new Date().toISOString(),
+      },
+      history,
     };
   } catch (e) { return null; }
 }
@@ -196,30 +254,31 @@ async function fromFred() {
 module.exports = async function(req, res) {
   if (req.method === 'OPTIONS') { setCors(res); return res.status(204).end(); }
 
-  /* 1. Yahoo chart endpoint (primary) */
-  const yahoo = await fromYahooChart();
-  if (yahoo) {
-    console.log(`[sarb] ✓ Yahoo ^ZA10Y → ${yahoo.price}% (${yahoo.date})`);
-    return ok(res, { bond: yahoo, source: 'Yahoo' });
-  }
-  console.warn('[sarb] Yahoo ^ZA10Y failed, trying Stooq…');
-
-  /* 2. Stooq (fallback) */
+  /* 1. Stooq — primary (provides BOTH live and 12M history in one call) */
   const stooq = await fromStooq();
   if (stooq) {
-    console.log(`[sarb] ✓ Stooq 10zay.b → ${stooq.price}% (${stooq.date})`);
-    return ok(res, { bond: stooq, source: 'Stooq' });
+    console.log(`[sarb] ✓ Stooq 10zay.b → ${stooq.bond.price}% (${stooq.bond.date}) · ${stooq.history.length} history points`);
+    return ok(res, { bond: stooq.bond, history: stooq.history, source: 'Stooq' });
   }
-  console.warn('[sarb] Stooq failed, trying FRED…');
+  console.warn('[sarb] Stooq failed, trying Yahoo ^ZA10Y…');
 
-  /* 3. FRED (fallback — monthly, lower freshness) */
+  /* 2. Yahoo chart endpoint (fallback — also gives history) */
+  const yahoo = await fromYahooChart();
+  if (yahoo) {
+    console.log(`[sarb] ✓ Yahoo ^ZA10Y → ${yahoo.bond.price}% (${yahoo.bond.date}) · ${yahoo.history.length} history points`);
+    return ok(res, { bond: yahoo.bond, history: yahoo.history, source: 'Yahoo' });
+  }
+  console.warn('[sarb] Yahoo failed, trying FRED…');
+
+  /* 3. FRED (monthly, lower freshness) */
   const fred = await fromFred();
   if (fred) {
-    console.log(`[sarb] ✓ FRED → ${fred.price}% (${fred.date})`);
+    console.log(`[sarb] ✓ FRED → ${fred.bond.price}% (${fred.bond.date})`);
     return ok(res, {
-      bond:    fred,
-      source:  'FRED',
-      warning: 'Live sources unreachable — using FRED monthly proxy.',
+      bond: fred.bond,
+      history: fred.history,
+      source: 'FRED',
+      warning: 'Live daily sources unreachable — using FRED monthly proxy.',
     });
   }
   console.warn('[sarb] All sources failed — returning static fallback');
@@ -227,12 +286,12 @@ module.exports = async function(req, res) {
   /* 4. Static fallback — dashboard must render something */
   return ok(res, {
     bond: {
-      symbol:    '^ZA10Y',
-      name:      'SA 10Y Bond Yield (static fallback — live fetch failed)',
-      price:     11.5,
+      symbol:    'FALLBACK',
+      name:      'SA 10Y Bond Yield (static — live fetch failed)',
+      price:     8.5,
       change:    0,
       changePct: 0,
-      prevClose: 11.5,
+      prevClose: 8.5,
       date:      new Date().toISOString().slice(0, 10),
       source:    'STATIC',
       unit:      '%',
@@ -240,7 +299,8 @@ module.exports = async function(req, res) {
       isStale:   true,
       timestamp: new Date().toISOString(),
     },
+    history: [],
     source:  'STATIC',
-    warning: 'Could not reach Yahoo, Stooq or FRED. Showing approximate static value. Check Vercel function logs.',
+    warning: 'Could not reach Stooq, Yahoo or FRED. Showing approximate static value. Check Vercel function logs.',
   });
 };

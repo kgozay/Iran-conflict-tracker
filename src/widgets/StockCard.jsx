@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import clsx from 'clsx';
 import { getSignal, SIGNAL_CLS } from '../utils/signals.js';
+import { DotIcon } from '../components/Icons.jsx';
 
 function seededRng(seed) {
   let s = seed;
@@ -64,7 +65,11 @@ export default function StockCard({ stock }) {
           <div className="font-sans text-[12px] font-semibold text-tp leading-tight">{stock.name}</div>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="font-mono text-[8px] text-ts">{stock.display}</span>
-            {stock.isLive && <span className="font-mono text-[7px] text-bull">● LIVE</span>}
+            {stock.isLive && (
+              <span className="inline-flex items-center gap-0.5 font-mono text-[7px] text-bull">
+                <DotIcon className="w-1.5 h-1.5" /> LIVE
+              </span>
+            )}
           </div>
         </div>
         <div className="text-right flex-shrink-0 ml-2">

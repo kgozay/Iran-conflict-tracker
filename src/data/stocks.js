@@ -1,24 +1,15 @@
 // ─── Macro / commodity symbols (Yahoo Finance) ────────────────────────────
+// Icons are now rendered via the SVG library in components/Icons.jsx,
+// keyed off the object key below. No emoji strings.
 export const MACRO_SYMBOLS = {
-  brent:     { symbol: 'BZ=F',     name: 'Brent Crude',  unit: '$/bbl', icon: '🛢️', invert: false },
-  gold:      { symbol: 'GC=F',     name: 'Gold',         unit: '$/oz',  icon: '🥇', invert: false },
-  platinum:  { symbol: 'PL=F',     name: 'Platinum',     unit: '$/oz',  icon: '💎', invert: false },
-  palladium: { symbol: 'PA=F',     name: 'Palladium',    unit: '$/oz',  icon: '⚗️', invert: false },
-  usdZar:    { symbol: 'USDZAR=X', name: 'USD/ZAR',      unit: 'ZAR',   icon: '💱', invert: true  },
-  coal:      { symbol: 'MTF=F',    name: 'Coal Futures', unit: '$/t',   icon: '⛏️', invert: false },
-  // SA 10Y govt bond yield — fetched via Yahoo Finance ^ZA10Y alongside all other symbols
-  r2035:     { symbol: '^ZA10Y',   name: 'SA 10Y Bond Yield', unit: '%', icon: '🏛️', invert: true },
-};
-
-// R2035/SA10Y bond metadata
-export const R2035_META = {
-  key:    'r2035',
-  name:   'R2035 Bond Yield',
-  detail: 'SA 10Y Govt Bond (Yahoo ^ZA10Y)',
-  unit:   '%',
-  icon:   '🏛️',
-  invert: true, // Rising yield = bearish for JSE (tighter conditions)
-  isin:   'ZAG000149952',
+  brent:     { symbol: 'BZ=F',     name: 'Brent Crude',       unit: '$/bbl', invert: false },
+  gold:      { symbol: 'GC=F',     name: 'Gold',              unit: '$/oz',  invert: false },
+  platinum:  { symbol: 'PL=F',     name: 'Platinum',          unit: '$/oz',  invert: false },
+  palladium: { symbol: 'PA=F',     name: 'Palladium',         unit: '$/oz',  invert: false },
+  usdZar:    { symbol: 'USDZAR=X', name: 'USD/ZAR',           unit: 'ZAR',   invert: true  },
+  coal:      { symbol: 'MTF=F',    name: 'Coal Futures',      unit: '$/t',   invert: false },
+  // SA 10Y govt bond yield — fetched via /api/sarb (Stooq primary, Yahoo/FRED fallback)
+  r2035:     { symbol: '^ZA10Y',   name: 'SA 10Y Bond Yield', unit: '%',     invert: true  },
 };
 
 // ─── JSE Stock Universe ───────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import React from 'react';
 import clsx from 'clsx';
+import { DotIcon, RefreshIcon, ErrorIcon } from './Icons.jsx';
 
 const NAV = [
   { id:'overview',  label:'Overview',           icon:GridIcon },
@@ -18,12 +19,50 @@ function BarIcon() {
 }
 
 const CHIP = {
-  bear:    { border:'border-bear',  text:'text-bear',  bg:'bg-bear-d'  },
-  warn:    { border:'border-warn',  text:'text-warn',  bg:'bg-warn-d'  },
-  neutral: { border:'border-ts',    text:'text-ts',    bg:'bg-bg-e'    },
-  bull:    { border:'border-bull',  text:'text-bull',  bg:'bg-bull-d'  },
+  bear:    { border:'border-bear', text:'text-bear', bg:'bg-bear-d' },
+  warn:    { border:'border-warn', text:'text-warn', bg:'bg-warn-d' },
+  neutral: { border:'border-ts',   text:'text-ts',   bg:'bg-bg-e'   },
+  bull:    { border:'border-bull', text:'text-bull', bg:'bg-bull-d' },
 };
 const BAR_FILL = { bear:'bg-bear', warn:'bg-warn', neutral:'bg-ts', bull:'bg-bull' };
+
+function StatusRow({ status, lastFetch }) {
+  const ts = lastFetch?.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+
+  if (status === 'loading') {
+    return (
+      <span className="inline-flex items-center gap-1.5 font-mono text-[8px] text-warn">
+        <RefreshIcon className="w-2.5 h-2.5 animate-spin" /> FETCHING…
+      </span>
+    );
+  }
+  if (status === 'error') {
+    return (
+      <span className="inline-flex items-center gap-1.5 font-mono text-[8px] text-bear">
+        <ErrorIcon className="w-2.5 h-2.5" /> ERROR
+      </span>
+    );
+  }
+  if (status === 'live') {
+    return (
+      <span className="inline-flex items-center gap-1.5 font-mono text-[8px] text-bull">
+        <DotIcon className="w-1.5 h-1.5 animate-pulse2" /> LIVE · {ts}
+      </span>
+    );
+  }
+  if (status === 'cached') {
+    return (
+      <span className="inline-flex items-center gap-1.5 font-mono text-[8px] text-warn">
+        <DotIcon className="w-1.5 h-1.5" /> CACHED · {ts}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 font-mono text-[8px] text-ts">
+      <DotIcon className="w-1.5 h-1.5" /> NO DATA YET
+    </span>
+  );
+}
 
 export default function Sidebar({ page, setPage, cis, status, lastFetch }) {
   const rc  = CHIP[cis.regimeClass]     ?? CHIP.neutral;
@@ -31,18 +70,6 @@ export default function Sidebar({ page, setPage, cis, status, lastFetch }) {
   const pct = Math.max(2, Math.min(98, ((cis.total + 100) / 200) * 100));
 
   const hasData = status === 'live' || status === 'cached';
-
-  const statusLabel =
-    status === 'live'    ? `● LIVE · ${lastFetch?.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})}` :
-    status === 'cached'  ? `◔ CACHED · ${lastFetch?.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})}` :
-    status === 'loading' ? '↻ FETCHING…' :
-    status === 'error'   ? '✕ ERROR' : '○ NO DATA YET';
-
-  const dotCls =
-    status === 'live'    ? 'bg-bull animate-pulse2' :
-    status === 'cached'  ? 'bg-warn' :
-    status === 'loading' ? 'bg-warn animate-spin' :
-    status === 'error'   ? 'bg-bear animate-pulseFast' : 'bg-ts';
 
   return (
     <aside className="fixed top-0 left-0 bottom-0 w-[220px] bg-bg-s border-r border-bd flex flex-col z-50">
@@ -88,12 +115,11 @@ export default function Sidebar({ page, setPage, cis, status, lastFetch }) {
       </nav>
 
       <div className="px-4 py-2.5 border-t border-bd-x">
-        <div className="flex items-center gap-1.5 mb-1">
-          <span className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', dotCls)} />
-          <span className="font-mono text-[8px] text-tm">{statusLabel}</span>
+        <div className="mb-1">
+          <StatusRow status={status} lastFetch={lastFetch} />
         </div>
-        <div className="font-mono text-[8px] text-tm">Yahoo Finance (incl. ^ZA10Y)</div>
-        <div className="font-mono text-[7px] text-tm mt-0.5">R2035 · 8.875% Dec 2035</div>
+        <div className="font-mono text-[8px] text-tm">SA 10Y via Stooq / Yahoo</div>
+        <div className="font-mono text-[7px] text-tm mt-0.5">R2035 · 8.875% Feb 2035</div>
       </div>
     </aside>
   );

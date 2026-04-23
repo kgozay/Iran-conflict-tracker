@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import clsx from 'clsx';
 import { getAssetAlertLevel } from '../utils/alerts.js';
+import { ASSET_ICONS, RadarIcon, DotIcon } from '../components/Icons.jsx';
 
 const TOP_BAR = { bull:'before:bg-bull', bear:'before:bg-bear', warn:'before:bg-warn', ts:'before:bg-ts' };
 const CHG_CLR = { bull:'text-bull', bear:'text-bear', warn:'text-warn', ts:'text-ts' };
@@ -14,7 +15,7 @@ function fmtPrice(key, price) {
   return price.toFixed(2);
 }
 
-/* ── Intraday sparkline — renders real 5-min close data ─────────── */
+/* ── Intraday sparkline — renders real 5-min close data (1D only) ─ */
 function KpiSparkline({ assetKey, points, chg }) {
   const path = useMemo(() => {
     if (!points || points.length < 3) return null;
@@ -61,9 +62,17 @@ function SparklineSkeleton() {
 }
 
 /* ── Individual KPI card ─────────────────────────────────────────── */
-function KpiCard({ assetKey, asset, sparklineData, sparkLoading }) {
-  const { name, price, changePct, unit, icon, isLive, isProxy, symbol } = asset;
+function KpiCard({ assetKey, asset, timeframe, sparklineData, sparkLoading }) {
+  const { name, price, unit, isLive, isProxy, symbol } = asset;
   const invert = asset.invert ?? false;
+
+  // Pick the right change value for the selected timeframe
+  const changePct = timeframe === '5D'
+    ? asset.changePct5D
+    : timeframe === '20D'
+      ? asset.changePct20D
+      : asset.changePct;
+
   const isUp   = (changePct ?? 0) >= 0;
   const good   = invert ? !isUp : isUp;
   const barKey = price == null ? 'ts' : good ? 'bull' : 'bear';
@@ -72,8 +81,12 @@ function KpiCard({ assetKey, asset, sparklineData, sparkLoading }) {
   const sign   = isUp ? '+' : '';
   const chgStr = changePct == null ? '—' : `${sign}${changePct.toFixed(2)}%`;
 
+  const Icon = ASSET_ICONS[assetKey];
   const sparkKey = symbol || assetKey;
   const spark    = sparklineData?.[sparkKey];
+
+  // Sparkline is intraday — only meaningful for 1D. For 5D/20D hide it.
+  const showSpark = timeframe === '1D' && price != null;
 
   return (
     <div className={clsx(
@@ -87,23 +100,35 @@ function KpiCard({ assetKey, asset, sparklineData, sparkLoading }) {
         )} />
       )}
 
-      <div className="font-mono text-[8px] tracking-[2px] text-ts mb-1.5">{icon} {name}</div>
+      <div className="inline-flex items-center gap-1.5 font-mono text-[8px] tracking-[2px] text-ts mb-1.5">
+        {Icon && <Icon className="w-3 h-3" />}
+        {name}
+      </div>
       <div className="font-display text-[26px] leading-none tracking-[0.5px] text-tp">{fmtPrice(assetKey, price)}</div>
 
       <div className="flex items-baseline gap-1.5 mt-1.5">
         <span className={clsx('font-mono text-[11px] font-semibold', CHG_CLR[chgKey])}>{chgStr}</span>
-        <span className="font-mono text-[9px] text-tm">{unit}</span>
-        {isLive && !isProxy && <span className="font-mono text-[7px] text-bull ml-auto">● LIVE</span>}
-        {isProxy && <span className="font-mono text-[7px] text-warn ml-auto">● PROXY</span>}
+        <span className="font-mono text-[9px] text-tm">{timeframe === '1D' ? unit : timeframe}</span>
+        {isLive && !isProxy && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-[7px] text-bull ml-auto">
+            <DotIcon className="w-1.5 h-1.5" /> LIVE
+          </span>
+        )}
+        {isProxy && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-[7px] text-warn ml-auto">
+            <DotIcon className="w-1.5 h-1.5" /> PROXY
+          </span>
+        )}
       </div>
 
-      {price != null && (
-        spark?.points?.length >= 3
-          ? <KpiSparkline assetKey={assetKey} points={spark.points} chg={changePct} />
-          : sparkLoading
-            ? <SparklineSkeleton />
-            : <div className="w-full h-[26px] mt-2" />
-      )}
+      {showSpark
+        ? (spark?.points?.length >= 3
+            ? <KpiSparkline assetKey={assetKey} points={spark.points} chg={changePct} />
+            : sparkLoading
+              ? <SparklineSkeleton />
+              : <div className="w-full h-[26px] mt-2" />)
+        : <div className="w-full h-[26px] mt-2" />
+      }
     </div>
   );
 }
@@ -116,7 +141,10 @@ function CisTile({ cis, hasData }) {
 
   return (
     <div className="relative bg-bg-c border border-bd rounded p-[11px] overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[2px] before:bg-ts">
-      <div className="font-mono text-[8px] tracking-[2px] text-ts mb-1.5">🌍 Conflict Impact</div>
+      <div className="inline-flex items-center gap-1.5 font-mono text-[8px] tracking-[2px] text-ts mb-1.5">
+        <RadarIcon className="w-3 h-3" />
+        Conflict Impact
+      </div>
       <div className={clsx('font-display text-[36px] leading-none', cisColor)}>
         {hasData ? cis.total : '—'}
       </div>
@@ -130,7 +158,7 @@ function CisTile({ cis, hasData }) {
   );
 }
 
-export default function KpiGrid({ assets, cis, hasData, sparklines, sparkLoading }) {
+export default function KpiGrid({ assets, cis, hasData, sparklines, sparkLoading, timeframe = '1D' }) {
   const keys = ['brent','usdZar','gold','platinum','palladium','coal','r2035'];
 
   return (
@@ -141,6 +169,7 @@ export default function KpiGrid({ assets, cis, hasData, sparklines, sparkLoading
             key={k}
             assetKey={k}
             asset={assets[k]}
+            timeframe={timeframe}
             sparklineData={sparklines}
             sparkLoading={sparkLoading}
           />

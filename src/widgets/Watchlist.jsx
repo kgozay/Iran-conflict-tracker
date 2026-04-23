@@ -3,19 +3,10 @@ import clsx from 'clsx';
 import { Card } from './Card.jsx';
 import { getSignal, SIGNAL_CLS } from '../utils/signals.js';
 import { exportWatchlistCSV } from '../utils/export.js';
+import { CheckIcon, DownloadIcon, DotIcon } from '../components/Icons.jsx';
 
 const SECTOR_FILTERS = [
   'ALL','Gold Miners','Energy','Banks','Retailers','PGMs','Industrials','Mining','Telecoms',
-];
-
-const COLS = [
-  { key:'name',      label:'NAME',        align:'left'  },
-  { key:'sector',    label:'SECTOR',      align:'left'  },
-  { key:'price',     label:'PRICE (ZAR)', align:'right' },
-  { key:'changePct', label:'1D CHG',      align:'right' },
-  { key:'mktcap',    label:'MKT CAP',     align:'right' },
-  { key:'pe',        label:'P/E',         align:'right' },
-  { key:'signal',    label:'SIGNAL',      align:'right' },
 ];
 
 function fmtP(p) {
@@ -25,36 +16,67 @@ function fmtP(p) {
   return p.toFixed(2);
 }
 
+/* ── Pull the right change value for the current timeframe ───────── */
+function getTimeframeChange(stock, tf) {
+  if (tf === '5D')  return stock.changePct5D  ?? null;
+  if (tf === '20D') return stock.changePct20D ?? null;
+  return stock.changePct ?? null;
+}
+
 function SortArrow({ active, dir }) {
   return (
     <span className={clsx('ml-1 text-[8px]', active ? 'text-warn' : 'text-tm')}>
-      {active ? (dir === 'asc' ? '↑' : '↓') : '↕'}
+      {active ? (dir === 'asc' ? '▲' : '▼') : '·'}
     </span>
   );
 }
 
-export default function Watchlist({ stocks, timeframe }) {
+export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS', sectors }) {
   const [filter,  setFilter]  = useState('ALL');
   const [sort,    setSort]    = useState({ key: 'sector', dir: 'asc' });
   const [csvDone, setCsvDone] = useState(false);
 
   const liveCount = stocks.filter(s => s.isLive).length;
 
+  // For REL mode, subtract the JSE market average of the same timeframe.
+  // Market avg is recomputed here from live stocks so it matches the selected TF.
+  const marketAvgTF = useMemo(() => {
+    const live = stocks.filter(s => s.isLive);
+    const vals = live.map(s => getTimeframeChange(s, timeframe)).filter(v => v != null);
+    if (!vals.length) return null;
+    return vals.reduce((a, v) => a + v, 0) / vals.length;
+  }, [stocks, timeframe]);
+
+  // Rows enriched with the current-timeframe value (accounting for ABS/REL)
+  const rows = useMemo(() => {
+    return stocks.map(s => {
+      const raw = getTimeframeChange(s, timeframe);
+      const displayChg = raw == null
+        ? null
+        : returnMode === 'REL' && marketAvgTF != null
+          ? +(raw - marketAvgTF).toFixed(2)
+          : raw;
+      return { ...s, _chg: displayChg, _rawChg: raw };
+    });
+  }, [stocks, timeframe, returnMode, marketAvgTF]);
+
   const filtered = useMemo(() => {
-    const base = filter === 'ALL' ? stocks : stocks.filter(s => s.sector === filter);
+    const base = filter === 'ALL' ? rows : rows.filter(s => s.sector === filter);
     return [...base].sort((a, b) => {
-      // Compute signal on-the-fly for sorting
       const av = sort.key === 'signal'
-        ? (getSignal(a.changePct) ?? '')
+        ? (getSignal(a._chg) ?? '')
+        : sort.key === 'changePct' ? (a._chg ?? -Infinity)
         : (a[sort.key] ?? '');
       const bv = sort.key === 'signal'
-        ? (getSignal(b.changePct) ?? '')
+        ? (getSignal(b._chg) ?? '')
+        : sort.key === 'changePct' ? (b._chg ?? -Infinity)
         : (b[sort.key] ?? '');
       const as = typeof av === 'string' ? av.toLowerCase() : av;
       const bs = typeof bv === 'string' ? bv.toLowerCase() : bv;
+      if (as === bs) return 0;
       return sort.dir === 'asc' ? (as > bs ? 1 : -1) : (as < bs ? 1 : -1);
     });
-  }, [stocks, filter, sort]);
+  }, [rows, filter, sort]);
 
   function toggleSort(key) {
     setSort(p => p.key === key
@@ -69,6 +91,20 @@ export default function Watchlist({ stocks, timeframe }) {
     setTimeout(() => setCsvDone(false), 2500);
   }
 
+  // Column label reflects the current selection
+  const chgLabel = `${timeframe} CHG${returnMode === 'REL' ? ' (REL)' : ''}`;
+  const COLS = [
+    { key:'name',      label:'NAME',        align:'left'  },
+    { key:'sector',    label:'SECTOR',      align:'left'  },
+    { key:'price',     label:'PRICE (ZAR)', align:'right' },
+    { key:'changePct', label:chgLabel,      align:'right' },
+    { key:'mktcap',    label:'MKT CAP',     align:'right' },
+    { key:'pe',        label:'P/E',         align:'right' },
+    { key:'signal',    label:'SIGNAL',      align:'right' },
+  ];
+
+  const tfHasData = rows.some(s => s.isLive && s._rawChg != null);
+
   return (
     <Card>
       {/* Header row */}
@@ -81,8 +117,18 @@ export default function Watchlist({ stocks, timeframe }) {
             {filtered.length} NAMES
           </span>
           {liveCount > 0 && (
-            <span className="font-mono text-[8px] text-bull border border-bull/30 bg-bull/8 px-1.5 py-0.5 rounded-sm">
-              {liveCount} LIVE
+            <span className="inline-flex items-center gap-1 font-mono text-[8px] text-bull border border-bull/30 bg-bull/8 px-1.5 py-0.5 rounded-sm">
+              <DotIcon className="w-1.5 h-1.5" /> {liveCount} LIVE
+            </span>
+          )}
+          {!tfHasData && timeframe !== '1D' && (
+            <span className="font-mono text-[8px] text-warn border border-warn/30 bg-warn/8 px-1.5 py-0.5 rounded-sm">
+              {timeframe} HISTORY LOADING
+            </span>
+          )}
+          {returnMode === 'REL' && marketAvgTF != null && (
+            <span className="font-mono text-[8px] text-ts border border-bd bg-bg-e px-1.5 py-0.5 rounded-sm">
+              vs mkt {marketAvgTF >= 0 ? '+' : ''}{marketAvgTF.toFixed(2)}%
             </span>
           )}
         </div>
@@ -109,9 +155,9 @@ export default function Watchlist({ stocks, timeframe }) {
           <button
             type="button"
             onClick={handleCsv}
-            className="px-2.5 py-1 font-mono text-[9px] text-ts border border-bd bg-bg-c rounded hover:text-tp hover:border-ts transition-colors cursor-pointer whitespace-nowrap"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 font-mono text-[9px] text-ts border border-bd bg-bg-c rounded hover:text-tp hover:border-ts transition-colors cursor-pointer whitespace-nowrap"
           >
-            {csvDone ? '✓ SAVED' : '↓ CSV'}
+            {csvDone ? <><CheckIcon className="w-3 h-3" /> SAVED</> : <><DownloadIcon className="w-3 h-3" /> CSV</>}
           </button>
         </div>
       </div>
@@ -124,11 +170,10 @@ export default function Watchlist({ stocks, timeframe }) {
               {COLS.map(col => (
                 <th
                   key={col.key}
-                  type="button"
                   onClick={() => toggleSort(col.key)}
                   className={clsx(
                     'font-mono text-[8px] tracking-[1.5px] text-tm py-1.5 px-1.5',
-                    'border-b border-bd-x cursor-pointer select-none hover:text-ts whitespace-nowrap',
+                    'border-b border-bd cursor-pointer select-none hover:text-ts whitespace-nowrap',
                     col.align === 'right' ? 'text-right' : 'text-left',
                   )}
                 >
@@ -140,7 +185,7 @@ export default function Watchlist({ stocks, timeframe }) {
           </thead>
           <tbody>
             {filtered.map(s => {
-              const chg    = s.changePct ?? null;
+              const chg    = s._chg;
               const isUp   = (chg ?? 0) >= 0;
               const signal = getSignal(chg);
               const sigCls = SIGNAL_CLS[signal] ?? 'bg-bg-e text-ts border-bd';
@@ -152,35 +197,33 @@ export default function Watchlist({ stocks, timeframe }) {
                     <div className="font-sans text-[11px] font-semibold text-tp leading-tight">{s.name}</div>
                     <div className="flex items-center gap-1.5 font-mono text-[8px] text-ts">
                       {s.display}
-                      {s.isLive && <span className="text-bull text-[7px]">● LIVE</span>}
+                      {s.isLive && (
+                        <span className="inline-flex items-center gap-0.5 text-bull text-[7px]">
+                          <DotIcon className="w-1.5 h-1.5" /> LIVE
+                        </span>
+                      )}
                     </div>
                   </td>
-                  {/* Sector */}
                   <td className="py-1.5 px-1.5 border-b border-bd-x">
                     <span className="font-mono text-[7px] bg-bg-e text-ts px-1.5 py-0.5 rounded-sm">
                       {s.sector}
                     </span>
                   </td>
-                  {/* Price */}
                   <td className="py-1.5 px-1.5 border-b border-bd-x text-right font-mono text-[10px] font-semibold text-tp">
                     {fmtP(s.price)}
                   </td>
-                  {/* 1D chg */}
                   <td className={clsx(
                     'py-1.5 px-1.5 border-b border-bd-x text-right font-mono text-[10px] font-semibold',
                     chg == null ? 'text-tm' : isUp ? 'text-bull' : 'text-bear',
                   )}>
                     {chg == null ? '—' : `${isUp ? '+' : ''}${chg.toFixed(2)}%`}
                   </td>
-                  {/* Mkt cap */}
                   <td className="py-1.5 px-1.5 border-b border-bd-x text-right font-mono text-[10px] text-ts">
                     {s.mktcap}
                   </td>
-                  {/* P/E */}
                   <td className="py-1.5 px-1.5 border-b border-bd-x text-right font-mono text-[10px] text-ts">
                     {s.pe}x
                   </td>
-                  {/* Signal */}
                   <td className="py-1.5 px-1.5 border-b border-bd-x text-right">
                     {signal
                       ? <span className={clsx('font-mono text-[7px] px-1.5 py-0.5 rounded-sm border', sigCls)}>

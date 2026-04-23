@@ -43,6 +43,7 @@ export default function CISHistoryChart({ chartData, onClear }) {
   const first  = chartData[0];
   const trend  = latest.total - first.total;
   const trendColor = trend > 0 ? 'text-bull' : trend < 0 ? 'text-bear' : 'text-ts';
+  const trendArrow = trend > 0 ? '▲' : trend < 0 ? '▼' : '–';
 
   return (
     <Card>
@@ -55,7 +56,7 @@ export default function CISHistoryChart({ chartData, onClear }) {
             {chartData.length} READINGS
           </span>
           <span className={clsx('font-mono text-[9px] font-semibold', trendColor)}>
-            {trend > 0 ? '↑' : trend < 0 ? '↓' : '→'} {trend > 0 ? '+' : ''}{trend} pts session
+            {trendArrow} {trend > 0 ? '+' : ''}{trend} pts session
           </span>
           <button onClick={onClear}
             className="font-mono text-[8px] text-tm hover:text-bear px-1.5 py-0.5 border border-bd rounded cursor-pointer transition-colors">
@@ -80,7 +81,7 @@ export default function CISHistoryChart({ chartData, onClear }) {
               axisLine={false} tickLine={false}
             />
             <Tooltip content={<Tip />} cursor={{ stroke:'rgba(255,255,255,0.08)' }} />
-            <ReferenceLine y={0}  stroke="rgba(255,255,255,0.15)" />
+            <ReferenceLine y={0}   stroke="rgba(255,255,255,0.15)" />
             <ReferenceLine y={-40} stroke="rgba(239,68,68,0.2)"  strokeDasharray="3 3" />
             <ReferenceLine y={40}  stroke="rgba(5,208,154,0.2)"  strokeDasharray="3 3" />
             <Line
