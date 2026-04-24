@@ -135,7 +135,7 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
       {/* Chart + read */}
       <div className="grid grid-cols-3 gap-3 mb-3.5">
         <div className="col-span-2">
-          <Card>
+          <Card className="h-full flex flex-col min-h-[340px]">
             <CardHeader
               title={`${active.toUpperCase()} — Constituent Performance`}
               badge={`${liveFiltered.length} LIVE`}
@@ -146,9 +146,9 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
                 No live price data for this sector yet
               </div>
             ) : (
-              <div style={{ height: 220 }}>
+              <div className="flex-1 min-h-[280px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top:4, right:8, bottom:0, left:-8 }}>
+                  <BarChart data={chartData} margin={{ top:8, right:12, bottom:4, left:0 }}>
                     <CartesianGrid vertical={false} stroke="rgba(30,45,69,0.8)" />
                     <XAxis dataKey="name"
                       tick={{ fontFamily:'IBM Plex Mono', fontSize:8, fill:'#6e80a0' }}
@@ -163,7 +163,7 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
                     />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill:'rgba(255,255,255,0.04)' }} />
                     <ReferenceLine y={0} stroke="rgba(255,255,255,0.15)" />
-                    <Bar dataKey="val" radius={[3,3,0,0]} maxBarSize={28}>
+                    <Bar dataKey="val" radius={[4,4,0,0]} maxBarSize={36}>
                       {chartData.map((e,i) => (
                         <Cell key={i}
                           fill={e.val>=0?'rgba(5,208,154,0.7)':'rgba(239,68,68,0.7)'}

@@ -22,24 +22,24 @@ export default function SectorRelChart({ sectors, hasData }) {
     .map(s => ({ name: s.name, rel: s.rel }));
 
   return (
-    <Card className="h-full">
+    <Card className="h-full flex flex-col min-h-[360px]">
       <CardHeader title="Sector Relative Performance vs JSE Top 40" badge="LIVE" badgeVariant="live" />
       {!hasData || data.length === 0 ? (
-        <div className="flex items-center justify-center h-[215px] font-mono text-[10px] text-tm">
+        <div className="flex-1 min-h-[300px] flex items-center justify-center font-mono text-[10px] text-tm">
           Fetch live data to see sector performance
         </div>
       ) : (
-        <div style={{ height: 215 }}>
+        <div className="flex-1 min-h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 4 }}>
+            <BarChart data={data} layout="vertical" margin={{ top: 4, right: 20, bottom: 4, left: 6 }}>
               <CartesianGrid horizontal={false} stroke="rgba(30,45,69,0.8)" />
               <XAxis type="number" tickFormatter={v => `${v > 0 ? '+' : ''}${v}%`}
                 tick={{ fontFamily: 'IBM Plex Mono', fontSize: 9, fill: '#6e80a0' }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="name" width={90}
+              <YAxis type="category" dataKey="name" width={112}
                 tick={{ fontFamily: 'IBM Plex Mono', fontSize: 9, fill: '#6e80a0' }} axisLine={false} tickLine={false} />
               <Tooltip content={<Tip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
               <ReferenceLine x={0} stroke="rgba(255,255,255,0.15)" />
-              <Bar dataKey="rel" radius={[0, 3, 3, 0]} maxBarSize={20}>
+              <Bar dataKey="rel" radius={[0, 4, 4, 0]} maxBarSize={28}>
                 {data.map((e, i) => (
                   <Cell key={i}
                     fill={e.rel >= 0 ? 'rgba(5,208,154,0.7)' : 'rgba(239,68,68,0.7)'}
