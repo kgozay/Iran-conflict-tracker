@@ -20,6 +20,8 @@ const zlib  = require('zlib');
 const CORS = {
   'Content-Type':                'application/json',
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
 };
 
 const setCors = function(res) {
@@ -130,9 +132,9 @@ function extractPatterns({ assets, sectors, stocks }) {
 }
 
 /* ── Build the prompt ───────────────────────────────────────────── */
-function buildPrompt(assets, sectors, cis, stocks, alerts) {
+function buildPrompt(assets, sectors, cis, stocks, alerts, dataHealth) {
   const now  = new Date();
-  const date = now.toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const date = now.toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const time = now.toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit' });
 
   const b  = assets.brent     || {};
@@ -177,11 +179,20 @@ Top losers:  ${topLosers.map(s  => `${s.display} ${pct(s.changePct)}`).join(', '
     ? patterns.map((p, i) => `${i+1}. ${p}`).join('\n')
     : 'No obvious cross-asset patterns this reading — the market is either quiet or noise-dominated. Focus on whatever IS moving.';
 
+  const health = dataHealth || {};
+  const healthText = `Quote coverage: ${health.quoteCoverage ?? 'n/a'}%
+Live stocks: ${health.liveStocks ?? 'n/a'}/${health.totalStocks ?? 'n/a'}
+Live macro: ${health.liveMacro ?? 'n/a'}/${health.totalMacro ?? 'n/a'}
+SA 10Y source: ${health.bondSource || r.source || 'unknown'}${health.bondIsStatic ? ' STATIC' : ''}${health.bondIsProxy ? ' PROXY' : ''}
+Warnings: ${(health.warnings || []).join('; ') || 'None'}`;
+
   return `You are a senior South African equity strategist writing the morning market note for JSE Conflict Watch, a dashboard tracking Iran-Middle East geopolitical risk transmission into South African markets.
 
 Your reader is an institutional PM or a sophisticated JSE trader. They have already seen the numbers. Your job is NOT to repeat the table. Your job is to tell them what is INTERESTING and what to DO about it.
 
-TONE: Analytical, concise, Bloomberg-terminal flavour. No hype. No filler phrases like "in today's trading session" or "markets were mixed". No bullet points. 5-7 short, punchy paragraphs.
+TONE: Analytical, specific, institutional, and practical. No hype. Avoid filler phrases like "markets were mixed". The note must be more detailed than a headline summary, but still concise enough for a morning desk read.
+
+FORMAT: Use clear section headers. Use short paragraphs and focused bullets where useful. Target 650-900 words. Every conclusion should be tied to at least one number, sector, named stock, or data-quality caveat.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DATE: ${date} · ${time} SAST
@@ -222,26 +233,25 @@ Macro shock (40%):    ${cis.components?.macro?.score?.toFixed(1) ?? '—'}
 JSE reaction (35%):   ${cis.components?.jse?.score?.toFixed(1)   ?? '—'}
 Confirmation (25%):   ${cis.components?.conf?.score?.toFixed(1)  ?? '—'}
 
+DATA QUALITY
+${healthText}
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-WRITE THE NOTE NOW. Structure (no headers, just flow between these paragraphs):
+WRITE THE NOTE NOW using these sections:
 
-(1) LEAD PARAGRAPH — the single most important observation today. What is the ONE thing a PM needs to know from this data? Be specific. Cite a number or a named stock.
-
-(2) IRAN CONFLICT FIT — given the current data, how well does the Iran-Middle East narrative explain what's happening today? Is it driving price action (oil up, ZAR weak, gold bid, miners outperforming) or is price action happening for OTHER reasons (earnings, EM flows, SARB expectations, domestic noise)? Call this out explicitly.
-
-(3) DISPERSION / DIVERGENCE — pick the single most interesting cross-asset or intra-sector divergence from the patterns list. Explain WHY it matters. If patterns list is empty, pick the biggest sector spread yourself from the data above.
-
-(4) SA 10Y + SARB FIT — is the bond yield move consistent with the broader regime? If yields are falling while the conflict narrative is escalating, something doesn't fit — call it out. Reference the ${r.source || 'Stooq'} print.
-
-(5) SECTOR TO WATCH — name one JSE sector or named stock specifically at risk of a sharp move in the next session. State the catalyst (Brent through a level, a ZAR break, a bond auction, a specific release).
-
-(6) ONE TRADE IDEA — a concrete setup. Pair trade, directional on a single name, or "buy on X / sell on Y" trigger. Must be specific and testable. No "watch for opportunities".
-
-(7) RISK FLAG — one line. The thing that would make today's conclusion wrong. Be specific.
+1. Executive read — the one-line regime call and what matters most.
+2. Conflict transmission — explain whether oil, ZAR, gold, yields and sector action confirm or reject the Iran/Middle East risk narrative.
+3. Cross-asset diagnosis — identify the strongest confirming signal and the strongest contradiction.
+4. JSE sector map — explain which sectors benefit, which are vulnerable, and why. Use named stocks where the data supports it.
+5. Rates, rand and SARB angle — interpret the SA 10Y proxy, bond source quality, and what it implies for banks, retailers and duration-sensitive equities.
+6. Stock/sector watchlist — give 3 concrete names or sectors to watch next, with triggers.
+7. Actionable setup — one specific, testable trade idea or risk-management action. Include entry trigger, invalidation trigger and what would confirm the setup.
+8. Data caveats — briefly state whether the note is based on complete live data, cached data, proxy data or static fallback.
+9. Risk flag — the single development that would make the view wrong.
 
 End the note with exactly: "— JSE Conflict Watch · ${date}"
 
-DO NOT use headers, bullet points, or markdown. Flow as prose. DO NOT repeat the data table verbatim. No phrases like "as shown above" or "according to the data". Write as if to a smart colleague.`;
+Do not repeat the data table verbatim. No phrases like "as shown above" or "according to the data". Do not invent external news or facts not present in the prompt. Write as if to a smart colleague.`;
 }
 
 /* ── Handler ──────────────────────────────────────────────────────── */
@@ -261,14 +271,18 @@ module.exports = async function(req, res) {
 
   let payload = req.body || {};
   if (typeof payload === 'string') {
+    if (payload.length > 150000) return err(res, 'Payload too large', 413);
     try { payload = JSON.parse(payload); }
     catch (e) { return err(res, 'Invalid JSON body', 400); }
+  } else {
+    const approxSize = Buffer.byteLength(JSON.stringify(payload || {}), 'utf8');
+    if (approxSize > 150000) return err(res, 'Payload too large', 413);
   }
 
-  const { assets, sectors, cis, stocks, alerts } = payload;
+  const { assets, sectors, cis, stocks, alerts, dataHealth } = payload;
   if (!assets || !sectors || !cis) return err(res, 'Missing assets, sectors, or cis in request body', 400);
 
-  const prompt = buildPrompt(assets, sectors, cis, stocks || [], alerts || []);
+  const prompt = buildPrompt(assets, sectors, cis, stocks || [], alerts || [], dataHealth || null);
   const model  = 'gemini-2.5-flash';
 
   console.log('[morning-note] Calling Gemini API (' + model + ')…');
@@ -281,10 +295,10 @@ module.exports = async function(req, res) {
       {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          maxOutputTokens: 1000,
+          maxOutputTokens: 1800,
           // Slightly higher temperature for more varied insight framings.
           // Not so high that it hallucinates numbers — all data is in the prompt.
-          temperature: 0.75,
+          temperature: 0.68,
           topP: 0.92,
         },
       }

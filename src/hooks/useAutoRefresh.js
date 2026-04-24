@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 export const INTERVALS = {
   off:  null,
-  '1m': 60_000,
   '5m': 300_000,
   '15m':900_000,
   '30m':1_800_000,

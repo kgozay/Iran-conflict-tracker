@@ -34,7 +34,7 @@ export default function MarketHours() {
         <div className={clsx('font-mono text-[9px] font-semibold tracking-[1px]', STATUS_TEXT[jse.status] ?? STATUS_TEXT.closed)}>
           {jse.label}
         </div>
-        <div className="font-mono text-[8px] text-tm">{jse.detail}</div>
+        <div className="font-mono text-[8px] text-tm" title="Public holidays are not currently excluded">{jse.detail} · holidays excl.</div>
       </div>
       <div className="border-l border-bd pl-2 ml-1 text-right">
         <div className="font-mono text-[10px] text-ts font-semibold">{time}</div>

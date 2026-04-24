@@ -23,6 +23,44 @@ function ScoreBar({ score }) {
   );
 }
 
+
+function fmtRaw(v) {
+  if (v == null) return 'n/a';
+  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+}
+
+function DriverList({ cis }) {
+  const drivers = (cis.drivers || []).slice(0, 5);
+  if (!drivers.length) {
+    return (
+      <div className="font-mono text-[8px] text-tm mt-3 pt-3 border-t border-bd-x">
+        No threshold drivers triggered; score is mainly low-volatility noise.
+      </div>
+    );
+  }
+  return (
+    <div className="mt-3 pt-3 border-t border-bd-x">
+      <div className="font-mono text-[8px] text-ts mb-2">TOP SCORE DRIVERS</div>
+      <div className="space-y-1.5">
+        {drivers.map((d, i) => {
+          const pos = d.weightedImpact >= 0;
+          return (
+            <div key={`${d.bucket}-${d.label}-${i}`} className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-mono text-[8.5px] text-ts truncate">{d.label}</div>
+                <div className="font-mono text-[7px] text-tm truncate" title={d.reason}>{fmtRaw(d.raw)} · {d.bucket}</div>
+              </div>
+              <span className={clsx('font-mono text-[8px] font-semibold', pos ? 'text-bull' : 'text-bear')}>
+                {pos ? '+' : ''}{d.weightedImpact}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function ScoreDecomp({ cis, hasData }) {
   const totalColor = cis.regimeClass === 'bull' ? 'text-bull'
     : cis.regimeClass === 'warn' ? 'text-warn'
@@ -70,6 +108,7 @@ export default function ScoreDecomp({ cis, hasData }) {
           );
         })}
       </div>
+      <DriverList cis={cis} />
       <div className="flex justify-between items-center pt-3 mt-3 border-t border-bd-x">
         <div>
           <div className="font-mono text-[9px] text-ts">WEIGHTED TOTAL</div>

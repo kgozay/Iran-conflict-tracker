@@ -119,7 +119,7 @@ export default function Sidebar({ page, setPage, cis, status, lastFetch }) {
           <StatusRow status={status} lastFetch={lastFetch} />
         </div>
         <div className="font-mono text-[8px] text-tm">SA 10Y via Stooq / Yahoo</div>
-        <div className="font-mono text-[7px] text-tm mt-0.5">R2035 · 8.875% Feb 2035</div>
+        <div className="font-mono text-[7px] text-tm mt-0.5">Govt yield proxy · not exact R2035</div>
       </div>
     </aside>
   );

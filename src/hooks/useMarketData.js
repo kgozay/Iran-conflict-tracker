@@ -62,6 +62,7 @@ function applyQuotes(quotes, baseAssets, baseStocks) {
         prevClose: q.prevClose,
         name:      q.name || assets[key].name,
         isLive:    true,
+        source:    q.source || 'Yahoo',
       };
     }
   }
@@ -69,7 +70,7 @@ function applyQuotes(quotes, baseAssets, baseStocks) {
   const stocks = baseStocks.map(s => {
     const q = quotes[s.ticker];
     return q?.price != null
-      ? { ...s, price: q.price, changePct: q.changePct, change: q.change, prevClose: q.prevClose, isLive: true }
+      ? { ...s, price: q.price, changePct: q.changePct, change: q.change, prevClose: q.prevClose, isLive: true, source: q.source || 'Yahoo' }
       : s;
   });
 

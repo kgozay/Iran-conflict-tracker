@@ -75,7 +75,7 @@ const ANALOGUES = [
   { event:'Oct 7 Hamas',    period:'Oct–Dec 2023',       brent:'+12%', zar:'+8%',  top40:'-4%',  gold:'+7%',  miners:'+9%',  regime:'MIXED'   },
 ];
 
-/* ─── R2035 + SARB chart ──────────────────────────────────────────
+/* ─── SA 10Y + SARB chart ──────────────────────────────────────────
  * The yield line is driven by live history from /api/sarb (Stooq primary).
  * FALLBACK values here reflect the actual trajectory: ~11% in Apr 25
  * declining to ~8.35% in Apr 26 as SARB cut the repo rate 7 consecutive
@@ -130,8 +130,8 @@ const THEMATIC_META = {
   'domestic-stress': { Icon: HomeIcon,  name:'Domestic Stress Alert',  detail:'ZAR >+1% AND Banks <-1.5% AND Retail <-1.5%'       },
   'miner-support':   { Icon: GoldIcon,  name:'Miner Support Alert',    detail:'Gold >+1.5% AND ZAR >+0.5% AND Miners >market +1%' },
   'deescalation':    { Icon: PeaceIcon, name:'De-escalation Relief',   detail:'Brent <-2% AND ZAR stable AND market >+1%'         },
-  'r2035-red':       { Icon: BondIcon,  name:'R2035 Bond Critical',    detail:'R2035 yield change >+0.3%'                         },
-  'r2035-amber':     { Icon: BondIcon,  name:'R2035 Bond Amber',       detail:'R2035 yield change >+0.1%'                         },
+  'r2035-red':       { Icon: BondIcon,  name:'SA 10Y Critical',    detail:'SA 10Y proxy change >+0.3%'                         },
+  'r2035-amber':     { Icon: BondIcon,  name:'SA 10Y Amber',       detail:'SA 10Y proxy change >+0.1%'                         },
   'brent-red':       { Icon: AlertIcon, name:'Brent >+4% Critical',    detail:'Hard red threshold'                                },
   'brent-amber':     { Icon: AlertIcon, name:'Brent >+2% Amber',       detail:'Amber threshold'                                   },
   'zar-red':         { Icon: AlertIcon, name:'USD/ZAR >+1.5% Critical',detail:'Hard red threshold'                                },
@@ -198,7 +198,7 @@ function MacroStrip({ assets, hasData }) {
     { label:'USD/ZAR',  a:assets.usdZar,   fmt: v => `${v>=0?'+':''}${v.toFixed(2)}%`, inv:true  },
     { label:'Gold',     a:assets.gold,     fmt: v => `${v>=0?'+':''}${v.toFixed(2)}%`, inv:false },
     { label:'Platinum', a:assets.platinum, fmt: v => `${v>=0?'+':''}${v.toFixed(2)}%`, inv:false },
-    { label:'R2035',    a:assets.r2035,    fmt: v => `${v>=0?'+':''}${v.toFixed(3)}%`, inv:true, src: assets.r2035?.source },
+    { label:'SA 10Y',    a:assets.r2035,    fmt: v => `${v>=0?'+':''}${v.toFixed(3)}%`, inv:true, src: assets.r2035?.source },
     { label:'Palladium',a:assets.palladium,fmt: v => `${v>=0?'+':''}${v.toFixed(2)}%`, inv:false },
   ];
 
@@ -291,12 +291,12 @@ export default function MacroTransmission({ assets, alerts, hasData, r2035Histor
             [{v:'warn',t:'ZAR Weak'},{v:'green',t:'ZAR-denom Rev. up'},{v:'green',t:'Miner Margins up'}],
           ]}
         />
-        <ChannelCard Icon={BondIcon} title="R2035 Bond / SARB Channel"
+        <ChannelCard Icon={BondIcon} title="SA 10Y / SARB Channel"
           isActive={hasData && r2035Chg != null && r2035Chg > 0.1}
           impactCls={(r2035Chg ?? 0) > 0 ? 'text-bear' : 'text-bull'}
           impact={(r2035Chg ?? 0) > 0 ? 'TIGHTER CONDITIONS: BANKS DOWN' : 'EASING CONDITIONS: BANKS UP'}
           rows={[
-            [{v:'red',t:fmt(r2035Chg,'R2035')},{v:'warn',t:`Yield ${r2035Prc?.toFixed(3)??'—'}%`},{v:'neutral',t:`Source: ${r2035Src}`}],
+            [{v:'red',t:fmt(r2035Chg,'SA 10Y')},{v:'warn',t:`Yield ${r2035Prc?.toFixed(3)??'—'}%`},{v:'neutral',t:`Source: ${r2035Src}`}],
             [{v:'red',t:'NII Outlook down'},{v:'red',t:'Credit Quality Risk up'},{v:'red',t:'Bank P/B down'}],
             [{v:'warn',t:'Consumer Rates up'},{v:'red',t:'Debt Servicing up'},{v:'red',t:'Retail Spend down'}],
           ]}
@@ -349,13 +349,13 @@ export default function MacroTransmission({ assets, alerts, hasData, r2035Histor
         <AlertPanel alerts={alerts} hasData={hasData} />
       </div>
 
-      {/* Interactive Brent slider + R2035/SARB yield chart */}
+      {/* Interactive Brent slider + SA 10Y/SARB yield chart */}
       <div className="grid grid-cols-2 gap-3">
         <BrentSlider liveBrent={assets.brent} />
 
         <Card>
           <CardHeader
-            title="SA 10Y Bond Yield + SARB Repo — 12M Path"
+            title="SA 10Y Yield Proxy + SARB Repo — 12M Path"
             badge={chartSourceLabel}
           />
           {assets.r2035?.isLive && (

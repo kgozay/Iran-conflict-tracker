@@ -8,8 +8,8 @@ export const MACRO_SYMBOLS = {
   palladium: { symbol: 'PA=F',     name: 'Palladium',         unit: '$/oz',  invert: false },
   usdZar:    { symbol: 'USDZAR=X', name: 'USD/ZAR',           unit: 'ZAR',   invert: true  },
   coal:      { symbol: 'MTF=F',    name: 'Coal Futures',      unit: '$/t',   invert: false },
-  // SA 10Y govt bond yield — fetched via /api/sarb (Stooq primary, Yahoo/FRED fallback)
-  r2035:     { symbol: '^ZA10Y',   name: 'SA 10Y Bond Yield', unit: '%',     invert: true  },
+  // SA 10Y govt yield proxy — fetched via /api/sarb (Stooq primary, Yahoo/FRED fallback)
+  r2035:     { symbol: '^ZA10Y',   name: 'SA 10Y Yield Proxy', unit: '%',     invert: true  },
 };
 
 // ─── JSE Stock Universe ───────────────────────────────────────────────────

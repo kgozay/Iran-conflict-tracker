@@ -1,5 +1,6 @@
 import React from 'react';
 import RegimeBanner    from '../widgets/RegimeBanner.jsx';
+import ScoreDrivers    from '../widgets/ScoreDrivers.jsx';
 import KpiGrid         from '../widgets/KpiGrid.jsx';
 import HeatStrip       from '../widgets/HeatStrip.jsx';
 import ScoreDecomp     from '../widgets/ScoreDecomp.jsx';
@@ -8,8 +9,8 @@ import AlertsFeed      from '../widgets/AlertsFeed.jsx';
 import MorningNote     from '../widgets/MorningNote.jsx';
 import CISHistoryChart from '../widgets/CISHistoryChart.jsx';
 import Watchlist       from '../widgets/Watchlist.jsx';
-import MarketHours     from '../components/MarketHours.jsx';
-import { RadarIcon, BoltIcon, DotIcon } from '../components/Icons.jsx';
+import DataHealth      from '../widgets/DataHealth.jsx';
+import { RadarIcon, BoltIcon } from '../components/Icons.jsx';
 
 function FetchPrompt({ onFetch }) {
   return (
@@ -19,12 +20,12 @@ function FetchPrompt({ onFetch }) {
       </div>
       <div className="font-display text-[30px] tracking-[3px] text-ts mb-2">NO LIVE DATA YET</div>
       <div className="font-mono text-[11px] text-tm mb-2 leading-relaxed max-w-md">
-        Click below to fetch real-time prices for all 33 JSE stocks,
-        Brent crude, gold, platinum, palladium, USD/ZAR, coal — plus the{' '}
-        <span className="text-warn">SA 10Y bond yield</span>.
+        Click below to fetch real-time prices for the JSE watchlist, Brent crude, gold,
+        platinum, palladium, USD/ZAR, coal — plus the{' '}
+        <span className="text-warn">SA 10Y Yield Proxy</span>.
       </div>
       <div className="font-mono text-[9px] text-tm mb-6">
-        Single request · No API key required · Yahoo Finance + Stooq
+        Single request · No API key required for market data · Yahoo Finance + Stooq/FRED proxy stack
       </div>
       <button
         onClick={() => onFetch()}
@@ -34,7 +35,7 @@ function FetchPrompt({ onFetch }) {
         FETCH LIVE DATA NOW
       </button>
       <div className="font-mono text-[9px] text-tm mt-4">
-        After fetching, use the AUTO refresh buttons (1M / 5M / 15M / 30M) to stay live.
+        After fetching, use AUTO refresh buttons in the command bar to stay live.
       </div>
     </div>
   );
@@ -43,20 +44,13 @@ function FetchPrompt({ onFetch }) {
 export default function Overview({
   assets, stocks, sectors, cis, alerts, timeframe, returnMode,
   status, hasData, onFetch, cisChartData, clearHistory,
-  sparklines, sparkLoading,
+  sparklines, sparkLoading, dataHealth,
 }) {
   const isLoading = status === 'loading';
 
   if (!hasData && !isLoading) {
     return (
       <div className="p-[18px] animate-fadeUp">
-        <div className="flex items-center justify-between mb-4">
-          <MarketHours />
-          <div className="font-mono text-[9px] text-tm">
-            Data: <span className="text-ts">Yahoo Finance (equities + commodities)</span>{' '}
-            + <span className="text-warn">SA 10Y Bond (Stooq primary, Yahoo fallback)</span>
-          </div>
-        </div>
         <FetchPrompt onFetch={onFetch} />
       </div>
     );
@@ -64,51 +58,29 @@ export default function Overview({
 
   return (
     <div className="p-[18px] animate-fadeUp">
-      {/* Top bar — market hours + data source info */}
-      <div className="flex items-center justify-between mb-3.5 gap-3 flex-wrap">
-        <MarketHours />
-        <div className="flex items-center gap-3 font-mono text-[9px] text-tm">
-          {assets.r2035?.isStale && (
-            <span className="inline-flex items-center gap-1 text-bear border border-bear/30 bg-bear/8 px-2 py-0.5 rounded-sm">
-              <DotIcon className="w-1.5 h-1.5" /> Bond yield static fallback — all live sources unreachable
-            </span>
-          )}
-          {assets.r2035?.isProxy && !assets.r2035?.isStale && (
-            <span className="inline-flex items-center gap-1 text-warn border border-warn/30 bg-warn/8 px-2 py-0.5 rounded-sm">
-              <DotIcon className="w-1.5 h-1.5" /> Bond yield via {assets.r2035.source || 'FRED'} proxy (monthly)
-            </span>
-          )}
-          {assets.r2035?.isLive && !assets.r2035?.isProxy && !assets.r2035?.isStale && (
-            <span className="inline-flex items-center gap-1 text-bull border border-bull/30 bg-bull/8 px-2 py-0.5 rounded-sm">
-              <DotIcon className="w-1.5 h-1.5" /> Bond yield live from {assets.r2035.source || 'Stooq'} · {assets.r2035.date ?? ''}
-            </span>
-          )}
-          <span className="text-ts">Auto-refresh available</span>
-        </div>
-      </div>
-
-      <RegimeBanner cis={cis} hasData={hasData} />
+      <RegimeBanner cis={cis} hasData={hasData} dataHealth={dataHealth} />
+      <ScoreDrivers cis={cis} hasData={hasData} />
       <KpiGrid assets={assets} cis={cis} hasData={hasData} sparklines={sparklines} sparkLoading={sparkLoading} timeframe={timeframe} />
       <HeatStrip sectors={sectors} />
 
-      {/* Score decomp + sector chart */}
-      <div className="grid grid-cols-3 gap-3.5 mb-3.5">
-        <div className="col-span-1"><ScoreDecomp cis={cis} hasData={hasData} /></div>
-        <div className="col-span-2"><SectorRelChart sectors={sectors} hasData={hasData} /></div>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3.5 mb-3.5">
+        <div className="xl:col-span-1"><ScoreDecomp cis={cis} hasData={hasData} /></div>
+        <div className="xl:col-span-2"><SectorRelChart sectors={sectors} hasData={hasData} /></div>
       </div>
 
-      {/* CIS history chart — full width */}
+      <div className="mb-3.5">
+        <DataHealth health={dataHealth} hasData={hasData} />
+      </div>
+
       <div className="mb-3.5">
         <CISHistoryChart chartData={cisChartData} onClear={clearHistory} />
       </div>
 
-      {/* Alerts + morning note */}
-      <div className="grid grid-cols-2 gap-3.5 mb-3.5">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5 mb-3.5">
         <AlertsFeed alerts={alerts} hasData={hasData} />
-        <MorningNote assets={assets} sectors={sectors} cis={cis} stocks={stocks} alerts={alerts} hasData={hasData} />
+        <MorningNote assets={assets} sectors={sectors} cis={cis} stocks={stocks} alerts={alerts} dataHealth={dataHealth} hasData={hasData} />
       </div>
 
-      {/* Watchlist — now respects timeframe + returnMode */}
       <Watchlist stocks={stocks} timeframe={timeframe} returnMode={returnMode} sectors={sectors} />
     </div>
   );

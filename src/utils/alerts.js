@@ -7,7 +7,7 @@ export function computeAlerts({ assets, sectors, stocks }) {
   const brent  = assets.brent?.changePct   ?? 0;
   const usdZar = assets.usdZar?.changePct  ?? 0;
   const gold   = assets.gold?.changePct    ?? 0;
-  const r2035  = assets.r2035?.changePct   ?? 0;
+  const r2035  = assets.r2035?.isStale ? null : (assets.r2035?.changePct ?? 0);
   const top40  = sectors.top40?.chg        ?? 0;
   const banks  = sectors.Banks?.chg        ?? 0;
   const retail = sectors.Retailers?.chg    ?? 0;
@@ -31,13 +31,13 @@ export function computeAlerts({ assets, sectors, stocks }) {
     alerts.push({ id:'deescalation', lvl:'green', tag:'ms', label:'DE-ESCALATION RELIEF',
       text:`COMPOSITE: Brent ${brent.toFixed(1)}%, ZAR stable, market +${top40.toFixed(1)}%. Conflict relief rally.`, time:now });
 
-  // R2035 bond alerts (replaces sa10y)
-  if (r2035 > 0.3)
-    alerts.push({ id:'r2035-amber', lvl:'amber', tag:'in', label:'R2035 RISING',
-      text:`R2035 bond yield +${r2035.toFixed(2)}% — tighter conditions weighing on bank valuations and retail credit.`, time:now });
-  if (r2035 > 0.6)
-    alerts.push({ id:'r2035-red', lvl:'red', tag:'ds', label:'R2035 CRITICAL',
-      text:`R2035 bond yield surge +${r2035.toFixed(2)}% — approaching 11.0% resistance. SARB intervention risk elevated.`, time:now });
+  // SA 10Y yield proxy alerts. Static fallback is ignored.
+  if (r2035 != null && r2035 > 0.3)
+    alerts.push({ id:'r2035-amber', lvl:'amber', tag:'in', label:'SA 10Y RISING',
+      text:`SA 10Y yield proxy +${r2035.toFixed(2)}% — tighter conditions weighing on bank valuations and retail credit.`, time:now });
+  if (r2035 != null && r2035 > 0.6)
+    alerts.push({ id:'r2035-red', lvl:'red', tag:'ds', label:'SA 10Y CRITICAL',
+      text:`SA 10Y yield proxy surge +${r2035.toFixed(2)}% — rate-sensitive equities under pressure.`, time:now });
 
   // Individual thresholds
   if (brent > 4)

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { SECTOR_ORDER } from './data/stocks.js';
 import { computeCIS }    from './utils/scoring.js';
 import { computeAlerts } from './utils/alerts.js';
+import { buildDataHealth } from './utils/dataQuality.js';
 import { exportWatchlistCSV, exportMacroCSV, exportSnapshotJSON } from './utils/export.js';
 import { useMarketData }  from './hooks/useMarketData.js';
 import { useAutoRefresh } from './hooks/useAutoRefresh.js';
@@ -47,10 +48,12 @@ function deriveSectors(stocks) {
 const EMPTY_CIS = {
   total: 0, regime: 'NO DATA', regimeClass: 'neutral',
   components: {
-    macro: { score: 0, weight: 0.40, contrib: 0 },
-    jse:   { score: 0, weight: 0.35, contrib: 0 },
-    conf:  { score: 0, weight: 0.25, contrib: 0 },
+    macro: { score: 0, weight: 0.40, contrib: 0, parts: [] },
+    jse:   { score: 0, weight: 0.35, contrib: 0, parts: [] },
+    conf:  { score: 0, weight: 0.25, contrib: 0, parts: [] },
   },
+  drivers: [],
+  methodology: 'Heuristic score: Macro 40%, JSE equal-weight basket reaction 35%, confirmation signals 25%.',
 };
 
 export default function App() {
@@ -86,12 +89,17 @@ export default function App() {
   /* Derived values */
   const sectors = useMemo(() => deriveSectors(stocks), [stocks]);
   const hasData = status === 'live' || status === 'cached';
+  const dataHealth = useMemo(
+    () => buildDataHealth({ assets, stocks, status, lastFetch, sparklines }),
+    [assets, stocks, status, lastFetch, sparklines]
+  );
 
   const cisInput = useMemo(() => ({
     brentChg:       assets.brent?.changePct      ?? 0,
     usdZarChg:      assets.usdZar?.changePct     ?? 0,
     goldChg:        assets.gold?.changePct       ?? 0,
-    r2035Chg:       assets.r2035?.changePct      ?? 0,
+    r2035Chg:       assets.r2035?.isStale ? null : (assets.r2035?.changePct ?? 0),
+    includeBond:    !assets.r2035?.isStale,
     top40Chg:       sectors.top40?.chg           ?? 0,
     minersChg:      sectors['Gold Miners']?.chg  ?? 0,
     energyChg:      sectors.Energy?.chg          ?? 0,
@@ -134,15 +142,15 @@ export default function App() {
   const autoRefresh = useAutoRefresh(handleFetch);
 
   const handleExport = useCallback((key) => {
-    if (key === 'watchlist-csv') exportWatchlistCSV(stocks, timeframe);
+    if (key === 'watchlist-csv') exportWatchlistCSV(stocks, timeframe, returnMode);
     if (key === 'macro-csv')     exportMacroCSV(assets);
     if (key === 'snapshot-json') exportSnapshotJSON(assets, stocks, sectors, cis, alerts);
     addToast('File downloaded', 'info', 2000);
-  }, [stocks, assets, sectors, cis, alerts, timeframe, addToast]);
+  }, [stocks, assets, sectors, cis, alerts, timeframe, returnMode, addToast]);
 
   const shared = {
     assets, stocks, sectors, cis, alerts, r2035History,
-    timeframe, returnMode, status, hasData,
+    timeframe, returnMode, status, hasData, dataHealth, lastFetch,
     onFetch: handleFetch,
     cisChartData, clearHistory,
     sparklines, sparkLoading,
@@ -154,7 +162,7 @@ export default function App() {
       <LoadingOverlay status={status} progress={progress} error={error} onDismiss={clearError} />
       <Sidebar page={page} setPage={setPage} cis={cis} status={status} lastFetch={lastFetch} />
 
-      <div className="flex flex-col flex-1 overflow-hidden" style={{ marginLeft: 220 }}>
+      <div className="flex flex-col flex-1 overflow-hidden lg:ml-[220px] ml-0">
         <TopBar
           page={page}
           status={status} error={error} lastFetch={lastFetch} progress={progress}
@@ -163,6 +171,7 @@ export default function App() {
           returnMode={returnMode} setReturnMode={setReturnMode}
           autoRefresh={autoRefresh}
           onExport={handleExport}
+          dataHealth={dataHealth}
         />
         <main className="flex-1 overflow-y-auto">
           {page === 'overview'  && <Overview          {...shared} />}
