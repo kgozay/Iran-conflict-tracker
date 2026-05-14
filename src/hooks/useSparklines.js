@@ -53,5 +53,5 @@ export function useSparklines() {
     }
   }, []);
 
-  return { sparklines, loading, fetchSparklines };
+  return { sparklines, sparkLoading: loading, fetchSparklines };
 }

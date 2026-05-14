@@ -35,11 +35,28 @@ function exposureTags(s) {
   return tags.slice(0, 3);
 }
 
+function MiniSparkline({ points }) {
+  if (!points || points.length < 3) return <div style={{ width: 52, height: 18 }} />;
+  const W = 52, H = 18;
+  const min = Math.min(...points), max = Math.max(...points);
+  const range = max - min || Math.abs(min) * 0.0005 || 1;
+  const line = points.map((v, i) =>
+    `${i === 0 ? 'M' : 'L'} ${((i / (points.length - 1)) * W).toFixed(1)},${(H - ((v - min) / range) * H).toFixed(1)}`
+  ).join(' ');
+  const chg = points[points.length - 1] - (points[0] || 0);
+  const col = chg >= 0 ? '#05d09a' : '#ef4444';
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} aria-hidden="true" style={{ display: 'block' }}>
+      <path d={line} stroke={col} strokeWidth="1.5" fill="none" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function SortArrow({ active, dir }) {
   return <span className={clsx('ml-1 text-[8px]', active ? 'text-warn' : 'text-tm')}>{active ? (dir === 'asc' ? '▲' : '▼') : '·'}</span>;
 }
 
-export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS' }) {
+export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS', sparklines }) {
   const [filter, setFilter] = useState('ALL');
   const [sort, setSort] = useState({ key: 'sector', dir: 'asc' });
   const [csvDone, setCsvDone] = useState(false);
@@ -85,9 +102,10 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
     { key:'sector', label:'SECTOR', align:'left' },
     { key:'price', label:'PRICE (ZAR)', align:'right' },
     { key:'changePct', label:chgLabel, align:'right' },
-    { key:'mktcap', label:'MKT CAP', align:'right' },
-    { key:'pe', label:'P/E', align:'right' },
+    { key:'mktcap', label:'MKT CAP', align:'right', hideMobile: true },
+    { key:'pe', label:'P/E', align:'right', hideMobile: true },
     { key:'signal', label:'SIGNAL', align:'right' },
+    { key:'spark', label:'INTRADAY', align:'right', hideMobile: true },
   ];
 
   const tfHasData = rows.some(s => s.isLive && s._rawChg != null);
@@ -120,7 +138,7 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr>{COLS.map(col => <th key={col.key} onClick={() => toggleSort(col.key)} className={clsx('font-mono text-[8px] tracking-[1.5px] text-tm py-1.5 px-1.5 border-b border-bd cursor-pointer select-none hover:text-ts whitespace-nowrap', col.align === 'right' ? 'text-right' : 'text-left')}>{col.label}<SortArrow active={sort.key === col.key} dir={sort.dir} /></th>)}</tr>
+            <tr>{COLS.map(col => <th key={col.key} onClick={() => toggleSort(col.key)} className={clsx('font-mono text-[8px] tracking-[1.5px] text-tm py-1.5 px-1.5 border-b border-bd cursor-pointer select-none hover:text-ts whitespace-nowrap', col.align === 'right' ? 'text-right' : 'text-left', col.hideMobile && 'hidden sm:table-cell')}>{col.label}<SortArrow active={sort.key === col.key} dir={sort.dir} /></th>)}</tr>
           </thead>
           <tbody>
             {filtered.map(s => {
@@ -140,9 +158,12 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
                   <td className="py-1.5 px-1.5 border-b border-bd-x"><span className="font-mono text-[7px] bg-bg-e text-ts px-1.5 py-0.5 rounded-sm">{s.sector}</span></td>
                   <td className="py-1.5 px-1.5 border-b border-bd-x text-right font-mono text-[10px] font-semibold text-tp">{fmtP(s.price)}</td>
                   <td className={clsx('py-1.5 px-1.5 border-b border-bd-x text-right font-mono text-[10px] font-semibold', chg == null ? 'text-tm' : isUp ? 'text-bull' : 'text-bear')}>{chg == null ? '—' : `${isUp ? '+' : ''}${chg.toFixed(2)}%`}</td>
-                  <td className="py-1.5 px-1.5 border-b border-bd-x text-right font-mono text-[10px] text-ts">{s.mktcap}</td>
-                  <td className="py-1.5 px-1.5 border-b border-bd-x text-right font-mono text-[10px] text-ts">{s.pe}x</td>
+                  <td className="py-1.5 px-1.5 border-b border-bd-x text-right font-mono text-[10px] text-ts hidden sm:table-cell">{s.mktcap}</td>
+                  <td className="py-1.5 px-1.5 border-b border-bd-x text-right font-mono text-[10px] text-ts hidden sm:table-cell">{s.pe}x</td>
                   <td className="py-1.5 px-1.5 border-b border-bd-x text-right">{signal ? <span className={clsx('font-mono text-[7px] px-1.5 py-0.5 rounded-sm border', sigCls)}>{signal}</span> : <span className="font-mono text-[7px] text-tm">—</span>}</td>
+                  <td className="py-1.5 px-1.5 border-b border-bd-x text-right hidden sm:table-cell">
+                    <MiniSparkline points={sparklines?.[s.ticker]?.points} />
+                  </td>
                 </tr>
               );
             })}

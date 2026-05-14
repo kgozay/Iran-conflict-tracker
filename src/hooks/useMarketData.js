@@ -315,6 +315,6 @@ export function useMarketData() {
     assets, stocks, r2035History,
     status, error, lastFetch, progress, env,
     fetchLive, initFromCache,
-    clearError: () => { setError(null); setStatus('empty'); },
+    clearError: () => { setError(null); setStatus(s => s === 'error' ? (lastFetchTs.current ? 'cached' : 'empty') : s); },
   };
 }

@@ -26,9 +26,20 @@ function Pill({ label, value, tone }) {
   );
 }
 
-export default function RegimeBanner({ cis, hasData, dataHealth }) {
+function computeTrend(data) {
+  if (!data || data.length < 2) return null;
+  const recent = data.slice(-5);
+  const last = recent[recent.length - 1].total;
+  const first = recent[0].total;
+  const delta = +(last - first).toFixed(1);
+  if (Math.abs(delta) < 1) return { dir: 'flat', delta: 0 };
+  return { dir: delta > 0 ? 'up' : 'down', delta };
+}
+
+export default function RegimeBanner({ cis, hasData, dataHealth, cisChartData }) {
   const c = CFG[cis.regimeClass] ?? CFG.neutral;
   const Icon = c.Icon;
+  const trend = computeTrend(cisChartData);
 
   if (!hasData) {
     return (
@@ -64,11 +75,32 @@ export default function RegimeBanner({ cis, hasData, dataHealth }) {
   return (
     <div className={clsx('relative border rounded p-4 mb-3.5 overflow-hidden', c.border, c.bg)}>
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-warn to-transparent animate-scan" />
-      <div className="grid grid-cols-[auto_1fr_auto] gap-5 items-center">
+
+      {/* Score panel — shown first on mobile */}
+      <div className="flex items-center justify-between lg:hidden mb-3">
+        <div>
+          <div className="font-mono text-[8px] tracking-[2px] text-ts">CONFLICT IMPACT SCORE</div>
+          <div className={clsx('font-display text-[52px] leading-none tracking-[2px]', c.textBig)}>{cis.total}</div>
+          <div className={clsx('font-mono text-[8px] px-1.5 py-0.5 rounded border inline-block mt-1', c.chip)}>{cis.regime}</div>
+          {trend && (
+            <div className="mt-1 flex items-center gap-1 font-mono text-[9px]">
+              <span className={trend.dir === 'up' ? 'text-bull' : trend.dir === 'down' ? 'text-bear' : 'text-ts'}>
+                {trend.dir === 'up' ? '↑' : trend.dir === 'down' ? '↓' : '→'}{trend.dir !== 'flat' && ` ${trend.delta > 0 ? '+' : ''}${trend.delta}`}
+              </span>
+              <span className="text-tm text-[8px]">trend</span>
+            </div>
+          )}
+        </div>
+        <div className={clsx('w-12 h-12 rounded border flex items-center justify-center flex-shrink-0 bg-black/20', c.border, c.textBig)}>
+          <Icon className="w-6 h-6" />
+        </div>
+      </div>
+
+      {/* Desktop layout */}
+      <div className="hidden lg:grid lg:grid-cols-[auto_1fr_auto] gap-5 items-center">
         <div className={clsx('w-14 h-14 rounded border flex items-center justify-center flex-shrink-0 bg-black/20', c.border, c.textBig)}>
           <Icon className="w-6 h-6" />
         </div>
-
         <div className="min-w-0">
           <div className="font-mono text-[8px] tracking-[2px] text-ts uppercase mb-1">Conflict regime</div>
           <div className={clsx('font-display text-[38px] tracking-[3px] leading-none', c.textBig)}>{cis.regime}</div>
@@ -80,12 +112,32 @@ export default function RegimeBanner({ cis, hasData, dataHealth }) {
             <Pill label="Data confidence" value={confidence} tone={{ cls: confidence === 'High' ? 'bg-bull/8 border-bull/25 text-bull' : confidence === 'Moderate' ? 'bg-warn/8 border-warn/25 text-warn' : 'bg-bear/8 border-bear/25 text-bear' }} />
           </div>
         </div>
-
         <div className="text-center min-w-[150px] px-5 border-l border-bd">
           <div className="font-mono text-[8px] tracking-[2px] text-ts mb-1">CONFLICT IMPACT SCORE</div>
           <div className={clsx('font-display text-[68px] leading-none tracking-[2px]', c.textBig)}>{cis.total}</div>
           <div className="font-mono text-[9px] text-tm">/ ±100 heuristic scale</div>
           <div className={clsx('font-mono text-[8px] mt-2 px-1.5 py-0.5 rounded border inline-block', c.chip)}>{cis.regime}</div>
+          {trend && (
+            <div className="mt-1.5 flex items-center justify-center gap-1 font-mono text-[9px]">
+              <span className={trend.dir === 'up' ? 'text-bull' : trend.dir === 'down' ? 'text-bear' : 'text-ts'}>
+                {trend.dir === 'up' ? '↑' : trend.dir === 'down' ? '↓' : '→'}{trend.dir !== 'flat' && ` ${trend.delta > 0 ? '+' : ''}${trend.delta}`}
+              </span>
+              <span className="text-tm text-[8px]">5-reading trend</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile: regime text + pills */}
+      <div className="lg:hidden">
+        <div className="font-mono text-[8px] tracking-[2px] text-ts uppercase mb-0.5">Conflict regime</div>
+        <div className={clsx('font-display text-[28px] tracking-[2px] leading-none', c.textBig)}>{cis.regime}</div>
+        <div className="font-mono text-[9px] text-ts mt-2 leading-relaxed">{interp}</div>
+        <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+          <Pill label="Macro" value={macro.label} tone={macro} />
+          <Pill label="JSE" value={jse.label} tone={jse} />
+          <Pill label="Signal" value={conf.label} tone={conf} />
+          <Pill label="Data" value={confidence} tone={{ cls: confidence === 'High' ? 'bg-bull/8 border-bull/25 text-bull' : confidence === 'Moderate' ? 'bg-warn/8 border-warn/25 text-warn' : 'bg-bear/8 border-bear/25 text-bear' }} />
         </div>
       </div>
     </div>

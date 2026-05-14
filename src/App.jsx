@@ -9,6 +9,7 @@ import { useAutoRefresh } from './hooks/useAutoRefresh.js';
 import { useCISHistory }  from './hooks/useCISHistory.js';
 import { useToast }       from './hooks/useToast.js';
 import { useSparklines }  from './hooks/useSparklines.js';
+import { useNews }        from './hooks/useNews.js';
 import Sidebar            from './components/Sidebar.jsx';
 import TopBar             from './components/TopBar.jsx';
 import LoadingOverlay     from './components/LoadingOverlay.jsx';
@@ -45,6 +46,13 @@ function deriveSectors(stocks) {
   return sectors;
 }
 
+const ALL_SPARK_SYMBOLS = [
+  'BZ=F','GC=F','PL=F','PA=F','USDZAR=X','MTF=F','^ZA10Y',
+  'GFI.JO','ANG.JO','IMP.JO','AMS.JO','SOL.JO',
+  'FSR.JO','SBK.JO','CPI.JO','SHP.JO','NPN.JO',
+  'PRX.JO','CFR.JO','AGL.JO','MTN.JO','SSW.JO',
+];
+
 const EMPTY_CIS = {
   total: 0, regime: 'NO DATA', regimeClass: 'neutral',
   components: {
@@ -57,9 +65,16 @@ const EMPTY_CIS = {
 };
 
 export default function App() {
-  const [page,       setPage]       = useState('overview');
-  const [timeframe,  setTimeframe]  = useState('1D');     // now actually affects display
-  const [returnMode, setReturnMode] = useState('ABS');    // now actually affects display
+  const [page,        setPage]       = useState('overview');
+  const [timeframe,   setTimeframe]  = useState('1D');
+  const [returnMode,  setReturnMode] = useState('ABS');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [theme,       setTheme]      = useState(() => localStorage.getItem('jse_theme') ?? 'dark');
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme === 'light' ? 'light' : '';
+    localStorage.setItem('jse_theme', theme);
+  }, [theme]);
 
   const {
     assets, stocks, r2035History,
@@ -68,6 +83,7 @@ export default function App() {
   } = useMarketData();
 
   const { sparklines, sparkLoading, fetchSparklines } = useSparklines();
+  const { news, newsLoading, newsError, refetchNews } = useNews();
 
   const { chartData: cisChartData, addReading, clearHistory } = useCISHistory();
   const { toasts, addToast, removeToast } = useToast();
@@ -76,14 +92,13 @@ export default function App() {
 
   /* On mount: show cache immediately, then fetch as needed. */
   useEffect(() => {
-    const macroSymbols = ['BZ=F','GC=F','PL=F','PA=F','USDZAR=X','MTF=F','^ZA10Y'];
     const cacheState = initFromCache();
     if (cacheState === 'empty') {
       fetchLive(false);
     } else if (cacheState === 'stale') {
       setTimeout(() => fetchLive(true), 600);
     }
-    fetchSparklines(macroSymbols);
+    fetchSparklines(ALL_SPARK_SYMBOLS);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* Derived values */
@@ -132,8 +147,7 @@ export default function App() {
       const bondLabel = src ? ` · bond via ${src}` : '';
       addToast(`Updated · ${new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })} SAST${bondLabel}`, 'success');
 
-      const macroSymbols = ['BZ=F','GC=F','PL=F','PA=F','USDZAR=X','MTF=F','^ZA10Y'];
-      fetchSparklines(macroSymbols);
+      fetchSparklines(ALL_SPARK_SYMBOLS);
     } else if (result?.error && !isSilent) {
       addToast(result.error, 'error', 6000);
     }
@@ -154,13 +168,22 @@ export default function App() {
     onFetch: handleFetch,
     cisChartData, clearHistory,
     sparklines, sparkLoading,
+    news, newsLoading, newsError, refetchNews,
   };
 
   return (
     <div className="flex h-screen overflow-hidden bg-bg text-tp font-sans">
       <Toast toasts={toasts} onRemove={removeToast} />
       <LoadingOverlay status={status} progress={progress} error={error} onDismiss={clearError} />
-      <Sidebar page={page} setPage={setPage} cis={cis} status={status} lastFetch={lastFetch} />
+
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+             onClick={() => setSidebarOpen(false)} />
+      )}
+
+      <Sidebar page={page} setPage={setPage} cis={cis} status={status} lastFetch={lastFetch}
+               isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex flex-col flex-1 overflow-hidden lg:ml-[220px] ml-0">
         <TopBar
@@ -172,6 +195,8 @@ export default function App() {
           autoRefresh={autoRefresh}
           onExport={handleExport}
           dataHealth={dataHealth}
+          onMenuClick={() => setSidebarOpen(true)}
+          theme={theme} setTheme={setTheme}
         />
         <main className="flex-1 overflow-y-auto">
           {page === 'overview'  && <Overview          {...shared} />}

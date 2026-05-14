@@ -1,6 +1,6 @@
 import React from 'react';
 import clsx from 'clsx';
-import { DotIcon, RefreshIcon, ErrorIcon } from './Icons.jsx';
+import { DotIcon, RefreshIcon, ErrorIcon, XIcon } from './Icons.jsx';
 
 const NAV = [
   { id:'overview',  label:'Overview',           icon:GridIcon },
@@ -64,7 +64,7 @@ function StatusRow({ status, lastFetch }) {
   );
 }
 
-export default function Sidebar({ page, setPage, cis, status, lastFetch }) {
+export default function Sidebar({ page, setPage, cis, status, lastFetch, isOpen, onClose }) {
   const rc  = CHIP[cis.regimeClass]     ?? CHIP.neutral;
   const bar = BAR_FILL[cis.regimeClass] ?? BAR_FILL.neutral;
   const pct = Math.max(2, Math.min(98, ((cis.total + 100) / 200) * 100));
@@ -72,10 +72,19 @@ export default function Sidebar({ page, setPage, cis, status, lastFetch }) {
   const hasData = status === 'live' || status === 'cached';
 
   return (
-    <aside className="fixed top-0 left-0 bottom-0 w-[220px] bg-bg-s border-r border-bd flex flex-col z-50">
-      <div className="px-[18px] py-[18px] pb-3.5 border-b border-bd-x">
+    <aside className={clsx(
+      'fixed top-0 left-0 bottom-0 w-[220px] bg-bg-s border-r border-bd flex flex-col z-50',
+      'transition-transform duration-300 ease-in-out',
+      'lg:translate-x-0',
+      isOpen ? 'translate-x-0' : '-translate-x-full',
+    )}>
+      <div className="px-[18px] py-[18px] pb-3.5 border-b border-bd-x relative">
         <div className="font-display text-[21px] tracking-[1.5px] text-tp leading-none">JSE CONFLICT WATCH</div>
         <div className="font-mono text-[8px] text-ts tracking-[2.5px] mt-1.5">MARKET INTELLIGENCE · V3.0</div>
+        <button onClick={onClose} aria-label="Close menu"
+          className="lg:hidden absolute top-3 right-3 p-1 text-ts hover:text-tp transition-colors cursor-pointer">
+          <XIcon className="w-4 h-4" />
+        </button>
       </div>
 
       <div className={clsx('mx-4 my-3.5 p-3 rounded border text-center', rc.border, rc.bg)}>
@@ -101,7 +110,7 @@ export default function Sidebar({ page, setPage, cis, status, lastFetch }) {
 
       <nav className="py-1.5 flex-1">
         {NAV.map(({ id, label, icon:Icon }) => (
-          <button key={id} onClick={() => setPage(id)}
+          <button key={id} onClick={() => { setPage(id); onClose?.(); }}
             className={clsx(
               'w-full flex items-center gap-2.5 px-[18px] py-2.5 text-[12.5px] font-medium border-l-2 transition-all text-left cursor-pointer',
               page === id

@@ -135,7 +135,7 @@ async function fetchAll(symbols) {
   }
 
   const pool = [];
-  const CONCURRENCY = Math.min(6, symbols.length);
+  const CONCURRENCY = Math.min(8, symbols.length);
   for (let i = 0; i < CONCURRENCY; i++) pool.push(worker());
   await Promise.all(pool);
   return results;
@@ -155,7 +155,7 @@ module.exports = async function(req, res) {
   const symbols = (qs.symbols || '').trim();
   if (!symbols) return err(res, 'symbols query param required', 400);
 
-  const symList = symbols.split(',').map(function(s) { return s.trim(); }).filter(Boolean).slice(0, 15);
+  const symList = symbols.split(',').map(function(s) { return s.trim(); }).filter(Boolean).slice(0, 25);
   if (!symList.length) return err(res, 'No valid symbols', 400);
 
   try {

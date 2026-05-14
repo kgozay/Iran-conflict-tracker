@@ -10,6 +10,7 @@ import MorningNote     from '../widgets/MorningNote.jsx';
 import CISHistoryChart from '../widgets/CISHistoryChart.jsx';
 import Watchlist       from '../widgets/Watchlist.jsx';
 import DataHealth      from '../widgets/DataHealth.jsx';
+import NewsFeed        from '../widgets/NewsFeed.jsx';
 import { RadarIcon, BoltIcon } from '../components/Icons.jsx';
 
 function FetchPrompt({ onFetch }) {
@@ -45,20 +46,21 @@ export default function Overview({
   assets, stocks, sectors, cis, alerts, timeframe, returnMode,
   status, hasData, onFetch, cisChartData, clearHistory,
   sparklines, sparkLoading, dataHealth,
+  news, newsLoading, newsError, refetchNews,
 }) {
   const isLoading = status === 'loading';
 
   if (!hasData && !isLoading) {
     return (
-      <div className="p-[18px] animate-fadeUp">
+      <div className="p-3 sm:p-[18px] animate-fadeUp">
         <FetchPrompt onFetch={onFetch} />
       </div>
     );
   }
 
   return (
-    <div className="p-[18px] animate-fadeUp">
-      <RegimeBanner cis={cis} hasData={hasData} dataHealth={dataHealth} />
+    <div className="p-3 sm:p-[18px] animate-fadeUp">
+      <RegimeBanner cis={cis} hasData={hasData} dataHealth={dataHealth} cisChartData={cisChartData} />
       <ScoreDrivers cis={cis} hasData={hasData} />
       <KpiGrid assets={assets} cis={cis} hasData={hasData} sparklines={sparklines} sparkLoading={sparkLoading} timeframe={timeframe} />
       <HeatStrip sectors={sectors} />
@@ -81,7 +83,11 @@ export default function Overview({
         <MorningNote assets={assets} sectors={sectors} cis={cis} stocks={stocks} alerts={alerts} dataHealth={dataHealth} hasData={hasData} />
       </div>
 
-      <Watchlist stocks={stocks} timeframe={timeframe} returnMode={returnMode} sectors={sectors} />
+      <div className="mb-3.5">
+        <NewsFeed news={news} loading={newsLoading} newsError={newsError} onRefresh={refetchNews} />
+      </div>
+
+      <Watchlist stocks={stocks} timeframe={timeframe} returnMode={returnMode} sectors={sectors} sparklines={sparklines} />
     </div>
   );
 }

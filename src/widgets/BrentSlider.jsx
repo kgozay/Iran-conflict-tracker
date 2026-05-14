@@ -73,7 +73,7 @@ export default function BrentSlider({ liveBrent }) {
         <div className="flex justify-between font-mono text-[8px] text-tm mt-1">
           <span>$55 FLOOR</span>
           <span>$75 BASE</span>
-          <span>$92 NOW</span>
+          <span>{livePrice ? `$${Math.round(livePrice)} NOW` : '$92 EST'}</span>
           <span>$115 SHOCK</span>
           <span>$145 CRISIS</span>
         </div>

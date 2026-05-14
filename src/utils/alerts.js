@@ -32,12 +32,12 @@ export function computeAlerts({ assets, sectors, stocks }) {
       text:`COMPOSITE: Brent ${brent.toFixed(1)}%, ZAR stable, market +${top40.toFixed(1)}%. Conflict relief rally.`, time:now });
 
   // SA 10Y yield proxy alerts. Static fallback is ignored.
-  if (r2035 != null && r2035 > 0.3)
-    alerts.push({ id:'r2035-amber', lvl:'amber', tag:'in', label:'SA 10Y RISING',
-      text:`SA 10Y yield proxy +${r2035.toFixed(2)}% — tighter conditions weighing on bank valuations and retail credit.`, time:now });
   if (r2035 != null && r2035 > 0.6)
     alerts.push({ id:'r2035-red', lvl:'red', tag:'ds', label:'SA 10Y CRITICAL',
       text:`SA 10Y yield proxy surge +${r2035.toFixed(2)}% — rate-sensitive equities under pressure.`, time:now });
+  else if (r2035 != null && r2035 > 0.3)
+    alerts.push({ id:'r2035-amber', lvl:'amber', tag:'in', label:'SA 10Y RISING',
+      text:`SA 10Y yield proxy +${r2035.toFixed(2)}% — tighter conditions weighing on bank valuations and retail credit.`, time:now });
 
   // Individual thresholds
   if (brent > 4)
@@ -55,7 +55,7 @@ export function computeAlerts({ assets, sectors, stocks }) {
       text:`USD/ZAR +${usdZar.toFixed(1)}% — amber (>+0.8%) triggered.`, time:now });
 
   if (gold > 2)
-    alerts.push({ id:'gold-red', lvl:'amber', tag:'ms', label:'GOLD SURGE',
+    alerts.push({ id:'gold-red', lvl:'green', tag:'ms', label:'GOLD SURGE',
       text:`Gold +${gold.toFixed(1)}% — red threshold exceeded. Strong safe-haven demand.`, time:now });
   else if (gold > 1)
     alerts.push({ id:'gold-amber', lvl:'amber', tag:'ms', label:'GOLD AMBER',

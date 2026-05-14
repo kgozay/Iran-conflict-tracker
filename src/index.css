@@ -2,6 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme tokens ───────────────────────────────────────────────────── */
+:root {
+  --color-bg:   #07080f;
+  --color-bg-s: #0d1220;
+  --color-bg-c: #111827;
+  --color-bg-h: #161f30;
+  --color-bg-e: #1c2740;
+  --color-bd:   #1e2d45;
+  --color-bd-x: #141e2e;
+  --color-tp:   #e2eaf5;
+  --color-ts:   #6e80a0;
+  --color-tm:   #3d4f68;
+}
+
+[data-theme="light"] {
+  --color-bg:   #f0f4fa;
+  --color-bg-s: #e4eaf5;
+  --color-bg-c: #ffffff;
+  --color-bg-h: #dce5f0;
+  --color-bg-e: #ccd6ea;
+  --color-bd:   #b8c8de;
+  --color-bd-x: #c8d6e8;
+  --color-tp:   #0d1220;
+  --color-ts:   #3a4e68;
+  --color-tm:   #8298b5;
+}
+
 @layer base {
   html { font-size: 14px; }
   body { overflow: hidden; }
@@ -9,16 +36,16 @@
 
   /* Custom scrollbar */
   ::-webkit-scrollbar       { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: #07080f; }
-  ::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 3px; }
+  ::-webkit-scrollbar-track { background: var(--color-bg); }
+  ::-webkit-scrollbar-thumb { background: var(--color-bd); border-radius: 3px; }
 }
 
 @layer utilities {
   .text-bull  { color: #05d09a; }
   .text-bear  { color: #ef4444; }
   .text-warn  { color: #f0b429; }
-  .text-ts    { color: #6e80a0; }
-  .text-tm    { color: #3d4f68; }
+  .text-ts    { color: var(--color-ts); }
+  .text-tm    { color: var(--color-tm); }
 
   .bg-bull-faint  { background: rgba(5,208,154,.08); }
   .bg-bear-faint  { background: rgba(239,68,68,.08); }
@@ -27,4 +54,8 @@
   .border-bull-faint  { border-color: rgba(5,208,154,.3); }
   .border-bear-faint  { border-color: rgba(239,68,68,.3); }
   .border-warn-faint  { border-color: rgba(240,180,41,.3); }
+
+  /* Hide scrollbar on controls strips */
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
 }
