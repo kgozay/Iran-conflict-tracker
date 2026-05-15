@@ -99,9 +99,18 @@ function monthlyFromDaily(rows) {
 /* ─── Source 1: Stooq CSV 10zay.b (primary — daily history) ──────── */
 async function fromStooq() {
   try {
-    const url = 'https://stooq.com/q/d/l/?s=10zay.b&i=d';
-    const r = await get(url, { headers: { Accept: 'text/csv, text/plain, */*' } });
-    if (r.status !== 200 || !r.raw) return null;
+    const STOOQ_URLS = [
+      'https://stooq.com/q/d/l/?s=10zay.b&i=d',
+      'https://stooq.pl/q/d/l/?s=10zay.b&i=d',
+    ];
+    let r = null;
+    for (const url of STOOQ_URLS) {
+      try {
+        r = await get(url, { headers: { Accept: 'text/csv, text/plain, */*' } });
+        if (r.status === 200 && r.raw) break;
+      } catch { /* try next */ }
+    }
+    if (!r || r.status !== 200 || !r.raw) return null;
 
     const lines = r.raw.trim().split(/\r?\n/);
     if (lines.length < 3) return null;
@@ -288,10 +297,10 @@ module.exports = async function(req, res) {
     bond: {
       symbol:    'FALLBACK',
       name:      'SA 10Y Bond Yield (static — live fetch failed)',
-      price:     8.5,
+      price:     8.85,
       change:    0,
       changePct: 0,
-      prevClose: 8.5,
+      prevClose: 8.85,
       date:      new Date().toISOString().slice(0, 10),
       source:    'STATIC',
       unit:      '%',

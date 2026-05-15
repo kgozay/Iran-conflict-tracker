@@ -88,13 +88,15 @@ export default function CorrelationHeatmap({ history, stocks }) {
   return (
     <Card>
       <CardHeader title="20D Asset Correlation Heatmap" badge="MACRO TO JSE" />
-      <div className="overflow-x-auto mt-2 pb-2 pt-12">
+      <div className="overflow-x-auto mt-2 pb-2 pt-2">
         <div style={{ minWidth: 400 }}>
           {/* Header Row */}
           <div className="grid gap-px mb-2" style={{ gridTemplateColumns: `80px repeat(${n}, 1fr)` }}>
             <div />
             {HEATMAP_ASSETS.map(a => (
-              <div key={a.name} className="text-[9px] font-mono text-ts text-left transform -rotate-45 origin-bottom-left whitespace-nowrap pl-1">
+              <div key={a.name}
+                   className="text-[9px] font-mono text-ts flex items-end justify-center h-16 pb-1"
+                   style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
                 {a.name}
               </div>
             ))}

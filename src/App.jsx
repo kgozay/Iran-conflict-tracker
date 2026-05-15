@@ -6,7 +6,6 @@ import { buildDataHealth } from './utils/dataQuality.js';
 import { exportWatchlistCSV, exportMacroCSV, exportSnapshotJSON } from './utils/export.js';
 import { useMarketData }  from './hooks/useMarketData.js';
 import { useAutoRefresh } from './hooks/useAutoRefresh.js';
-import { useCISHistory }  from './hooks/useCISHistory.js';
 import { useToast }       from './hooks/useToast.js';
 import { useSparklines }  from './hooks/useSparklines.js';
 import { useNews }        from './hooks/useNews.js';
@@ -85,7 +84,6 @@ export default function App() {
   const { sparklines, sparkLoading, fetchSparklines } = useSparklines();
   const { news, newsLoading, newsError, refetchNews } = useNews();
 
-  const { chartData: cisChartData, addReading, clearHistory } = useCISHistory();
   const { toasts, addToast, removeToast } = useToast();
 
   const prevStatusRef = useRef(status);
@@ -128,15 +126,6 @@ export default function App() {
     () => hasData ? computeAlerts({ assets, sectors, stocks }) : [],
     [hasData, assets, sectors, stocks]
   );
-
-  /* Record CIS history when a live fetch completes */
-  useEffect(() => {
-    const was = prevStatusRef.current;
-    prevStatusRef.current = status;
-    if (status === 'live' && was === 'loading' && hasData) {
-      addReading(cis.total, cis.regime, cis.regimeClass);
-    }
-  }, [status, hasData, cis, addReading]);
 
   /* Push notifications for regime changes */
   useEffect(() => {
@@ -194,7 +183,6 @@ export default function App() {
     assets, stocks, sectors, cis, alerts, r2035History, history,
     timeframe, returnMode, status, hasData, dataHealth, lastFetch,
     onFetch: handleFetch,
-    cisChartData, clearHistory,
     sparklines, sparkLoading,
     news, newsLoading, newsError, refetchNews,
   };

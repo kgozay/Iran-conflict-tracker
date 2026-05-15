@@ -7,7 +7,6 @@ import ScoreDecomp     from '../widgets/ScoreDecomp.jsx';
 import SectorRelChart  from '../widgets/SectorRelChart.jsx';
 import AlertsFeed      from '../widgets/AlertsFeed.jsx';
 import MorningNote     from '../widgets/MorningNote.jsx';
-import CISHistoryChart from '../widgets/CISHistoryChart.jsx';
 import Watchlist       from '../widgets/Watchlist.jsx';
 import DataHealth      from '../widgets/DataHealth.jsx';
 import NewsFeed        from '../widgets/NewsFeed.jsx';
@@ -72,10 +71,6 @@ export default function Overview({
 
       <div className="mb-3.5">
         <DataHealth health={dataHealth} hasData={hasData} />
-      </div>
-
-      <div className="mb-3.5">
-        <CISHistoryChart chartData={cisChartData} onClear={clearHistory} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5 mb-3.5">

@@ -186,7 +186,7 @@ Live macro: ${health.liveMacro ?? 'n/a'}/${health.totalMacro ?? 'n/a'}
 SA 10Y source: ${health.bondSource || r.source || 'unknown'}${health.bondIsStatic ? ' STATIC' : ''}${health.bondIsProxy ? ' PROXY' : ''}
 Warnings: ${(health.warnings || []).join('; ') || 'None'}`;
 
-  return `You are a senior South African equity strategist writing the morning market note for JSE Conflict Watch, a dashboard tracking Iran-Middle East geopolitical risk transmission into South African markets.
+  return `You are a senior South African equity strategist writing the daily market note for JSE Conflict Watch, a dashboard tracking macro and geopolitical risk transmission into South African markets.
 
 Your reader is an institutional PM or a sophisticated JSE trader. They have already seen the numbers. Your job is NOT to repeat the table. Your job is to tell them what is INTERESTING and what to DO about it.
 
@@ -240,7 +240,7 @@ ${healthText}
 WRITE THE NOTE NOW using these sections:
 
 1. Executive read — the one-line regime call and what matters most.
-2. Conflict transmission — explain whether oil, ZAR, gold, yields and sector action confirm or reject the Iran/Middle East risk narrative.
+2. Macro transmission — identify which macro drivers (oil, ZAR, gold, bond yields) are dominant today, whether JSE sector action confirms or contradicts those drivers, and what the divergences imply.
 3. Cross-asset diagnosis — identify the strongest confirming signal and the strongest contradiction.
 4. JSE sector map — explain which sectors benefit, which are vulnerable, and why. Use named stocks where the data supports it.
 5. Rates, rand and SARB angle — interpret the SA 10Y proxy, bond source quality, and what it implies for banks, retailers and duration-sensitive equities.
