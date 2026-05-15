@@ -82,11 +82,17 @@ function ArticleCard({ article }) {
       {sentiment === 'bearish' && (
         <span className="font-mono text-[7px] font-semibold tracking-[1px] px-1.5 py-0.5 rounded border bg-bear/10 text-bear border-bear/30 self-start">
           BEARISH SIGNAL
+          {article.aiScore != null && (
+            <span className="text-xs opacity-60 ml-1">{(article.aiScore * 100).toFixed(0)}%</span>
+          )}
         </span>
       )}
       {sentiment === 'bullish' && (
         <span className="font-mono text-[7px] font-semibold tracking-[1px] px-1.5 py-0.5 rounded border bg-bull/10 text-bull border-bull/30 self-start">
           BULLISH SIGNAL
+          {article.aiScore != null && (
+            <span className="text-xs opacity-60 ml-1">{(article.aiScore * 100).toFixed(0)}%</span>
+          )}
         </span>
       )}
 
@@ -119,7 +125,7 @@ export default function NewsFeed({ news = [], loading, newsError, lastFetched, o
   );
 
   const articlesWithSentiment = useMemo(() =>
-    news.map(a => ({ ...a, sentiment: getSentiment(a.title, a.description) })),
+    news.map(a => ({ ...a, sentiment: a.sentiment || getSentiment(a.title, a.description) })),
     [news]
   );
 

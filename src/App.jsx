@@ -77,7 +77,7 @@ export default function App() {
   }, [theme]);
 
   const {
-    assets, stocks, r2035History,
+    assets, stocks, r2035History, history,
     status, error, lastFetch, progress,
     fetchLive, initFromCache, clearError,
   } = useMarketData();
@@ -138,6 +138,34 @@ export default function App() {
     }
   }, [status, hasData, cis, addReading]);
 
+  /* Push notifications for regime changes */
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  const prevRegimeRef = useRef(localStorage.getItem('jse_cw_last_notif_regime'));
+
+  useEffect(() => {
+    if (status === 'live' && hasData && cis.regime && cis.regime !== 'NO DATA') {
+      const newRegime = cis.regime;
+      const prevRegime = prevRegimeRef.current;
+      
+      if (prevRegime && newRegime !== prevRegime && Notification.permission === 'granted') {
+        new Notification('Iran Conflict Tracker', {
+          body: `Market regime changed to ${newRegime} (CIS: ${cis.total.toFixed(1)})`,
+          icon: '/favicon.ico',
+        });
+      }
+      
+      if (newRegime !== prevRegime) {
+        localStorage.setItem('jse_cw_last_notif_regime', newRegime);
+        prevRegimeRef.current = newRegime;
+      }
+    }
+  }, [cis.regime, cis.total, status, hasData]);
+
   /* Wrapped fetch — accepts explicit boolean, ignores MouseEvent from button clicks */
   const handleFetch = useCallback(async (silentParam) => {
     const isSilent = silentParam === true;
@@ -163,7 +191,7 @@ export default function App() {
   }, [stocks, assets, sectors, cis, alerts, timeframe, returnMode, addToast]);
 
   const shared = {
-    assets, stocks, sectors, cis, alerts, r2035History,
+    assets, stocks, sectors, cis, alerts, r2035History, history,
     timeframe, returnMode, status, hasData, dataHealth, lastFetch,
     onFetch: handleFetch,
     cisChartData, clearHistory,

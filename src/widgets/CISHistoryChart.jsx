@@ -1,10 +1,11 @@
 import React from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine,
+  ResponsiveContainer, ReferenceLine, ReferenceArea, Label
 } from 'recharts';
 import clsx from 'clsx';
 import { Card, CardHeader } from './Card.jsx';
+import { CONFLICT_EVENTS } from '../data/conflictEvents.js';
 
 const REGIME_COLOR = {
   bear:    '#ef4444',
@@ -45,6 +46,9 @@ export default function CISHistoryChart({ chartData, onClear }) {
   const trendColor = trend > 0 ? 'text-bull' : trend < 0 ? 'text-bear' : 'text-ts';
   const trendArrow = trend > 0 ? '▲' : trend < 0 ? '▼' : '–';
 
+  const minTs = chartData[0]?.ts ?? 0;
+  const visibleEvents = CONFLICT_EVENTS.filter(e => new Date(e.date).getTime() >= minTs);
+
   return (
     <Card>
       <div className="flex items-center justify-between mb-3">
@@ -84,6 +88,26 @@ export default function CISHistoryChart({ chartData, onClear }) {
             <ReferenceLine y={0}   stroke="rgba(255,255,255,0.15)" />
             <ReferenceLine y={-40} stroke="rgba(239,68,68,0.2)"  strokeDasharray="3 3" />
             <ReferenceLine y={40}  stroke="rgba(5,208,154,0.2)"  strokeDasharray="3 3" />
+
+            {/* Regime Bands */}
+            <ReferenceArea y1={-100} y2={-40} fill="rgba(239,68,68,0.08)" ifOverflow="hidden" label={{ value: 'BEARISH SHOCK', position: 'insideTopRight', fontSize: 9, fill: 'rgba(239,68,68,0.5)' }} />
+            <ReferenceArea y1={-40}  y2={-15} fill="rgba(245,158,11,0.08)" ifOverflow="hidden" label={{ value: 'MILD BEARISH', position: 'insideTopRight', fontSize: 9, fill: 'rgba(245,158,11,0.5)' }} />
+            <ReferenceArea y1={-15}  y2={15}  fill="rgba(100,116,139,0.06)" ifOverflow="hidden" label={{ value: 'NEUTRAL', position: 'insideTopRight', fontSize: 9, fill: 'rgba(100,116,139,0.5)' }} />
+            <ReferenceArea y1={15}   y2={40}  fill="rgba(34,197,94,0.06)"  ifOverflow="hidden" label={{ value: 'MILD BULLISH', position: 'insideTopRight', fontSize: 9, fill: 'rgba(34,197,94,0.5)' }} />
+            <ReferenceArea y1={40}   y2={100} fill="rgba(34,197,94,0.12)"  ifOverflow="hidden" label={{ value: 'BULLISH RELIEF', position: 'insideTopRight', fontSize: 9, fill: 'rgba(34,197,94,0.5)' }} />
+
+            {/* Event Markers */}
+            {visibleEvents.map(ev => (
+              <ReferenceLine
+                key={ev.date}
+                x={new Date(ev.date).getTime()}
+                stroke={ev.type === 'escalation' ? '#ef4444' : ev.type === 'de-escalation' ? '#22c55e' : '#64748b'}
+                strokeDasharray="3 3"
+              >
+                <Label value={ev.label} angle={-90} position="insideTopLeft" fontSize={9} fill={ev.type === 'escalation' ? '#ef4444' : ev.type === 'de-escalation' ? '#22c55e' : '#64748b'} />
+              </ReferenceLine>
+            ))}
+
             <Line
               type="monotone" dataKey="total"
               stroke={REGIME_COLOR[latest.regimeClass] ?? '#6e80a0'}

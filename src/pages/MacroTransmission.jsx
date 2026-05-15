@@ -11,6 +11,10 @@ import {
   AlertIcon, HomeIcon, CoalIcon, PeaceIcon,
   ChartIcon, BoltIcon, DotIcon,
 } from '../components/Icons.jsx';
+import CorrelationHeatmap from '../widgets/CorrelationHeatmap.jsx';
+import CrisisComparison from '../widgets/CrisisComparison.jsx';
+import { computeCIS } from '../utils/scoring.js';
+import { useState, useMemo } from 'react';
 
 /* ─── Flow nodes ──────────────────────────────────────────────────── */
 const NODE_CLS = {
@@ -233,7 +237,7 @@ function MacroStrip({ assets, hasData }) {
 }
 
 /* ─── Page ────────────────────────────────────────────────────────── */
-export default function MacroTransmission({ assets, alerts, hasData, r2035History }) {
+export default function MacroTransmission({ assets, alerts, hasData, r2035History, history, stocks, sectors, cisChartData }) {
   const brentChg = assets.brent?.changePct;
   const zarChg   = assets.usdZar?.changePct;
   const goldChg  = assets.gold?.changePct;
@@ -257,6 +261,26 @@ export default function MacroTransmission({ assets, alerts, hasData, r2035Histor
   const allRepos  = yieldChartData.map(d => d.sarb).filter(v => v != null);
   const yMin = Math.floor(Math.min(...allYields, ...allRepos, livePrice ?? 99) - 0.5);
   const yMax = Math.ceil(Math.max(...allYields, livePrice ?? 0) + 1);
+
+  const [scenarioOverrides, setScenarioOverrides] = useState({ brent: 0, zar: 0, gold: 0 });
+
+  const scenarioCIS = useMemo(() => {
+    if (!assets || Object.keys(assets).length === 0) return null;
+    const overridden = {
+      brentChg: (assets.brent?.changePct ?? 0) + scenarioOverrides.brent,
+      usdZarChg: (assets.usdZar?.changePct ?? 0) + scenarioOverrides.zar,
+      goldChg: (assets.gold?.changePct ?? 0) + scenarioOverrides.gold,
+      r2035Chg: assets.r2035?.isStale ? null : (assets.r2035?.changePct ?? 0),
+      includeBond: !assets.r2035?.isStale,
+      top40Chg: sectors?.top40?.chg ?? 0,
+      minersChg: sectors?.['Gold Miners']?.chg ?? 0,
+      energyChg: sectors?.Energy?.chg ?? 0,
+      banksChg: sectors?.Banks?.chg ?? 0,
+      retailersChg: sectors?.Retailers?.chg ?? 0,
+      industrialsChg: sectors?.Industrials?.chg ?? 0,
+    };
+    return computeCIS(overridden).total;
+  }, [assets, sectors, scenarioOverrides]);
 
   return (
     <div className="p-[18px] animate-fadeUp space-y-3.5">
@@ -305,7 +329,7 @@ export default function MacroTransmission({ assets, alerts, hasData, r2035Histor
 
       <div className="grid grid-cols-3 gap-3">
         {/* Historical analogues */}
-        <div className="col-span-2">
+        <div className="col-span-2 space-y-3">
           <Card>
             <CardHeader title="Historical Conflict Analogues — SA Market Reaction" badge="REFERENCE DATA" />
             <div className="overflow-x-auto">
@@ -343,15 +367,68 @@ export default function MacroTransmission({ assets, alerts, hasData, r2035Histor
               </table>
             </div>
           </Card>
+
+          <CrisisComparison cisChartData={cisChartData} />
         </div>
 
         {/* Live alert status */}
         <AlertPanel alerts={alerts} hasData={hasData} />
       </div>
 
+      <CorrelationHeatmap history={history} stocks={stocks} />
+
       {/* Interactive Brent slider + SA 10Y/SARB yield chart */}
       <div className="grid grid-cols-2 gap-3">
-        <BrentSlider liveBrent={assets.brent} />
+        <div className="space-y-3">
+          <BrentSlider liveBrent={assets.brent} />
+          
+          <Card>
+            <CardHeader title="Multi-Asset Scenario Simulator" badge="WHAT-IF" />
+            <div className="flex items-center justify-between mb-3 mt-2">
+              <button onClick={() => setScenarioOverrides({ brent: 0, zar: 0, gold: 0 })}
+                      className="px-2.5 py-1 bg-bg-e border border-bd rounded text-[9px] font-mono hover:bg-bg-h transition-colors cursor-pointer text-ts hover:text-tp">
+                Reset
+              </button>
+              {scenarioCIS !== null && (
+                <span className="px-2 py-1 rounded bg-purple-600/20 border border-purple-600/30 text-purple-400 text-sm font-mono font-semibold">
+                  Scenario CIS: {scenarioCIS.toFixed(1)}
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between font-mono text-[10px] mb-1">
+                  <span className="text-ts">Brent shock</span>
+                  <span className={scenarioOverrides.brent > 0 ? 'text-bear' : scenarioOverrides.brent < 0 ? 'text-bull' : 'text-ts'}>
+                    {scenarioOverrides.brent > 0 ? '+' : ''}{scenarioOverrides.brent.toFixed(1)}%
+                  </span>
+                </div>
+                <input type="range" min={-20} max={20} step={0.5} value={scenarioOverrides.brent} onChange={e => setScenarioOverrides(s => ({ ...s, brent: +e.target.value }))} className="w-full accent-purple-500 cursor-pointer" />
+              </div>
+
+              <div>
+                <div className="flex justify-between font-mono text-[10px] mb-1">
+                  <span className="text-ts">USD/ZAR shock</span>
+                  <span className={scenarioOverrides.zar > 0 ? 'text-bear' : scenarioOverrides.zar < 0 ? 'text-bull' : 'text-ts'}>
+                    {scenarioOverrides.zar > 0 ? '+' : ''}{scenarioOverrides.zar.toFixed(1)}%
+                  </span>
+                </div>
+                <input type="range" min={-15} max={15} step={0.5} value={scenarioOverrides.zar} onChange={e => setScenarioOverrides(s => ({ ...s, zar: +e.target.value }))} className="w-full accent-purple-500 cursor-pointer" />
+              </div>
+
+              <div>
+                <div className="flex justify-between font-mono text-[10px] mb-1">
+                  <span className="text-ts">Gold shock</span>
+                  <span className={scenarioOverrides.gold > 0 ? 'text-bull' : scenarioOverrides.gold < 0 ? 'text-bear' : 'text-ts'}>
+                    {scenarioOverrides.gold > 0 ? '+' : ''}{scenarioOverrides.gold.toFixed(1)}%
+                  </span>
+                </div>
+                <input type="range" min={-20} max={20} step={0.5} value={scenarioOverrides.gold} onChange={e => setScenarioOverrides(s => ({ ...s, gold: +e.target.value }))} className="w-full accent-purple-500 cursor-pointer" />
+              </div>
+            </div>
+          </Card>
+        </div>
 
         <Card>
           <CardHeader

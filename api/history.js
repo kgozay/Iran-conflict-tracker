@@ -100,6 +100,12 @@ async function fetchHistoryOne(symbol) {
           ? +(((end - start) / start) * 100).toFixed(4)
           : null;
 
+      const returns20D = [];
+      const slice20D = closes.slice(Math.max(0, n - 21));
+      for (let i = 1; i < slice20D.length; i++) {
+        returns20D.push((slice20D[i] - slice20D[i-1]) / slice20D[i-1]);
+      }
+
       return {
         symbol,
         price,
@@ -107,6 +113,7 @@ async function fetchHistoryOne(symbol) {
         changePct1D:  pct(close1D,  price),
         changePct5D:  pct(close5D,  price),
         changePct20D: pct(close20D, price),
+        returns20D,
         barsAvailable: n,
       };
     } catch (e) { /* try next host */ }

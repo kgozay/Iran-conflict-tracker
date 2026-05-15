@@ -139,6 +139,7 @@ export function useMarketData() {
   const [assets,       setAssets]       = useState(makeEmptyAssets);
   const [stocks,       setStocks]       = useState(makeEmptyStocks);
   const [r2035History, setR2035History] = useState([]);   // [{month,yield,date},…]
+  const [history,      setHistory]      = useState({});
   const [status,       setStatus]       = useState('empty');
   const [error,        setError]        = useState(null);
   const [lastFetch,    setLastFetch]    = useState(null);
@@ -175,6 +176,7 @@ export function useMarketData() {
     setAssets(a);
     setStocks(s);
     setR2035History(cached.r2035History || []);
+    setHistory(cached.history || {});
     setStatus(isStale ? 'cached' : 'live');
     setLastFetch(new Date(cached.ts));
     lastFetchTs.current = cached.ts;
@@ -278,6 +280,7 @@ export function useMarketData() {
       setAssets(a);
       setStocks(s);
       setR2035History(r2035Hist);
+      setHistory(history || {});
       setStatus('live');
       setLastFetch(new Date());
       setError(null);
@@ -312,7 +315,7 @@ export function useMarketData() {
   }, [fetchLive]);
 
   return {
-    assets, stocks, r2035History,
+    assets, stocks, r2035History, history,
     status, error, lastFetch, progress, env,
     fetchLive, initFromCache,
     clearError: () => { setError(null); setStatus(s => s === 'error' ? (lastFetchTs.current ? 'cached' : 'empty') : s); },

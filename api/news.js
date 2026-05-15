@@ -15,6 +15,7 @@
 
 const https = require('https');
 const zlib  = require('zlib');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const CORS = {
   'Content-Type':                'application/json',
@@ -128,6 +129,24 @@ function deduplicate(articles) {
   });
 }
 
+/* ── AI Sentiment Scoring ───────────────────────────────────────── */
+async function scoreHeadlines(articles) {
+  if (!process.env.GEMINI_API_KEY) return articles; // fallback: return as-is
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const headlines = articles.map(a => a.title);
+    const prompt = `You are a financial sentiment analyst. For each headline below, return ONLY a JSON array (same order) of objects with keys "sentiment" ("bearish"|"neutral"|"bullish") and "score" (0.0–1.0 confidence). No explanation.\n\nHeadlines:\n${JSON.stringify(headlines)}`;
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim();
+    const scores = JSON.parse(text.replace(/```json|```/g, '').trim());
+    return articles.map((a, i) => ({ ...a, sentiment: scores[i]?.sentiment ?? a.sentiment, aiScore: scores[i]?.score ?? null }));
+  } catch (err) {
+    console.error('[news] scoreHeadlines failed:', err.message);
+    return articles; // fallback to keyword-based sentiment on any error
+  }
+}
+
 /* ── Handler ──────────────────────────────────────────────────────── */
 const setCors = function(res) {
   for (const [k, v] of Object.entries(CORS)) res.setHeader(k, v);
@@ -153,9 +172,11 @@ module.exports = async function(req, res) {
       if (r.status === 'fulfilled') all = all.concat(r.value);
     }
 
-    const filtered = deduplicate(all.filter(isRelevant))
+    let filtered = deduplicate(all.filter(isRelevant))
       .sort((a, b) => new Date(b.isoDate) - new Date(a.isoDate))
       .slice(0, 30);
+
+    filtered = await scoreHeadlines(filtered);
 
     console.log(`[news] ✓ ${filtered.length} relevant articles from ${all.length} total`);
 
