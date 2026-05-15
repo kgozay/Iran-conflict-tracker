@@ -1,144 +1,128 @@
 import React from 'react';
 import clsx from 'clsx';
-import { AlertIcon, BoltIcon, ChartIcon, DotIcon } from '../components/Icons.jsx';
 
-const CFG = {
-  bear:    { border: 'border-bear', textBig: 'text-bear', bg: 'bg-bear-d', chip: 'bg-bear/10 border-bear/30 text-bear', Icon: AlertIcon },
-  warn:    { border: 'border-warn', textBig: 'text-warn', bg: 'bg-warn-d', chip: 'bg-warn/10 border-warn/30 text-warn', Icon: BoltIcon  },
-  neutral: { border: 'border-ts',   textBig: 'text-ts',   bg: 'bg-bg-e',   chip: 'bg-bg-e border-bd text-ts',       Icon: ChartIcon },
-  bull:    { border: 'border-bull', textBig: 'text-bull', bg: 'bg-bull-d', chip: 'bg-bull/10 border-bull/30 text-bull', Icon: DotIcon   },
+const TONE_TEXT = { bear: 'text-bear', warn: 'text-warn', bull: 'text-bull', neutral: 'text-ts' };
+const TONE_BG   = { bear: 'bg-bear',  warn: 'bg-warn',   bull: 'bg-bull',   neutral: 'bg-ts'   };
+const TONE_HEX  = { bear: '#f97070',  warn: '#e8b04a',   bull: '#34d399',   neutral: '#a39d8d' };
+
+const INTERP = {
+  bear:    'Oil, FX, rates and/or domestic equity breadth are transmitting conflict risk into SA assets.',
+  warn:    'Conflict pricing is present but not decisive; rotation and confirmation signals matter more than the headline score.',
+  neutral: 'Current market action is not confirming a major SA transmission channel. Monitor for a break in oil or USD/ZAR.',
+  bull:    'Risk relief or commodity offsets are dominating. Check whether domestic cyclicals are also participating.',
 };
 
-function componentTone(score) {
-  if (score <= -35) return { label: 'High pressure', cls: 'bg-bear/10 border-bear/30 text-bear' };
-  if (score <= -12) return { label: 'Moderate pressure', cls: 'bg-warn/10 border-warn/30 text-warn' };
-  if (score >= 35) return { label: 'Strong offset', cls: 'bg-bull/10 border-bull/30 text-bull' };
-  if (score >= 12) return { label: 'Mild offset', cls: 'bg-bull/8 border-bull/25 text-bull' };
-  return { label: 'Contained', cls: 'bg-bg-e border-bd text-ts' };
+function componentLabel(score) {
+  if (score <= -35) return 'High pressure';
+  if (score <= -12) return 'Moderate pressure';
+  if (score >= 35)  return 'Strong offset';
+  if (score >= 12)  return 'Mild offset';
+  return 'Contained';
 }
 
-function Pill({ label, value, tone }) {
-  return (
-    <div className={clsx('rounded border px-2.5 py-1', tone.cls)}>
-      <div className="font-mono text-[7px] tracking-[1.5px] opacity-70 uppercase">{label}</div>
-      <div className="font-mono text-[9px] font-semibold mt-0.5 whitespace-nowrap">{value}</div>
-    </div>
-  );
+function componentColor(score) {
+  if (score < -15) return 'text-bear';
+  if (score > 15)  return 'text-bull';
+  return 'text-ts';
 }
 
 function computeTrend(data) {
   if (!data || data.length < 2) return null;
   const recent = data.slice(-5);
-  const last = recent[recent.length - 1].total;
-  const first = recent[0].total;
-  const delta = +(last - first).toFixed(1);
+  const delta = +(recent[recent.length - 1].total - recent[0].total).toFixed(1);
   if (Math.abs(delta) < 1) return { dir: 'flat', delta: 0 };
   return { dir: delta > 0 ? 'up' : 'down', delta };
 }
 
-export default function RegimeBanner({ cis, hasData, dataHealth, cisChartData }) {
-  const c = CFG[cis.regimeClass] ?? CFG.neutral;
-  const Icon = c.Icon;
-  const trend = computeTrend(cisChartData);
+export default function RegimeBanner({ cis, hasData, cisChartData }) {
+  const rc      = cis.regimeClass ?? 'neutral';
+  const toneText = TONE_TEXT[rc] ?? TONE_TEXT.neutral;
+  const toneBg   = TONE_BG[rc]   ?? TONE_BG.neutral;
+  const toneHex  = TONE_HEX[rc]  ?? TONE_HEX.neutral;
+  const pct      = Math.max(2, Math.min(98, ((cis.total + 100) / 200) * 100));
+  const trend    = computeTrend(cisChartData);
+  const interp   = INTERP[rc] ?? '';
+
+  const macro = cis.components?.macro?.score ?? 0;
+  const jse   = cis.components?.jse?.score   ?? 0;
+  const conf  = cis.components?.conf?.score  ?? 0;
 
   if (!hasData) {
     return (
-      <div className="flex items-center gap-4 border border-bd rounded p-4 mb-3.5 bg-bg-s">
-        <div className="w-11 h-11 rounded border border-bd flex items-center justify-center text-ts">
-          <ChartIcon className="w-5 h-5" />
-        </div>
-        <div>
-          <div className="font-display text-[22px] tracking-[3px] text-ts">AWAITING LIVE DATA</div>
-          <div className="font-mono text-[10px] text-tm mt-1">Click FETCH LIVE in the top bar to load real-time market data.</div>
-        </div>
-        <div className="ml-auto text-center px-5 border-l border-bd">
-          <div className="font-mono text-[8px] tracking-[2px] text-tm mb-1">CONFLICT IMPACT SCORE</div>
-          <div className="font-display text-[48px] leading-none text-tm">—</div>
-          <div className="font-mono text-[9px] text-tm">/ ±100 scale</div>
+      <div className="bg-bg-c border border-bd rounded-[14px] p-[26px_30px]">
+        <div className="text-[11px] font-medium text-tm tracking-[0.08em] uppercase">Conflict Impact Score</div>
+        <div className="font-serif text-[92px] text-tx leading-[0.9] tracking-[-0.04em] mt-4">—</div>
+        <div className="text-[13.5px] text-tm leading-[1.6] mt-4">
+          Fetch live data to compute the Conflict Impact Score.
         </div>
       </div>
     );
   }
 
-  const macro = componentTone(cis.components?.macro?.score ?? 0);
-  const jse = componentTone(cis.components?.jse?.score ?? 0);
-  const conf = componentTone(cis.components?.conf?.score ?? 0);
-  const confidence = dataHealth?.quoteCoverage >= 95 && !dataHealth?.bondIsStatic ? 'High' : dataHealth?.quoteCoverage >= 85 ? 'Moderate' : 'Low';
-
-  const interp = {
-    bear:    'Oil, FX, rates and/or domestic equity breadth are transmitting conflict risk into SA assets.',
-    warn:    'Conflict pricing is present but not decisive; rotation and confirmation signals matter more than the headline score.',
-    neutral: 'Current market action is not confirming a major SA transmission channel. Monitor for a break in oil or USD/ZAR.',
-    bull:    'Risk relief or commodity offsets are dominating. Check whether domestic cyclicals are also participating.',
-  }[cis.regimeClass] ?? '';
+  const CELLS = [
+    { label: 'Macro',   wt: '40%', score: macro },
+    { label: 'JSE',     wt: '35%', score: jse   },
+    { label: 'Signals', wt: '25%', score: conf  },
+  ];
 
   return (
-    <div className={clsx('relative border rounded p-4 mb-3.5 overflow-hidden', c.border, c.bg)}>
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-warn to-transparent animate-scan" />
+    <div className="bg-bg-c border border-bd rounded-[14px] p-[26px_30px]">
 
-      {/* Score panel — shown first on mobile */}
-      <div className="flex items-center justify-between lg:hidden mb-3">
-        <div>
-          <div className="font-mono text-[8px] tracking-[2px] text-ts">CONFLICT IMPACT SCORE</div>
-          <div className={clsx('font-display text-[52px] leading-none tracking-[2px]', c.textBig)}>{cis.total}</div>
-          <div className={clsx('font-mono text-[8px] px-1.5 py-0.5 rounded border inline-block mt-1', c.chip)}>{cis.regime}</div>
-          {trend && (
-            <div className="mt-1 flex items-center gap-1 font-mono text-[9px]">
-              <span className={trend.dir === 'up' ? 'text-bull' : trend.dir === 'down' ? 'text-bear' : 'text-ts'}>
-                {trend.dir === 'up' ? '↑' : trend.dir === 'down' ? '↓' : '→'}{trend.dir !== 'flat' && ` ${trend.delta > 0 ? '+' : ''}${trend.delta}`}
-              </span>
-              <span className="text-tm text-[8px]">trend</span>
-            </div>
-          )}
-        </div>
-        <div className={clsx('w-12 h-12 rounded border flex items-center justify-center flex-shrink-0 bg-black/20', c.border, c.textBig)}>
-          <Icon className="w-6 h-6" />
-        </div>
+      {/* Kicker */}
+      <div className="text-[11px] font-medium text-tm tracking-[0.08em] uppercase">
+        Conflict Impact Score
       </div>
 
-      {/* Desktop layout */}
-      <div className="hidden lg:grid lg:grid-cols-[auto_1fr_auto] gap-5 items-center">
-        <div className={clsx('w-14 h-14 rounded border flex items-center justify-center flex-shrink-0 bg-black/20', c.border, c.textBig)}>
-          <Icon className="w-6 h-6" />
+      {/* Hero score + regime label */}
+      <div className="flex items-end gap-[18px] mt-[18px]">
+        <div className={clsx('font-serif leading-[0.9] tracking-[-0.04em]', toneText)}
+          style={{ fontSize: 92 }}>
+          {cis.total}
         </div>
-        <div className="min-w-0">
-          <div className="font-mono text-[8px] tracking-[2px] text-ts uppercase mb-1">Conflict regime</div>
-          <div className={clsx('font-display text-[38px] tracking-[3px] leading-none', c.textBig)}>{cis.regime}</div>
-          <div className="font-mono text-[10px] text-ts mt-2 max-w-3xl leading-relaxed">{interp}</div>
-          <div className="flex items-center gap-2 mt-3 flex-wrap">
-            <Pill label="Macro pressure" value={macro.label} tone={macro} />
-            <Pill label="JSE breadth" value={jse.label} tone={jse} />
-            <Pill label="Signal confirmation" value={conf.label} tone={conf} />
-            <Pill label="Data confidence" value={confidence} tone={{ cls: confidence === 'High' ? 'bg-bull/8 border-bull/25 text-bull' : confidence === 'Moderate' ? 'bg-warn/8 border-warn/25 text-warn' : 'bg-bear/8 border-bear/25 text-bear' }} />
+        <div className="pb-2">
+          <div className={clsx('font-serif italic text-[24px] leading-none', toneText)}>
+            {cis.regime.toLowerCase()}
           </div>
-        </div>
-        <div className="text-center min-w-[150px] px-5 border-l border-bd">
-          <div className="font-mono text-[8px] tracking-[2px] text-ts mb-1">CONFLICT IMPACT SCORE</div>
-          <div className={clsx('font-display text-[68px] leading-none tracking-[2px]', c.textBig)}>{cis.total}</div>
-          <div className="font-mono text-[9px] text-tm">/ ±100 heuristic scale</div>
-          <div className={clsx('font-mono text-[8px] mt-2 px-1.5 py-0.5 rounded border inline-block', c.chip)}>{cis.regime}</div>
-          {trend && (
-            <div className="mt-1.5 flex items-center justify-center gap-1 font-mono text-[9px]">
-              <span className={trend.dir === 'up' ? 'text-bull' : trend.dir === 'down' ? 'text-bear' : 'text-ts'}>
-                {trend.dir === 'up' ? '↑' : trend.dir === 'down' ? '↓' : '→'}{trend.dir !== 'flat' && ` ${trend.delta > 0 ? '+' : ''}${trend.delta}`}
-              </span>
-              <span className="text-tm text-[8px]">5-reading trend</span>
+          {trend && trend.dir !== 'flat' && (
+            <div className="text-[12px] font-semibold text-bear mt-2 font-mono">
+              {trend.dir === 'down' ? '↓' : '↑'} {Math.abs(trend.delta)}{' '}
+              <span className="text-tm font-normal">5-reading trend</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Mobile: regime text + pills */}
-      <div className="lg:hidden">
-        <div className="font-mono text-[8px] tracking-[2px] text-ts uppercase mb-0.5">Conflict regime</div>
-        <div className={clsx('font-display text-[28px] tracking-[2px] leading-none', c.textBig)}>{cis.regime}</div>
-        <div className="font-mono text-[9px] text-ts mt-2 leading-relaxed">{interp}</div>
-        <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
-          <Pill label="Macro" value={macro.label} tone={macro} />
-          <Pill label="JSE" value={jse.label} tone={jse} />
-          <Pill label="Signal" value={conf.label} tone={conf} />
-          <Pill label="Data" value={confidence} tone={{ cls: confidence === 'High' ? 'bg-bull/8 border-bull/25 text-bull' : confidence === 'Moderate' ? 'bg-warn/8 border-warn/25 text-warn' : 'bg-bear/8 border-bear/25 text-bear' }} />
+      {/* Interpretation */}
+      <div className="text-[13.5px] text-ts leading-[1.6] mt-[18px]">{interp}</div>
+
+      {/* Slider with thumb */}
+      <div className="mt-[22px]">
+        <div className="relative h-[5px] bg-bg-h rounded-full">
+          <div className="absolute left-1/2 top-[-2px] w-px h-[9px] bg-bd" />
+          <div className={clsx('absolute top-0 left-0 h-full rounded-full', toneBg)}
+            style={{ width: `${pct}%`, opacity: 0.88 }} />
+          <div className="absolute top-[-5px] w-[14px] h-[14px] rounded-full bg-bg-c"
+            style={{ left: `calc(${pct}% - 7px)`, border: `3px solid ${toneHex}` }} />
         </div>
+        <div className="flex justify-between font-mono text-[10px] text-tm mt-[7px]">
+          <span>-100</span><span>0</span><span>+100</span>
+        </div>
+      </div>
+
+      {/* 3-up composition cells */}
+      <div className="grid grid-cols-3 gap-[14px] mt-[22px] pt-5 border-t border-bd">
+        {CELLS.map(({ label, wt, score }) => (
+          <div key={label}>
+            <div className="flex justify-between items-baseline">
+              <span className="text-[11.5px] font-medium text-ts">{label}</span>
+              <span className="text-[10px] text-tm">{wt}</span>
+            </div>
+            <div className={clsx('font-mono text-[24px] font-semibold mt-1 tracking-[-0.01em]', componentColor(score))}>
+              {score > 0 ? '+' : ''}{score}
+            </div>
+            <div className="text-[11px] text-ts mt-0.5">{componentLabel(score)}</div>
+          </div>
+        ))}
       </div>
     </div>
   );

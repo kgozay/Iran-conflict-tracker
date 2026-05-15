@@ -1,63 +1,37 @@
 import React, { useState, useRef, useEffect } from 'react';
 import clsx from 'clsx';
-import {
-  BoltIcon, DownloadIcon, TableIcon, LineChartIcon, FileIcon,
-  RefreshIcon, ErrorIcon, DotIcon, MenuIcon, SunIcon, MoonIcon,
-} from './Icons.jsx';
-import MarketHours from './MarketHours.jsx';
+import { DownloadIcon, TableIcon, LineChartIcon, FileIcon, MenuIcon } from './Icons.jsx';
 
-const PAGE_TITLES = {
-  overview:  'OVERVIEW',
-  macro:     'MACRO TRANSMISSION',
-  drilldown: 'SECTOR DRILLDOWN',
+const PAGE_META = {
+  overview:  { kicker: 'Today',   pre: "Today's",      italic: 'transmission' },
+  macro:     { kicker: 'Macro',   pre: 'How conflict', italic: 'transmits'    },
+  drilldown: { kicker: 'Sectors', pre: 'The',          italic: 'drilldown'    },
 };
 
-const BADGES = {
-  live:    { cls: 'bg-bull/10 text-bull border border-bull/30', Icon: DotIcon,     text: (t) => `LIVE · ${t}`   },
-  cached:  { cls: 'bg-warn/10 text-warn border border-warn/30', Icon: DotIcon,     text: (t) => `CACHED · ${t}` },
-  loading: { cls: 'bg-warn/10 text-warn border border-warn/30', Icon: RefreshIcon, text: ()  => 'FETCHING…'     },
-  error:   { cls: 'bg-bear/10 text-bear border border-bear/30', Icon: ErrorIcon,   text: ()  => 'ERROR'         },
-  empty:   { cls: 'bg-bg-e text-ts border border-bd',           Icon: DotIcon,     text: ()  => 'NO DATA YET'   },
-};
-
-const REFRESH_OPTS = [
-  { key:'off', label:'OFF' },
-  { key:'5m',  label:'5M'  },
-  { key:'15m', label:'15M' },
-  { key:'30m', label:'30M' },
-];
-
-function Group({ children }) { return <div className="flex bg-bg-c border border-bd rounded overflow-hidden flex-shrink-0">{children}</div>; }
-function Btn({ label, active, onClick, title }) {
+function SegGroup({ children }) {
   return (
-    <button type="button" onClick={onClick} title={title} className={clsx(
-      'px-2.5 py-1 font-mono text-[10px] transition-colors cursor-pointer select-none whitespace-nowrap',
-      active ? 'bg-bg-e text-tp' : 'text-ts hover:text-tp hover:bg-bg-h',
-    )}>{label}</button>
+    <div className="flex items-center bg-bg-h border border-bd rounded-lg p-[3px] gap-[2px]">
+      {children}
+    </div>
   );
 }
-
-function DataBadge({ dataHealth }) {
-  if (!dataHealth) return null;
-  const coverage = dataHealth.quoteCoverage ?? 0;
-  const tone = coverage >= 95 && !dataHealth.bondIsStatic ? 'bull' : coverage >= 85 ? 'warn' : 'bear';
-  const cls = tone === 'bull'
-    ? 'bg-bull/8 text-bull border-bull/30'
-    : tone === 'warn'
-      ? 'bg-warn/8 text-warn border-warn/30'
-      : 'bg-bear/8 text-bear border-bear/30';
-  const title = `Quotes ${dataHealth.liveStocks}/${dataHealth.totalStocks}; SA 10Y ${dataHealth.bondSource || 'unknown'}${dataHealth.bondIsStatic ? ' static' : ''}`;
+function SegBtn({ label, active, onClick }) {
   return (
-    <span className={clsx('inline-flex items-center gap-1 font-mono text-[9px] px-2 py-0.5 rounded border whitespace-nowrap', cls)} title={title}>
-      <DotIcon className="w-1.5 h-1.5" /> DATA {coverage}%
-    </span>
+    <button type="button" onClick={onClick}
+      className={clsx(
+        'px-[13px] py-[6px] text-[12px] font-medium rounded-md transition-colors cursor-pointer select-none',
+        active ? 'bg-bd text-tp' : 'text-ts hover:text-tp',
+      )}>
+      {label}
+    </button>
   );
 }
 
 export default function TopBar({
   page, status, error, lastFetch, progress,
   onFetch, timeframe, setTimeframe, returnMode, setReturnMode,
-  autoRefresh, onExport, dataHealth, onMenuClick, theme, setTheme,
+  autoRefresh, onExport, dataHealth, onMenuClick,
+  // theme / setTheme are intentionally not rendered — dark-only in v3
 }) {
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef(null);
@@ -71,101 +45,97 @@ export default function TopBar({
     return () => document.removeEventListener('mousedown', handler);
   }, [exportOpen]);
 
-  const badge = BADGES[status] ?? BADGES.empty;
-  const BadgeIcon = badge.Icon;
-  const ts = lastFetch?.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }) ?? '';
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('en-ZA', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+  const meta    = PAGE_META[page] ?? PAGE_META.overview;
   const isLoading = status === 'loading';
+  const now     = new Date();
+  const dayStr  = now.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const kicker  = `${meta.kicker} · ${dayStr}${isLoading && progress ? ` · ${progress}` : ''}`;
 
   return (
-    <header className="bg-bg-s border-b border-bd flex-shrink-0">
-      {/* Row 1: always visible */}
-      <div className="flex items-center justify-between px-4 py-2 gap-3 min-h-[52px]">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <button onClick={onMenuClick} aria-label="Open menu"
-            className="lg:hidden flex-shrink-0 p-1.5 text-ts hover:text-tp transition-colors cursor-pointer">
-            <MenuIcon className="w-5 h-5" />
-          </button>
-          <div className="min-w-0">
-            <div className="font-display text-[17px] lg:text-[18px] tracking-[2px] text-tp truncate">JSE CONFLICT WATCH</div>
-            <div className="font-mono text-[8px] text-tm tracking-[1px] truncate">
-              {PAGE_TITLES[page] ?? 'DASHBOARD'} · {dateStr}{isLoading ? ` · ${progress}` : ''}
-            </div>
+    <header className="bg-bg border-b border-bd flex-shrink-0 flex items-center justify-between px-8 py-[22px] gap-4">
+
+      {/* ── Left: hamburger (mobile) + kicker + title ────────── */}
+      <div className="flex items-center gap-3 min-w-0">
+        <button onClick={onMenuClick} aria-label="Open menu"
+          className="lg:hidden flex-shrink-0 p-1.5 text-ts hover:text-tp transition-colors cursor-pointer">
+          <MenuIcon className="w-5 h-5" />
+        </button>
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-medium text-tm tracking-[0.08em] uppercase leading-none">
+              {kicker}
+            </span>
+            {dataHealth?.bondIsStatic && (
+              <span className="font-mono text-[9px] text-bear border border-bear/30 bg-bear/8 px-[6px] py-[2px] rounded">
+                SA 10Y STATIC
+              </span>
+            )}
           </div>
-          <div className="hidden 2xl:block"><MarketHours /></div>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className={clsx('inline-flex items-center gap-1.5 font-mono text-[9px] px-2 py-0.5 rounded whitespace-nowrap', badge.cls)}>
-            <BadgeIcon className={clsx('flex-shrink-0', BadgeIcon === DotIcon ? 'w-2 h-2' : 'w-2.5 h-2.5', isLoading && 'animate-spin')} />
-            <span className="hidden sm:inline">{badge.text(ts)}</span>
-          </span>
-          <button type="button" onClick={() => onFetch()} disabled={isLoading}
-            className={clsx(
-              'flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] font-semibold rounded transition-colors whitespace-nowrap flex-shrink-0',
-              isLoading ? 'bg-bg-e text-tm cursor-not-allowed' : 'bg-warn text-bg hover:bg-warn/80 cursor-pointer',
-            )}>
-            {isLoading
-              ? <><span className="w-2.5 h-2.5 border-[2px] border-bg/30 border-t-bg rounded-full animate-spin inline-block flex-shrink-0" />FETCHING</>
-              : <><BoltIcon className="w-3 h-3" />FETCH LIVE</>}
-          </button>
+          <div className="font-serif text-[32px] text-tp leading-[1.1] tracking-[-0.02em] mt-1">
+            {meta.pre} <span className="italic text-warn">{meta.italic}</span>
+          </div>
         </div>
       </div>
 
-      {/* Row 2: controls strip — scrollable on mobile */}
-      <div className="flex items-center gap-2 px-4 pb-2 overflow-x-auto scrollbar-none">
-        <DataBadge dataHealth={dataHealth} />
-        {dataHealth?.bondIsStatic && (
-          <span className="inline-flex items-center gap-1 font-mono text-[8px] text-bear border border-bear/30 bg-bear/8 px-2 py-0.5 rounded-sm whitespace-nowrap">
-            <DotIcon className="w-1.5 h-1.5" /> SA 10Y STATIC
-          </span>
-        )}
-        {status === 'error' && error && (
-          <span className="font-mono text-[8px] text-bear whitespace-nowrap" title={error}>{error}</span>
-        )}
-        <div className="w-px h-4 bg-bd flex-shrink-0" />
-        <Group>{['1D','5D','20D'].map(tf => <Btn key={tf} label={tf} active={timeframe === tf} onClick={() => setTimeframe(tf)} />)}</Group>
-        <Group>{['ABS','REL'].map(rm => <Btn key={rm} label={rm} active={returnMode === rm} onClick={() => setReturnMode(rm)} />)}</Group>
-        <div className="w-px h-4 bg-bd flex-shrink-0" />
-        {autoRefresh && (
-          <>
-            <span className="font-mono text-[8px] text-tm whitespace-nowrap flex-shrink-0">AUTO</span>
-            <Group>{REFRESH_OPTS.map(opt => <Btn key={opt.key} label={opt.label} active={autoRefresh.intervalKey === opt.key} onClick={() => autoRefresh.setIntervalKey(opt.key)} />)}</Group>
-            {autoRefresh.countdown && <span className="font-mono text-[9px] text-warn w-10 text-right tabular-nums flex-shrink-0">{autoRefresh.countdown}</span>}
-          </>
-        )}
-        {setTheme && (
-          <button type="button" onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
-            aria-label="Toggle theme"
-            className="flex items-center justify-center w-7 h-7 text-ts hover:text-tp border border-bd bg-bg-c rounded transition-colors cursor-pointer flex-shrink-0">
-            {theme === 'light' ? <MoonIcon className="w-3.5 h-3.5" /> : <SunIcon className="w-3.5 h-3.5" />}
-          </button>
-        )}
+      {/* ── Right: controls ──────────────────────────────────── */}
+      <div className="flex items-center gap-2.5 flex-shrink-0">
+        <SegGroup>
+          {['1D', '5D', '20D'].map(tf => (
+            <SegBtn key={tf} label={tf} active={timeframe === tf} onClick={() => setTimeframe(tf)} />
+          ))}
+        </SegGroup>
+
+        <SegGroup>
+          {['ABS', 'REL'].map(rm => (
+            <SegBtn key={rm} label={rm} active={returnMode === rm} onClick={() => setReturnMode(rm)} />
+          ))}
+        </SegGroup>
+
+        <div className="w-px h-[22px] bg-bd mx-1" />
+
+        {/* Export dropdown */}
         {onExport && (
-          <div className="relative flex-shrink-0" ref={exportRef}>
+          <div className="relative" ref={exportRef}>
             <button type="button" onClick={() => setExportOpen(v => !v)}
-              className="flex items-center gap-1 px-2.5 py-1.5 font-mono text-[10px] text-ts border border-bd bg-bg-c rounded hover:text-tp hover:border-ts transition-colors cursor-pointer whitespace-nowrap">
-              <DownloadIcon className="w-3 h-3" /> EXPORT
+              className="flex items-center gap-1.5 px-4 py-[9px] text-[12.5px] font-medium text-ts
+                         border border-bd rounded-lg hover:text-tp hover:border-ts transition-colors cursor-pointer">
+              <DownloadIcon className="w-3.5 h-3.5" />
+              Export
             </button>
             {exportOpen && (
-              <div className="absolute right-0 top-full mt-1 bg-bg-s border border-bd rounded shadow-2xl z-[100] min-w-[180px]">
+              <div className="absolute right-0 top-full mt-1 bg-bg-c border border-bd rounded-xl shadow-2xl z-[100] min-w-[180px] py-1">
                 {[
-                  { label: 'Watchlist CSV', key: 'watchlist-csv', Icon: TableIcon },
-                  { label: 'Macro CSV', key: 'macro-csv', Icon: LineChartIcon },
-                  { label: 'Snapshot JSON', key: 'snapshot-json', Icon: FileIcon },
-                ].map(opt => {
-                  const OptIcon = opt.Icon;
-                  return (
-                    <button key={opt.key} type="button" onClick={() => { onExport(opt.key); setExportOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 font-mono text-[10px] text-ts hover:text-tp hover:bg-bg-h transition-colors cursor-pointer whitespace-nowrap">
-                      <OptIcon className="w-3 h-3 flex-shrink-0" />{opt.label}
-                    </button>
-                  );
-                })}
+                  { label: 'Watchlist CSV',  key: 'watchlist-csv',  Icon: TableIcon     },
+                  { label: 'Macro CSV',      key: 'macro-csv',      Icon: LineChartIcon },
+                  { label: 'Snapshot JSON',  key: 'snapshot-json',  Icon: FileIcon      },
+                ].map(({ label, key, Icon }) => (
+                  <button key={key} type="button"
+                    onClick={() => { onExport(key); setExportOpen(false); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-ts
+                               hover:text-tp hover:bg-bg-h transition-colors cursor-pointer whitespace-nowrap">
+                    <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                    {label}
+                  </button>
+                ))}
               </div>
             )}
           </div>
         )}
+
+        {/* Refresh data */}
+        <button type="button" onClick={() => onFetch()} disabled={isLoading}
+          className={clsx(
+            'flex items-center gap-2 px-[18px] py-[9px] text-[12.5px] font-medium rounded-lg transition-colors cursor-pointer',
+            isLoading
+              ? 'bg-bg-e text-tm cursor-not-allowed'
+              : 'bg-paper hover:opacity-90 cursor-pointer',
+          )}
+          style={!isLoading ? { color: 'var(--color-ink)' } : {}}>
+          {isLoading
+            ? <><span className="w-3 h-3 border-2 border-tm/30 border-t-tm rounded-full animate-spin inline-block" />Refreshing…</>
+            : 'Refresh data'}
+        </button>
       </div>
     </header>
   );

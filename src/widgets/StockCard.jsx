@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import clsx from 'clsx';
 import { getSignal, SIGNAL_CLS } from '../utils/signals.js';
-import { DotIcon } from '../components/Icons.jsx';
 
 function seededRng(seed) {
   let s = seed;
@@ -26,20 +25,27 @@ function Sparkline({ ticker, chg }) {
     return { line: pts, fill: `${pts} L ${W},${H} L 0,${H} Z`, W, H };
   }, [ticker, chg]);
 
-  const col = chg >= 0 ? '5,208,154' : '239,68,68';
+  const col = chg >= 0 ? '52,211,153' : '249,112,112';
   const id  = `s_${ticker.replace(/[^a-z0-9]/gi, '_')}`;
 
   return (
     <svg viewBox={`0 0 ${svg.W} ${svg.H}`} preserveAspectRatio="none"
-      className="w-full block mt-2" style={{ height: 30 }}>
+      className="w-full block mt-2.5" style={{ height: 32 }}>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor={`rgb(${col})`} stopOpacity="0.25" />
+          <stop offset="0%"   stopColor={`rgb(${col})`} stopOpacity="0.28" />
           <stop offset="100%" stopColor={`rgb(${col})`} stopOpacity="0"    />
         </linearGradient>
       </defs>
       <path d={svg.fill} fill={`url(#${id})`} />
-      <path d={svg.line} stroke={`rgb(${col})`} strokeWidth="1.5" fill="none" />
+      <path d={svg.line} stroke={`rgb(${col})`} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" fill="none" />
+      {/* Terminal dot */}
+      {(() => {
+        const pts = svg.line.split(' ').filter(p => p.includes(','));
+        const last = pts[pts.length - 1]?.split(',');
+        if (!last) return null;
+        return <circle cx={last[0]} cy={last[1]} r="2.5" fill={`rgb(${col})`} />;
+      })()}
     </svg>
   );
 }
@@ -58,58 +64,59 @@ export default function StockCard({ stock }) {
   const sigCls = SIGNAL_CLS[signal] ?? SIGNAL_CLS.NEUTRAL;
 
   return (
-    <div className="bg-bg-c border border-bd rounded p-3 transition-all hover:border-warn/50 hover:-translate-y-px">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-2">
-        <div className="min-w-0">
-          <div className="font-sans text-[12px] font-semibold text-tp leading-tight">{stock.name}</div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="font-mono text-[8px] text-ts">{stock.display}</span>
-            {stock.isLive && (
-              <span className="inline-flex items-center gap-0.5 font-mono text-[7px] text-bull">
-                <DotIcon className="w-1.5 h-1.5" /> LIVE
-              </span>
-            )}
+    <div className="bg-bg-c border border-bd rounded-[14px] p-[16px_20px] transition-all hover:border-warn/40 hover:-translate-y-px">
+      {/* Ticker + live dot */}
+      <div className="flex items-center justify-between mb-1">
+        <span className="font-mono text-[11px] text-ts">{stock.display}</span>
+        {stock.isLive && (
+          <span className="flex items-center gap-[4px] font-mono text-[9px] text-bull">
+            <span className="w-[5px] h-[5px] rounded-full bg-bull inline-block" />
+            live
+          </span>
+        )}
+      </div>
+
+      {/* Name */}
+      <div className="font-serif text-[15px] text-tp leading-tight mb-2 line-clamp-1">
+        {stock.name}
+      </div>
+
+      {/* Price + change */}
+      <div className="flex items-baseline justify-between">
+        <div className="font-serif text-[28px] text-tp leading-none">{fmtP(stock.price)}</div>
+        {chg != null && (
+          <div className={clsx('font-mono text-[12px] font-semibold', isUp ? 'text-bull' : 'text-bear')}>
+            {isUp ? '+' : ''}{chg.toFixed(2)}%
           </div>
-        </div>
-        <div className="text-right flex-shrink-0 ml-2">
-          <div className="font-display text-[21px] leading-none text-tp">{fmtP(stock.price)}</div>
-          {chg != null && (
-            <div className={clsx('font-mono text-[10px] font-semibold mt-0.5', isUp ? 'text-bull' : 'text-bear')}>
-              {isUp ? '▲' : '▼'} {Math.abs(chg).toFixed(2)}%
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Sparkline */}
       {chg != null
         ? <Sparkline ticker={stock.ticker} chg={chg} />
-        : <div className="h-8 flex items-center justify-center font-mono text-[8px] text-tm mt-2 border border-dashed border-bd rounded">
-            awaiting live data
+        : (
+          <div className="h-8 mt-2.5 flex items-center justify-center border border-dashed border-bd rounded-lg">
+            <span className="font-mono text-[9px] text-tm">awaiting data</span>
           </div>
+        )
       }
 
-      {/* Metadata */}
-      <div className="flex border-t border-bd-x mt-2 pt-2">
-        <div className="flex-1 text-center">
-          <div className="font-mono text-[7px] tracking-[1px] text-tm">MKT CAP</div>
-          <div className="font-mono text-[10px] text-ts mt-0.5">{stock.mktcap}</div>
+      {/* Metadata strip */}
+      <div className="grid grid-cols-3 gap-1 mt-3 pt-3 border-t border-bd">
+        <div className="text-center">
+          <div className="font-mono text-[9px] text-tm uppercase tracking-[0.06em]">Mkt cap</div>
+          <div className="font-mono text-[10px] text-ts mt-0.5">{stock.mktcap ?? '—'}</div>
         </div>
-        <div className="flex-1 text-center">
-          <div className="font-mono text-[7px] tracking-[1px] text-tm">P/E</div>
-          <div className="font-mono text-[10px] text-ts mt-0.5">{stock.pe}x</div>
+        <div className="text-center">
+          <div className="font-mono text-[9px] text-tm uppercase tracking-[0.06em]">P/E</div>
+          <div className="font-mono text-[10px] text-ts mt-0.5">{stock.pe != null ? `${stock.pe}x` : '—'}</div>
         </div>
-        <div className="flex-1 text-center">
-          <div className="font-mono text-[7px] tracking-[1px] text-tm">SECTOR</div>
-          <div className="font-mono text-[9px] text-ts mt-0.5 truncate px-1">{stock.sector?.slice(0, 7) ?? '—'}</div>
-        </div>
-        <div className="flex-1 text-center">
-          <div className="font-mono text-[7px] tracking-[1px] text-tm">SIG</div>
-          <div className="mt-0.5">
+        <div className="text-center">
+          <div className="font-mono text-[9px] text-tm uppercase tracking-[0.06em]">Signal</div>
+          <div className="mt-0.5 flex justify-center">
             {signal
-              ? <span className={clsx('font-mono text-[7px] px-1 py-0.5 rounded-sm border', sigCls)}>{signal}</span>
-              : <span className="font-mono text-[7px] text-tm">—</span>
+              ? <span className={clsx('font-mono text-[8px] px-1.5 py-[2px] rounded-full border', sigCls)}>{signal}</span>
+              : <span className="font-mono text-[9px] text-tm">—</span>
             }
           </div>
         </div>

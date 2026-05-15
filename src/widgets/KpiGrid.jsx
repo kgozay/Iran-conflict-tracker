@@ -1,17 +1,13 @@
 import React, { useMemo } from 'react';
 import clsx from 'clsx';
 import { getAssetAlertLevel } from '../utils/alerts.js';
-import { ASSET_ICONS, RadarIcon, DotIcon } from '../components/Icons.jsx';
-
-const TOP_BAR = { bull:'before:bg-bull', bear:'before:bg-bear', warn:'before:bg-warn', ts:'before:bg-ts' };
-const CHG_CLR = { bull:'text-bull', bear:'text-bear', warn:'text-warn', ts:'text-ts' };
 
 function fmtPrice(key, price) {
   if (price == null) return '—';
   if (key === 'usdZar') return price.toFixed(3);
   if (key === 'r2035')  return `${price.toFixed(3)}%`;
   if (key === 'brent')  return price.toFixed(2);
-  if (price >= 10000)   return price.toLocaleString('en-ZA', { maximumFractionDigits:0 });
+  if (price >= 10000)   return price.toLocaleString('en-ZA', { maximumFractionDigits: 0 });
   return price.toFixed(2);
 }
 
@@ -19,164 +15,181 @@ function getImpactLine(assetKey, changePct) {
   if (changePct == null) return 'Awaiting live move to infer market impact';
   const up = changePct >= 0;
   const map = {
-    brent: up ? 'Bearish for SA inflation, rand and domestic cyclicals' : 'Relief for SA inflation, rand and consumer shares',
-    usdZar: up ? 'Rand weakness: pressure on importers, retailers and banks' : 'Rand strength: supportive for domestic cyclicals',
-    gold: up ? 'Safe-haven bid: supportive for gold miners' : 'Haven bid fading: miner hedge weakening',
-    platinum: up ? 'PGM support: helps diversified miners and PGM names' : 'PGM softness: drag for platinum-linked shares',
+    brent:     up ? 'Bearish for SA inflation, rand and domestic cyclicals' : 'Relief for SA inflation, rand and consumer shares',
+    usdZar:    up ? 'Rand weakness: pressure on importers, retailers and banks' : 'Rand strength: supportive for domestic cyclicals',
+    gold:      up ? 'Safe-haven bid: supportive for gold miners' : 'Haven bid fading: miner hedge weakening',
+    platinum:  up ? 'PGM support: helps diversified miners and PGM names' : 'PGM softness: drag for platinum-linked shares',
     palladium: up ? 'Palladium support: watch PGM beta and auto demand read-through' : 'Palladium softness: weak read-through for PGM exposure',
-    coal: up ? 'Coal support: positive for coal/energy-linked earnings' : 'Coal weakness: weaker energy export tailwind',
-    r2035: up ? 'Yield pressure: tighter financial conditions' : 'Yield relief: supportive for duration and credit-sensitive equities',
+    coal:      up ? 'Coal support: positive for coal/energy-linked earnings' : 'Coal weakness: weaker energy export tailwind',
+    r2035:     up ? 'Yield pressure: tighter financial conditions' : 'Yield relief: supportive for duration and credit-sensitive equities',
   };
   return map[assetKey] || (up ? 'Positive market read-through' : 'Negative market read-through');
 }
 
 function sourceBadge(asset) {
   if (asset.isStale) return { label: 'STATIC', cls: 'text-bear border-bear/30 bg-bear/8', title: 'Static fallback; excluded from CIS' };
-  if (asset.isProxy) return { label: asset.source || 'PROXY', cls: 'text-warn border-warn/30 bg-warn/8', title: `${asset.source || 'Proxy'}${asset.date ? ' · ' + asset.date : ''}` };
-  if (asset.isLive)  return { label: asset.source || 'LIVE', cls: 'text-bull border-bull/30 bg-bull/8', title: `${asset.source || 'Yahoo'}${asset.date ? ' · ' + asset.date : ''}` };
+  if (asset.isProxy) return { label: asset.source || 'PROXY', cls: 'text-tm border-bd bg-bg-h', title: `${asset.source || 'Proxy'}${asset.date ? ' · ' + asset.date : ''}` };
+  if (asset.isLive)  return { label: asset.source || 'LIVE',  cls: 'text-tm border-bd bg-bg-h', title: `${asset.source || 'Yahoo'}${asset.date ? ' · ' + asset.date : ''}` };
   return null;
 }
 
 function KpiSparkline({ assetKey, points, chg }) {
   const path = useMemo(() => {
     if (!points || points.length < 3) return null;
-    const W = 200, H = 28;
+    const W = 200, H = 40;
     const min   = Math.min(...points);
     const max   = Math.max(...points);
     const range = max - min || Math.abs(min) * 0.001 || 1;
-    const line  = points
-      .map((d, i) =>
-        `${i === 0 ? 'M' : 'L'} ${((i / (points.length - 1)) * W).toFixed(1)},${(H - ((d - min) / range) * H).toFixed(1)}`
-      )
-      .join(' ');
+    const coords = points.map((d, i) => ({
+      x: (i / (points.length - 1)) * W,
+      y: H - ((d - min) / range) * (H * 0.9),
+    }));
+    const line = coords.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
     const fill = `${line} L ${W},${H} L 0,${H} Z`;
-    return { line, fill, W, H };
+    const last = coords[coords.length - 1];
+    return { line, fill, W, H, last };
   }, [points]);
 
   if (!path) return null;
 
-  const col = (chg ?? 0) >= 0 ? '5,208,154' : '239,68,68';
+  const up  = (chg ?? 0) >= 0;
+  const col = up ? '52,211,153' : '249,112,112';
+  const hex = up ? '#34d399' : '#f97070';
   const id  = `kpi_grad_${assetKey}`;
 
   return (
-    <svg viewBox={`0 0 ${path.W} ${path.H}`} preserveAspectRatio="none" className="w-full block mt-2" style={{ height: 26 }} aria-hidden="true">
+    <svg viewBox={`0 0 ${path.W} ${path.H}`} preserveAspectRatio="none"
+      className="w-full block" style={{ height: path.H }} aria-hidden="true">
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor={`rgb(${col})`} stopOpacity="0.22" />
+          <stop offset="0%"   stopColor={`rgb(${col})`} stopOpacity="0.28" />
           <stop offset="100%" stopColor={`rgb(${col})`} stopOpacity="0"    />
         </linearGradient>
       </defs>
       <path d={path.fill} fill={`url(#${id})`} />
-      <path d={path.line} stroke={`rgb(${col})`} strokeWidth="1.5" fill="none" strokeLinejoin="round" />
+      <path d={path.line} stroke={`rgb(${col})`} strokeWidth="1.5" fill="none"
+        strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={path.last.x.toFixed(1)} cy={path.last.y.toFixed(1)} r="2.5" fill={hex} />
     </svg>
   );
 }
 
 function SparklineSkeleton() {
-  return <div className="w-full h-[26px] mt-2 bg-bd/20 rounded animate-pulse" />;
+  return <div className="w-full h-[40px] bg-bd/20 rounded animate-pulse" />;
 }
 
 function KpiCard({ assetKey, asset, timeframe, sparklineData, sparkLoading }) {
   const { name, price, unit, symbol } = asset;
   const invert = asset.invert ?? false;
 
-  const changePct = timeframe === '5D'
-    ? asset.changePct5D
-    : timeframe === '20D'
-      ? asset.changePct20D
-      : asset.changePct;
+  const changePct = timeframe === '5D' ? asset.changePct5D
+    : timeframe === '20D' ? asset.changePct20D
+    : asset.changePct;
 
-  const isUp   = (changePct ?? 0) >= 0;
-  const good   = invert ? !isUp : isUp;
-  const barKey = price == null ? 'ts' : good ? 'bull' : 'bear';
-  const chgKey = price == null ? 'ts' : good ? 'bull' : 'bear';
-  const alert  = getAssetAlertLevel(assetKey, changePct ?? 0);
-  const sign   = isUp ? '+' : '';
+  const isUp  = (changePct ?? 0) >= 0;
+  const good  = invert ? !isUp : isUp;
+  const chgCl = price == null ? 'text-ts' : good ? 'text-bull' : 'text-bear';
+  const sign  = isUp ? '+' : '';
   const chgStr = changePct == null ? '—' : `${sign}${changePct.toFixed(2)}%`;
   const badge  = sourceBadge(asset);
 
-  const Icon = ASSET_ICONS[assetKey];
-  const sparkKey = symbol || assetKey;
-  const spark    = sparklineData?.[sparkKey];
+  const sparkKey  = symbol || assetKey;
+  const spark     = sparklineData?.[sparkKey];
   const showSpark = timeframe === '1D' && price != null;
 
   return (
-    <div className={clsx(
-      'relative bg-bg-c border border-bd rounded p-[11px] overflow-hidden transition-colors hover:border-warn/40',
-      'before:content-[""] before:absolute before:top-0 before:left-0 before:right-0 before:h-[2px]',
-      TOP_BAR[barKey],
-    )}>
-      {alert && (
-        <span className={clsx('absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full',
-          alert === 'red' ? 'bg-bear shadow-[0_0_6px_#ef4444] animate-pulseFast' : 'bg-warn shadow-[0_0_6px_#f0b429]'
-        )} />
-      )}
+    <div className="bg-bg-c border border-bd rounded-[14px] p-[22px_26px_20px] flex flex-col min-h-[260px]
+                    transition-colors hover:border-warn/40">
 
-      <div className="inline-flex items-center gap-1.5 font-mono text-[8px] tracking-[2px] text-ts mb-1.5 pr-4">
-        {Icon && <Icon className="w-3 h-3" />}
-        {name}
-      </div>
-      <div className="font-display text-[26px] leading-none tracking-[0.5px] text-tp">{fmtPrice(assetKey, price)}</div>
-
-      <div className="flex items-baseline gap-1.5 mt-1.5">
-        <span className={clsx('font-mono text-[11px] font-semibold', CHG_CLR[chgKey])}>{chgStr}</span>
-        <span className="font-mono text-[9px] text-tm">{timeframe === '1D' ? unit : timeframe}</span>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <span className="text-[12.5px] font-medium text-ts leading-none">{name}</span>
         {badge && (
-          <span className={clsx('inline-flex items-center gap-0.5 font-mono text-[7px] ml-auto px-1 py-0.5 rounded-sm border', badge.cls)} title={badge.title}>
-            <DotIcon className="w-1.5 h-1.5" /> {badge.label}
+          <span className={clsx(
+            'font-mono text-[9.5px] px-[7px] py-[2px] rounded border tracking-[0.04em]',
+            badge.cls,
+          )} title={badge.title}>
+            {badge.label}
           </span>
         )}
       </div>
 
-      <div className="font-mono text-[7.5px] text-tm mt-2 leading-snug min-h-[24px]">
-        {getImpactLine(assetKey, changePct)}
+      {/* Price + change */}
+      <div className="mt-[18px]">
+        <div className="font-serif text-[56px] text-tp leading-[0.95] tracking-[-0.025em]">
+          {fmtPrice(assetKey, price)}
+        </div>
+        <div className="flex items-baseline gap-2 mt-2.5">
+          <span className={clsx('font-mono text-[14px] font-semibold', chgCl)}>{chgStr}</span>
+          <span className="text-[11.5px] text-tm">{timeframe === '1D' ? unit : timeframe}</span>
+        </div>
       </div>
 
-      {showSpark
-        ? (spark?.points?.length >= 3
+      {/* Sparkline */}
+      <div className="mt-5 mb-4">
+        {showSpark
+          ? spark?.points?.length >= 3
             ? <KpiSparkline assetKey={assetKey} points={spark.points} chg={changePct} />
             : sparkLoading
               ? <SparklineSkeleton />
-              : <div className="w-full h-[26px] mt-2" />)
-        : <div className="w-full h-[26px] mt-2" />
-      }
+              : <div className="h-[40px]" />
+          : <div className="h-[40px]" />
+        }
+      </div>
+
+      {/* Impact line — pinned to bottom */}
+      <div className="mt-auto pt-3.5 border-t border-bd text-[11.5px] text-ts leading-[1.5]">
+        {getImpactLine(assetKey, changePct)}
+      </div>
     </div>
   );
 }
 
-function CisTile({ cis, hasData }) {
-  const cisColor = !hasData ? 'text-ts'
-    : cis.regimeClass === 'bull' ? 'text-bull'
-    : cis.regimeClass === 'warn' ? 'text-warn'
-    : 'text-bear';
+/* ── Secondary KPI strip (Platinum · Palladium · Coal) ──────────────── */
+export function SecondaryKpiStrip({ assets, timeframe = '1D' }) {
+  const keys = ['platinum', 'palladium', 'coal'];
+  const present = keys.filter(k => assets?.[k]);
+  if (!present.length) return null;
 
   return (
-    <div className="relative bg-bg-c border border-bd rounded p-[11px] overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[2px] before:bg-ts">
-      <div className="inline-flex items-center gap-1.5 font-mono text-[8px] tracking-[2px] text-ts mb-1.5">
-        <RadarIcon className="w-3 h-3" />
-        Conflict Impact
-      </div>
-      <div className={clsx('font-display text-[36px] leading-none', cisColor)}>
-        {hasData ? cis.total : '—'}
-      </div>
-      <div className="flex items-baseline gap-1.5 mt-1.5">
-        <span className={clsx('font-mono text-[11px] font-semibold', cisColor)}>
-          {hasData ? cis.regime : 'NO DATA'}
-        </span>
-      </div>
-      <div className="font-mono text-[7.5px] text-tm mt-2 leading-snug min-h-[24px]">
-        Heuristic: macro 40%, JSE reaction 35%, confirmation 25%.
-      </div>
-      <div className="w-full h-[26px] mt-2" />
+    <div className="flex bg-bg-c border border-bd rounded-xl overflow-hidden mb-4">
+      {present.map((k, i) => {
+        const asset = assets[k];
+        const changePct = timeframe === '5D' ? asset.changePct5D
+          : timeframe === '20D' ? asset.changePct20D
+          : asset.changePct;
+        const isUp  = (changePct ?? 0) >= 0;
+        const good  = (asset.invert ?? false) ? !isUp : isUp;
+        const chgCl = changePct == null ? 'text-ts' : good ? 'text-bull' : 'text-bear';
+        const sign  = isUp ? '+' : '';
+        const chgStr = changePct == null ? '—' : `${sign}${changePct.toFixed(2)}%`;
+
+        return (
+          <div key={k}
+            className={clsx(
+              'flex-1 flex items-center justify-between px-[22px] py-[14px] gap-6',
+              i < present.length - 1 && 'border-r border-bd',
+            )}>
+            <div>
+              <div className="text-[11.5px] font-medium text-ts">{asset.name}</div>
+              <div className="font-serif text-[26px] text-tp leading-none tracking-[-0.01em] mt-1">
+                {fmtPrice(k, asset.price)}
+              </div>
+            </div>
+            <div className={clsx('font-mono text-[13px] font-semibold', chgCl)}>{chgStr}</div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-export default function KpiGrid({ assets, cis, hasData, sparklines, sparkLoading, timeframe = '1D' }) {
-  const keys = ['brent','usdZar','gold','platinum','palladium','coal','r2035'];
+/* ── Hero KPI grid (Brent · USD/ZAR · Gold · SA 10Y) ───────────────── */
+export default function KpiGrid({ assets, sparklines, sparkLoading, timeframe = '1D' }) {
+  const keys = ['brent', 'usdZar', 'gold', 'r2035'];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 mb-3.5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
       {keys.map(k =>
         assets[k] ? (
           <KpiCard
@@ -189,7 +202,6 @@ export default function KpiGrid({ assets, cis, hasData, sparklines, sparkLoading
           />
         ) : null
       )}
-      <CisTile cis={cis} hasData={hasData} />
     </div>
   );
 }

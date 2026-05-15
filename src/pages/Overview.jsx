@@ -1,49 +1,38 @@
 import React from 'react';
-import RegimeBanner    from '../widgets/RegimeBanner.jsx';
-import ScoreDrivers    from '../widgets/ScoreDrivers.jsx';
-import KpiGrid         from '../widgets/KpiGrid.jsx';
-import HeatStrip       from '../widgets/HeatStrip.jsx';
-import ScoreDecomp     from '../widgets/ScoreDecomp.jsx';
-import SectorRelChart  from '../widgets/SectorRelChart.jsx';
-import AlertsFeed      from '../widgets/AlertsFeed.jsx';
-import MorningNote     from '../widgets/MorningNote.jsx';
-import Watchlist       from '../widgets/Watchlist.jsx';
-import DataHealth      from '../widgets/DataHealth.jsx';
-import NewsFeed        from '../widgets/NewsFeed.jsx';
-import { RadarIcon, BoltIcon } from '../components/Icons.jsx';
+import RegimeBanner   from '../widgets/RegimeBanner.jsx';
+import KpiGrid, { SecondaryKpiStrip } from '../widgets/KpiGrid.jsx';
+import HeatStrip      from '../widgets/HeatStrip.jsx';
+import AlertsFeed     from '../widgets/AlertsFeed.jsx';
+import MorningNote    from '../widgets/MorningNote.jsx';
+import Watchlist      from '../widgets/Watchlist.jsx';
+import NewsFeed       from '../widgets/NewsFeed.jsx';
 
 function FetchPrompt({ onFetch }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="mb-5 text-ts">
-        <RadarIcon className="w-14 h-14" />
-      </div>
-      <div className="font-display text-[30px] tracking-[3px] text-ts mb-2">NO LIVE DATA YET</div>
-      <div className="font-mono text-[11px] text-tm mb-2 leading-relaxed max-w-md">
+      <div className="font-serif text-[32px] text-ts mb-3">No live data yet</div>
+      <div className="text-[14px] text-tm mb-2 leading-relaxed max-w-md">
         Click below to fetch real-time prices for the JSE watchlist, Brent crude, gold,
         platinum, palladium, USD/ZAR, coal — plus the{' '}
         <span className="text-warn">SA 10Y Yield Proxy</span>.
       </div>
-      <div className="font-mono text-[9px] text-tm mb-6">
-        Single request · No API key required for market data · Yahoo Finance + Stooq/FRED proxy stack
+      <div className="font-mono text-[11px] text-tx mb-6">
+        Single request · No API key required · Yahoo Finance + Stooq/FRED
       </div>
       <button
         onClick={() => onFetch()}
-        className="inline-flex items-center gap-2 px-10 py-3.5 bg-warn text-bg font-mono text-[13px] font-semibold rounded hover:bg-warn/80 transition-colors cursor-pointer shadow-lg"
+        className="px-10 py-3 bg-paper font-medium text-[13px] rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
+        style={{ color: 'var(--color-ink)' }}
       >
-        <BoltIcon className="w-4 h-4" />
-        FETCH LIVE DATA NOW
+        Fetch live data
       </button>
-      <div className="font-mono text-[9px] text-tm mt-4">
-        After fetching, use AUTO refresh buttons in the command bar to stay live.
-      </div>
     </div>
   );
 }
 
 export default function Overview({
   assets, stocks, sectors, cis, alerts, timeframe, returnMode,
-  status, hasData, onFetch, cisChartData, clearHistory,
+  status, hasData, onFetch, cisChartData,
   sparklines, sparkLoading, dataHealth,
   news, newsLoading, newsError, refetchNews,
 }) {
@@ -51,38 +40,66 @@ export default function Overview({
 
   if (!hasData && !isLoading) {
     return (
-      <div className="p-3 sm:p-[18px] animate-fadeUp">
+      <div className="p-[32px_36px] animate-fadeUp">
         <FetchPrompt onFetch={onFetch} />
       </div>
     );
   }
 
   return (
-    <div className="p-3 sm:p-[18px] animate-fadeUp">
-      <RegimeBanner cis={cis} hasData={hasData} dataHealth={dataHealth} cisChartData={cisChartData} />
-      <ScoreDrivers cis={cis} hasData={hasData} />
-      <KpiGrid assets={assets} cis={cis} hasData={hasData} sparklines={sparklines} sparkLoading={sparkLoading} timeframe={timeframe} />
-      <HeatStrip sectors={sectors} />
+    <div className="p-[32px_36px] flex flex-col gap-6 animate-fadeUp">
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3.5 mb-3.5">
-        <div className="xl:col-span-1"><ScoreDecomp cis={cis} hasData={hasData} /></div>
-        <div className="xl:col-span-2"><SectorRelChart sectors={sectors} hasData={hasData} /></div>
+      {/* Secondary KPI strip: Platinum · Palladium · Coal */}
+      <SecondaryKpiStrip assets={assets} timeframe={timeframe} />
+
+      {/* Hero macro KPIs: Brent · USD/ZAR · Gold · SA 10Y */}
+      <KpiGrid
+        assets={assets}
+        sparklines={sparklines}
+        sparkLoading={sparkLoading}
+        timeframe={timeframe}
+      />
+
+      {/* Two-column grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-[18px] items-start">
+
+        {/* Left: Watchlist + Sector breadth */}
+        <div className="flex flex-col gap-[18px]">
+          <Watchlist
+            stocks={stocks}
+            timeframe={timeframe}
+            returnMode={returnMode}
+            sectors={sectors}
+            sparklines={sparklines}
+          />
+          <HeatStrip sectors={sectors} timeframe={timeframe} />
+        </div>
+
+        {/* Right: Regime card + Alerts */}
+        <div className="flex flex-col gap-[18px]">
+          <RegimeBanner cis={cis} hasData={hasData} cisChartData={cisChartData} />
+          <AlertsFeed alerts={alerts} hasData={hasData} />
+        </div>
       </div>
 
-      <div className="mb-3.5">
-        <DataHealth health={dataHealth} hasData={hasData} />
-      </div>
+      {/* Morning note */}
+      <MorningNote
+        assets={assets}
+        sectors={sectors}
+        cis={cis}
+        stocks={stocks}
+        alerts={alerts}
+        dataHealth={dataHealth}
+        hasData={hasData}
+      />
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5 mb-3.5">
-        <AlertsFeed alerts={alerts} hasData={hasData} />
-        <MorningNote assets={assets} sectors={sectors} cis={cis} stocks={stocks} alerts={alerts} dataHealth={dataHealth} hasData={hasData} />
-      </div>
-
-      <div className="mb-3.5">
-        <NewsFeed news={news} loading={newsLoading} newsError={newsError} onRefresh={refetchNews} />
-      </div>
-
-      <Watchlist stocks={stocks} timeframe={timeframe} returnMode={returnMode} sectors={sectors} sparklines={sparklines} />
+      {/* News feed */}
+      <NewsFeed
+        news={news}
+        loading={newsLoading}
+        newsError={newsError}
+        onRefresh={refetchNews}
+      />
     </div>
   );
 }

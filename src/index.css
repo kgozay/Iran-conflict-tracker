@@ -4,29 +4,26 @@
 
 /* ── Theme tokens ───────────────────────────────────────────────────── */
 :root {
-  --color-bg:   #07080f;
-  --color-bg-s: #0d1220;
-  --color-bg-c: #111827;
-  --color-bg-h: #161f30;
-  --color-bg-e: #1c2740;
-  --color-bd:   #1e2d45;
-  --color-bd-x: #141e2e;
-  --color-tp:   #e2eaf5;
-  --color-ts:   #6e80a0;
-  --color-tm:   #3d4f68;
-}
+  /* Surfaces */
+  --color-bg:    #141210;
+  --color-bg-s:  #1c1a16;
+  --color-bg-c:  #1c1a16;
+  --color-bg-h:  #252119;
+  --color-bg-e:  #2d2922;
 
-[data-theme="light"] {
-  --color-bg:   #f0f4fa;
-  --color-bg-s: #e4eaf5;
-  --color-bg-c: #ffffff;
-  --color-bg-h: #dce5f0;
-  --color-bg-e: #ccd6ea;
-  --color-bd:   #b8c8de;
-  --color-bd-x: #c8d6e8;
-  --color-tp:   #0d1220;
-  --color-ts:   #3a4e68;
-  --color-tm:   #8298b5;
+  /* Borders */
+  --color-bd:    #2d2922;
+  --color-bd-x:  #3a3528;
+
+  /* Text */
+  --color-tp:    #ede5d2;
+  --color-ts:    #a39d8d;
+  --color-tm:    #6e6a5e;
+  --color-tx:    #48443a;
+
+  /* Brand / accent */
+  --color-ink:   #0d0b08;
+  --color-paper: #f1eadd;
 }
 
 @layer base {
@@ -41,19 +38,20 @@
 }
 
 @layer utilities {
-  .text-bull  { color: #05d09a; }
-  .text-bear  { color: #ef4444; }
-  .text-warn  { color: #f0b429; }
+  .text-bull  { color: #34d399; }
+  .text-bear  { color: #f97070; }
+  .text-warn  { color: #e8b04a; }
   .text-ts    { color: var(--color-ts); }
   .text-tm    { color: var(--color-tm); }
+  .text-tx    { color: var(--color-tx); }
 
-  .bg-bull-faint  { background: rgba(5,208,154,.08); }
-  .bg-bear-faint  { background: rgba(239,68,68,.08); }
-  .bg-warn-faint  { background: rgba(240,180,41,.08); }
+  .bg-bull-faint  { background: rgba(52,211,153,.08); }
+  .bg-bear-faint  { background: rgba(249,112,112,.08); }
+  .bg-warn-faint  { background: rgba(232,176,74,.08); }
 
-  .border-bull-faint  { border-color: rgba(5,208,154,.3); }
-  .border-bear-faint  { border-color: rgba(239,68,68,.3); }
-  .border-warn-faint  { border-color: rgba(240,180,41,.3); }
+  .border-bull-faint  { border-color: rgba(52,211,153,.3); }
+  .border-bear-faint  { border-color: rgba(249,112,112,.3); }
+  .border-warn-faint  { border-color: rgba(232,176,74,.3); }
 
   /* Hide scrollbar on controls strips */
   .scrollbar-none::-webkit-scrollbar { display: none; }

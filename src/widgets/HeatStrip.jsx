@@ -1,40 +1,78 @@
 import React from 'react';
 import clsx from 'clsx';
+import { Card } from './Card.jsx';
 
-const STRIP_ORDER = ['top40','Gold Miners','PGMs','Energy','Banks','Retailers','Industrials'];
-const STRIP_LABELS = {
-  top40:'JSE TOP 40','Gold Miners':'GOLD MINERS',PGMs:'PGMs',
-  Energy:'ENERGY',Banks:'BANKS',Retailers:'RETAILERS',Industrials:'INDUSTRIALS',
-};
+const SECTOR_ROWS = [
+  { key: 'top40',        label: 'JSE Top 40',    isMkt: true  },
+  { key: 'Gold Miners',  label: 'Gold Miners',   isMkt: false },
+  { key: 'PGMs',         label: 'PGMs',          isMkt: false },
+  { key: 'Energy',       label: 'Energy',        isMkt: false },
+  { key: 'Banks',        label: 'Banks',         isMkt: false },
+  { key: 'Retailers',    label: 'Retailers',     isMkt: false },
+  { key: 'Industrials',  label: 'Industrials',   isMkt: false },
+  { key: 'Mining',       label: 'Mining',        isMkt: false },
+];
 
-// All possible class strings written out statically
-function heat(chg) {
-  if (chg == null) return { bar:'bg-ts',       text:'text-ts',   label:'NO DATA'  };
-  if (chg >  2.0)  return { bar:'bg-bull',      text:'text-bull', label:'BULLISH'  };
-  if (chg >  0.5)  return { bar:'bg-bull/50',   text:'text-bull', label:'MILD BULL'};
-  if (chg > -0.5)  return { bar:'bg-ts',        text:'text-ts',   label:'NEUTRAL'  };
-  if (chg > -1.0)  return { bar:'bg-bear/50',   text:'text-bear', label:'MILD BEAR'};
-  return               { bar:'bg-bear',      text:'text-bear', label:'BEARISH'  };
-}
+export default function HeatStrip({ sectors, timeframe = '1D' }) {
+  const rows = SECTOR_ROWS
+    .map(r => ({ ...r, chg: sectors[r.key]?.chg ?? null }))
+    .filter(r => r.chg != null);
 
-export default function HeatStrip({ sectors }) {
+  if (!rows.length) return null;
+
+  const max = Math.max(...rows.map(r => Math.abs(r.chg)), 0.01);
+
   return (
-    <div className="flex gap-2 mb-3.5">
-      {STRIP_ORDER.map(key => {
-        const s = sectors[key];
-        const chg = s?.chg ?? null;
-        const h = heat(chg);
-        return (
-          <div key={key} className="flex-1 bg-bg-c border border-bd rounded p-2.5 text-center relative overflow-hidden transition-colors hover:border-warn/50">
-            <div className={clsx('absolute bottom-0 left-0 right-0 h-[3px]', h.bar)} />
-            <div className="font-mono text-[7.5px] tracking-[1px] text-ts mb-1.5">{STRIP_LABELS[key] ?? key}</div>
-            <div className={clsx('font-display text-[20px] leading-none tracking-[0.5px]', h.text)}>
-              {chg == null ? '—' : `${chg > 0 ? '+' : ''}${chg.toFixed(2)}%`}
+    <Card>
+      {/* Header */}
+      <div className="flex items-baseline justify-between mb-[18px]">
+        <div className="font-serif text-[22px] text-tp leading-[1.1]">
+          Sector <span className="italic text-warn">breadth</span>
+        </div>
+        <span className="text-[11px] text-tm">{timeframe} · equal-weight</span>
+      </div>
+
+      {/* Rows */}
+      <div className="flex flex-col gap-[11px]">
+        {rows.map(({ key, label, chg, isMkt }) => {
+          const up  = chg >= 0;
+          const col = isMkt ? 'text-warn' : up ? 'text-bull' : 'text-bear';
+          const barCol = isMkt
+            ? 'rgba(232,176,74,0.88)'
+            : up ? 'rgba(52,211,153,0.88)' : 'rgba(249,112,112,0.88)';
+          const w = (Math.abs(chg) / max) * 100; // 0–100, fraction of full track
+          const barW   = `${w / 2}%`;
+          const barLeft = up ? '50%' : `calc(50% - ${w / 2}%)`;
+
+          return (
+            <div key={key}
+              className="grid items-center gap-[14px]"
+              style={{ gridTemplateColumns: '120px 1fr 60px' }}>
+
+              {/* Label */}
+              <div className={clsx('text-[13px] text-tp', isMkt ? 'font-semibold' : 'font-medium')}>
+                {label}
+              </div>
+
+              {/* Bar track */}
+              <div className="relative h-[18px] bg-bg-h rounded overflow-hidden">
+                {/* Centre tick */}
+                <div className="absolute left-1/2 top-0 w-px h-full bg-bd" />
+                {/* Fill bar */}
+                <div
+                  className="absolute top-0 h-full rounded-sm"
+                  style={{ left: barLeft, width: barW, background: barCol }}
+                />
+              </div>
+
+              {/* Value */}
+              <div className={clsx('font-mono text-[13.5px] font-semibold text-right', col)}>
+                {chg >= 0 ? '+' : ''}{chg.toFixed(2)}%
+              </div>
             </div>
-            <div className={clsx('font-mono text-[7px] tracking-[1px] mt-1', h.text)}>{h.label}</div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }

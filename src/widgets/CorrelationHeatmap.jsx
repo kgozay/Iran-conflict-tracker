@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { Card, CardHeader } from './Card.jsx';
-import clsx from 'clsx';
 
 function pearson(a, b) {
   const n = Math.min(a.length, b.length);
@@ -10,107 +9,107 @@ function pearson(a, b) {
   const meanA = aSlice.reduce((s, v) => s + v, 0) / n;
   const meanB = bSlice.reduce((s, v) => s + v, 0) / n;
   const num = aSlice.reduce((s, v, i) => s + (v - meanA) * (bSlice[i] - meanB), 0);
-  const den = Math.sqrt(aSlice.reduce((s, v) => s + (v - meanA) ** 2, 0) * bSlice.reduce((s, v) => s + (v - meanB) ** 2, 0));
+  const den = Math.sqrt(
+    aSlice.reduce((s, v) => s + (v - meanA) ** 2, 0) *
+    bSlice.reduce((s, v) => s + (v - meanB) ** 2, 0)
+  );
   return den === 0 ? 0 : num / den;
 }
 
-const HEATMAP_ASSETS = [
-  { name: 'Brent', key: 'BZ=F', type: 'macro' },
-  { name: 'Gold', key: 'GC=F', type: 'macro' },
-  { name: 'USD/ZAR', key: 'USDZAR=X', type: 'macro' },
-  { name: 'SA 10Y', key: '^ZA10Y', type: 'macro' },
-  { name: 'Top40', key: 'top40', type: 'sector' },
-  { name: 'Miners', key: 'Gold Miners', type: 'sector' },
-  { name: 'Banks', key: 'Banks', type: 'sector' },
-  { name: 'Retailers', key: 'Retailers', type: 'sector' },
-  { name: 'Energy', key: 'Energy', type: 'sector' },
-  { name: 'Industrials', key: 'Industrials', type: 'sector' },
+const ASSETS = [
+  { short: 'Brent',   name: 'Brent',      key: 'BZ=F',        type: 'macro'  },
+  { short: 'Gold',    name: 'Gold',        key: 'GC=F',        type: 'macro'  },
+  { short: 'ZAR',     name: 'USD/ZAR',     key: 'USDZAR=X',    type: 'macro'  },
+  { short: 'SA 10Y',  name: 'SA 10Y',      key: '^ZA10Y',      type: 'macro'  },
+  { short: 'JSE',     name: 'Top40',       key: 'top40',       type: 'sector' },
+  { short: 'Miners',  name: 'Miners',      key: 'Gold Miners', type: 'sector' },
+  { short: 'Banks',   name: 'Banks',       key: 'Banks',       type: 'sector' },
+  { short: 'Retail',  name: 'Retailers',   key: 'Retailers',   type: 'sector' },
+  { short: 'Energy',  name: 'Energy',      key: 'Energy',      type: 'sector' },
+  { short: 'Indust',  name: 'Industrials', key: 'Industrials', type: 'sector' },
 ];
+
+const N = ASSETS.length;
 
 function extractReturns(asset, history, stocks) {
   if (asset.type === 'macro') {
-    return history[asset.key]?.returns20D || [];
-  } else {
-    let relevantStocks;
-    if (asset.key === 'top40') {
-      relevantStocks = stocks.filter(s => s.isLive && history[s.ticker]?.returns20D);
-    } else {
-      relevantStocks = stocks.filter(s => s.sector === asset.key && s.isLive && history[s.ticker]?.returns20D);
-    }
-    
-    if (!relevantStocks.length) return [];
-    
-    // Get all valid arrays
-    const arrays = relevantStocks.map(s => history[s.ticker].returns20D);
-    const minLen = Math.min(...arrays.map(a => a.length));
-    
-    const avg = [];
-    for (let i = 0; i < minLen; i++) {
-      let sum = 0;
-      for (const a of arrays) {
-        sum += a[a.length - minLen + i];
-      }
-      avg.push(sum / arrays.length);
-    }
-    return avg;
+    return history[asset.key]?.returns20D ?? [];
   }
+  const pool = asset.key === 'top40'
+    ? stocks.filter(s => s.isLive && history[s.ticker]?.returns20D)
+    : stocks.filter(s => s.sector === asset.key && s.isLive && history[s.ticker]?.returns20D);
+  if (!pool.length) return [];
+  const arrays = pool.map(s => history[s.ticker].returns20D);
+  const minLen = Math.min(...arrays.map(a => a.length));
+  const avg = [];
+  for (let i = 0; i < minLen; i++) {
+    let sum = 0;
+    for (const a of arrays) sum += a[a.length - minLen + i];
+    avg.push(sum / arrays.length);
+  }
+  return avg;
 }
+
+function cellColor(r, diagonal) {
+  if (diagonal) return 'var(--color-bd)';
+  const alpha = 0.12 + Math.abs(r) * 0.55;
+  return r >= 0
+    ? `rgba(52,211,153,${alpha.toFixed(2)})`
+    : `rgba(249,112,112,${alpha.toFixed(2)})`;
+}
+
+const COL_TEMPLATE = `100px repeat(${N}, 1fr)`;
 
 export default function CorrelationHeatmap({ history, stocks }) {
   if (!history || Object.keys(history).length === 0) return null;
 
   const matrix = useMemo(() => {
-    const returns = HEATMAP_ASSETS.map(asset => extractReturns(asset, history, stocks));
-    
-    const mat = [];
-    for (let i = 0; i < HEATMAP_ASSETS.length; i++) {
-      const row = [];
-      for (let j = 0; j < HEATMAP_ASSETS.length; j++) {
-        if (i === j) {
-          row.push({ r: 1, text: '1.00', bg: 'rgba(100,116,139,0.3)' });
-        } else if (!returns[i].length || !returns[j].length) {
-          row.push({ r: 0, text: '—', bg: 'rgba(100,116,139,0.1)' });
-        } else {
-          const r = pearson(returns[i], returns[j]);
-          let bg;
-          if (r > 0) bg = `rgba(34,197,94,${Math.abs(r)})`;
-          else bg = `rgba(239,68,68,${Math.abs(r)})`;
-          row.push({ r, text: r.toFixed(2), bg });
-        }
-      }
-      mat.push(row);
-    }
-    return mat;
+    const returns = ASSETS.map(a => extractReturns(a, history, stocks));
+    return ASSETS.map((_, i) =>
+      ASSETS.map((__, j) => {
+        if (i === j) return { r: 1, text: '—', diag: true };
+        if (!returns[i].length || !returns[j].length) return { r: 0, text: '—', diag: false };
+        const r = pearson(returns[i], returns[j]);
+        return { r, text: r.toFixed(2), diag: false };
+      })
+    );
   }, [history, stocks]);
-
-  const n = HEATMAP_ASSETS.length;
 
   return (
     <Card>
-      <CardHeader title="20D Asset Correlation Heatmap" badge="MACRO TO JSE" />
-      <div className="overflow-x-auto mt-2 pb-2 pt-2">
-        <div style={{ minWidth: 400 }}>
-          {/* Header Row */}
-          <div className="grid gap-px mb-2" style={{ gridTemplateColumns: `80px repeat(${n}, 1fr)` }}>
+      <CardHeader title="20D correlation" kicker="MACRO → JSE" italic="heatmap" />
+      <div className="overflow-x-auto mt-3">
+        <div style={{ minWidth: 560 }}>
+          {/* Column header row */}
+          <div className="grid gap-[2px] mb-[3px]" style={{ gridTemplateColumns: COL_TEMPLATE }}>
             <div />
-            {HEATMAP_ASSETS.map(a => (
-              <div key={a.name} className="text-[9px] font-mono text-ts flex items-end justify-center pb-1 overflow-hidden text-ellipsis whitespace-nowrap" title={a.name}>
-                {a.name}
+            {ASSETS.map(a => (
+              <div
+                key={a.short}
+                className="font-mono text-[10px] text-ts text-center leading-none py-[5px] px-[2px] truncate"
+                title={a.name}
+              >
+                {a.short}
               </div>
             ))}
           </div>
 
-          {/* Matrix Rows */}
-          {HEATMAP_ASSETS.map((asset, i) => (
-            <div key={asset.name} className="grid gap-px mb-px" style={{ gridTemplateColumns: `80px repeat(${n}, 1fr)` }}>
-              <div className="text-[10px] font-mono text-tp self-center text-right pr-2">
-                {asset.name}
+          {/* Matrix rows */}
+          {ASSETS.map((asset, i) => (
+            <div key={asset.short} className="grid gap-[2px] mb-[2px]" style={{ gridTemplateColumns: COL_TEMPLATE }}>
+              {/* Row label */}
+              <div className="font-mono text-[10px] text-tp self-center text-right pr-[10px] truncate" title={asset.name}>
+                {asset.short}
               </div>
+              {/* Cells */}
               {matrix[i].map((cell, j) => (
-                <div 
-                  key={j} 
-                  className="h-6 flex items-center justify-center text-[9px] font-mono rounded-sm"
-                  style={{ backgroundColor: cell.bg }}
+                <div
+                  key={j}
+                  className="h-[26px] flex items-center justify-center font-mono text-[11px] rounded-[3px]"
+                  style={{
+                    backgroundColor: cellColor(cell.r, cell.diag),
+                    color: cell.diag ? 'var(--color-tm)' : 'var(--color-tp)',
+                  }}
                 >
                   {cell.text}
                 </div>
@@ -119,9 +118,18 @@ export default function CorrelationHeatmap({ history, stocks }) {
           ))}
         </div>
       </div>
-      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-bd-x text-[9px] font-mono text-ts justify-center">
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 bg-bull/80 rounded-sm"></span> Green = co-movement</span>
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 bg-bear/80 rounded-sm"></span> Red = inverse</span>
+
+      {/* Legend */}
+      <div className="flex items-center gap-5 mt-4 pt-3 border-t border-bd font-mono text-[10px] text-ts">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-[10px] h-[10px] rounded-[2px]" style={{ background: 'rgba(52,211,153,0.65)' }} />
+          co-movement
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-[10px] h-[10px] rounded-[2px]" style={{ background: 'rgba(249,112,112,0.65)' }} />
+          inverse
+        </span>
+        <span className="ml-auto opacity-60">20 trading days · equal-weight sectors</span>
       </div>
     </Card>
   );
