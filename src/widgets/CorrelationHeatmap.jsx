@@ -94,9 +94,7 @@ export default function CorrelationHeatmap({ history, stocks }) {
           <div className="grid gap-px mb-2" style={{ gridTemplateColumns: `80px repeat(${n}, 1fr)` }}>
             <div />
             {HEATMAP_ASSETS.map(a => (
-              <div key={a.name}
-                   className="text-[9px] font-mono text-ts flex items-end justify-center h-16 pb-1"
-                   style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+              <div key={a.name} className="text-[9px] font-mono text-ts flex items-end justify-center pb-1 overflow-hidden text-ellipsis whitespace-nowrap" title={a.name}>
                 {a.name}
               </div>
             ))}
