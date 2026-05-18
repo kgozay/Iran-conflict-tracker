@@ -153,11 +153,11 @@ function buildPrompt(assets, sectors, cis, stocks, alerts, dataHealth) {
   const ind    = sectors.Industrials    || {};
 
   const liveStocks = (stocks || []).filter(s => s.isLive && s.changePct != null);
-  const topGainers = liveStocks.slice().sort((a, b) => b.changePct - a.changePct).slice(0, 3);
-  const topLosers  = liveStocks.slice().sort((a, b) => a.changePct - b.changePct).slice(0, 3);
+  const topGainers = liveStocks.slice().sort((a, b) => b.changePct - a.changePct).slice(0, 5);
+  const topLosers  = liveStocks.slice().sort((a, b) => a.changePct - b.changePct).slice(0, 5);
   const moversText = liveStocks.length > 0
-    ? `Top gainers: ${topGainers.map(s => `${s.display} ${pct(s.changePct)}`).join(', ')}
-Top losers:  ${topLosers.map(s  => `${s.display} ${pct(s.changePct)}`).join(', ')}`
+    ? `Top gainers: ${topGainers.map(s => `${s.display} (${s.ticker}) ${pct(s.changePct)}`).join(', ')}
+Top losers:  ${topLosers.map(s  => `${s.display} (${s.ticker}) ${pct(s.changePct)}`).join(', ')}`
     : 'Individual stock data unavailable';
 
   const SECTOR_ORDER = ['Gold Miners','PGMs','Energy','Banks','Retailers','Industrials','Mining','Telecoms'];
@@ -166,7 +166,7 @@ Top losers:  ${topLosers.map(s  => `${s.display} ${pct(s.changePct)}`).join(', '
     if (!ss.length) return null;
     ss.sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
     const leader = ss[0];
-    return `${sec}: ${leader.display} ${pct(leader.changePct)} (biggest abs move)`;
+    return `${sec}: ${leader.display} (${leader.ticker}) ${pct(leader.changePct)} leads`;
   }).filter(Boolean).join('\n');
 
   const activeAlerts = alerts || [];
@@ -177,81 +177,131 @@ Top losers:  ${topLosers.map(s  => `${s.display} ${pct(s.changePct)}`).join(', '
   const patterns = extractPatterns({ assets, sectors, stocks });
   const patternsText = patterns.length > 0
     ? patterns.map((p, i) => `${i+1}. ${p}`).join('\n')
-    : 'No obvious cross-asset patterns this reading — the market is either quiet or noise-dominated. Focus on whatever IS moving.';
+    : 'No obvious cross-asset divergences — market is quiet or noise-dominated.';
 
   const health = dataHealth || {};
-  const healthText = `Quote coverage: ${health.quoteCoverage ?? 'n/a'}%
-Live stocks: ${health.liveStocks ?? 'n/a'}/${health.totalStocks ?? 'n/a'}
-Live macro: ${health.liveMacro ?? 'n/a'}/${health.totalMacro ?? 'n/a'}
-SA 10Y source: ${health.bondSource || r.source || 'unknown'}${health.bondIsStatic ? ' STATIC' : ''}${health.bondIsProxy ? ' PROXY' : ''}
-Warnings: ${(health.warnings || []).join('; ') || 'None'}`;
+  const healthText = `Quote coverage: ${health.quoteCoverage ?? 'n/a'}%  |  Live stocks: ${health.liveStocks ?? 'n/a'}/${health.totalStocks ?? 'n/a'}  |  SA 10Y source: ${health.bondSource || r.source || 'unknown'}${health.bondIsStatic ? ' (STATIC)' : ''}${health.bondIsProxy ? ' (PROXY)' : ''}  |  Warnings: ${(health.warnings || []).join('; ') || 'None'}`;
 
-  return `You are a senior South African equity strategist writing the daily market note for JSE Conflict Watch, a dashboard tracking macro and geopolitical risk transmission into South African markets.
+  return `You are a senior South African equity strategist writing the JSE Morning Intelligence note for JSE Conflict Watch — a dashboard tracking macro and geopolitical risk transmission into South African markets.
 
-Your reader is an institutional PM or a sophisticated JSE trader. They have already seen the numbers. Your job is NOT to repeat the table. Your job is to tell them what is INTERESTING and what to DO about it.
+Your reader is an institutional PM or sophisticated JSE trader. They have seen the raw numbers. Your job is to tell them WHAT IS INTERESTING, WHAT IT MEANS, and WHAT TO DO ABOUT IT. Be specific. Reference named stocks, exact price levels, and real percentage moves from the data below.
 
-TONE: Analytical, specific, institutional, and practical. No hype. Avoid filler phrases like "markets were mixed". The note must be more detailed than a headline summary, but still concise enough for a morning desk read.
+OUTPUT FORMAT: Use the exact markdown structure shown in the template below. Use ## for main headers, ### for sub-headers, **bold** for key names/numbers, markdown tables for the dashboard, and bullet points (- ) for lists. DO NOT use any other formatting.
 
-FORMAT: Use clear section headers. Use short paragraphs and focused bullets where useful. Target 650-900 words. Every conclusion should be tied to at least one number, sector, named stock, or data-quality caveat.
+═══════════════════════════════════════════
+INPUT DATA
+═══════════════════════════════════════════
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DATE: ${date} · ${time} SAST
-CIS: ${cis.total ?? '—'} (${cis.regime ?? 'NO DATA'}) · range -100 bear to +100 bull
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CIS SCORE: ${cis.total ?? '—'} (${cis.regime ?? 'NO DATA'}) | range: -100 = max bearish → +100 = max bullish
+CIS COMPONENTS → Macro shock 40%: ${cis.components?.macro?.score?.toFixed(1) ?? '—'} | JSE reaction 35%: ${cis.components?.jse?.score?.toFixed(1) ?? '—'} | Confirmation 25%: ${cis.components?.conf?.score?.toFixed(1) ?? '—'}
 
-MACRO SNAPSHOT
-Brent:   ${fmt(b.price, 2, '$', '/bbl')}  ${pct(b.changePct)}
-Gold:    ${fmt(g.price, 0, '$', '/oz')}    ${pct(g.changePct)}
-Plat:    ${fmt(pt.price, 0, '$', '/oz')}   ${pct(pt.changePct)}
-USD/ZAR: R${fmt(u.price, 3)}                ${pct(u.changePct)}
-SA 10Y:  ${fmt(r.price, 3, '', '%')}         ${pct(r.changePct)} [${r.source || 'unknown'}${r.isStale ? ' STATIC' : ''}]
-Coal:    ${fmt(c.price, 2, '$', '/t')}      ${pct(c.changePct)}
+MACRO
+Brent Crude: ${fmt(b.price, 2, '$', '/bbl')} (${pct(b.changePct)})
+Gold:        ${fmt(g.price, 0, '$', '/oz')} (${pct(g.changePct)})
+Platinum:    ${fmt(pt.price, 0, '$', '/oz')} (${pct(pt.changePct)})
+USD/ZAR:     R${fmt(u.price, 3)} (${pct(u.changePct)})
+SA 10Y Bond: ${fmt(r.price, 3, '', '%')} (${pct(r.changePct)}) [source: ${r.source || 'unknown'}${r.isStale ? ' STATIC' : ''}]
+Coal:        ${fmt(c.price, 2, '$', '/t')} (${pct(c.changePct)})
 
-JSE SECTORS (1D change · vs market avg)
+JSE SECTORS (1D · vs market avg)
 Market avg:  ${pct(top40.chg)}
-Gold Miners: ${pct(miners.chg)}   (${miners.rel != null ? pct(miners.rel) : 'n/a'})
-PGMs:        ${pct(pgms.chg)}     (${pgms.rel != null ? pct(pgms.rel) : 'n/a'})
-Energy:      ${pct(energy.chg)}   (${energy.rel != null ? pct(energy.rel) : 'n/a'})
-Banks:       ${pct(banks.chg)}    (${banks.rel != null ? pct(banks.rel) : 'n/a'})
-Retailers:   ${pct(retail.chg)}   (${retail.rel != null ? pct(retail.rel) : 'n/a'})
-Industrials: ${pct(ind.chg)}      (${ind.rel != null ? pct(ind.rel) : 'n/a'})
+Gold Miners: ${pct(miners.chg)} rel ${miners.rel != null ? pct(miners.rel) : 'n/a'}
+PGMs:        ${pct(pgms.chg)}   rel ${pgms.rel != null ? pct(pgms.rel) : 'n/a'}
+Energy:      ${pct(energy.chg)} rel ${energy.rel != null ? pct(energy.rel) : 'n/a'}
+Banks:       ${pct(banks.chg)}  rel ${banks.rel != null ? pct(banks.rel) : 'n/a'}
+Retailers:   ${pct(retail.chg)} rel ${retail.rel != null ? pct(retail.rel) : 'n/a'}
+Industrials: ${pct(ind.chg)}    rel ${ind.rel != null ? pct(ind.rel) : 'n/a'}
 
-INDIVIDUAL MOVERS
+STOCK MOVERS
 ${moversText}
 
 SECTOR LEADERS
-${sectorMovers || 'Sector data unavailable'}
+${sectorMovers || 'Unavailable'}
 
-CROSS-ASSET PATTERNS FLAGGED BY THE DASHBOARD
+CROSS-ASSET PATTERNS
 ${patternsText}
 
-ACTIVE THRESHOLD ALERTS
+ALERTS
 ${alertsText}
-
-CIS COMPONENTS
-Macro shock (40%):    ${cis.components?.macro?.score?.toFixed(1) ?? '—'}
-JSE reaction (35%):   ${cis.components?.jse?.score?.toFixed(1)   ?? '—'}
-Confirmation (25%):   ${cis.components?.conf?.score?.toFixed(1)  ?? '—'}
 
 DATA QUALITY
 ${healthText}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-WRITE THE NOTE NOW using these sections:
+═══════════════════════════════════════════
+WRITE THE NOTE USING THIS EXACT TEMPLATE:
+═══════════════════════════════════════════
 
-1. Executive read — the one-line regime call and what matters most.
-2. Macro transmission — identify which macro drivers (oil, ZAR, gold, bond yields) are dominant today, whether JSE sector action confirms or contradicts those drivers, and what the divergences imply.
-3. Cross-asset diagnosis — identify the strongest confirming signal and the strongest contradiction.
-4. JSE sector map — explain which sectors benefit, which are vulnerable, and why. Use named stocks where the data supports it.
-5. Rates, rand and SARB angle — interpret the SA 10Y proxy, bond source quality, and what it implies for banks, retailers and duration-sensitive equities.
-6. Stock/sector watchlist — give 3 concrete names or sectors to watch next, with triggers.
-7. Actionable setup — one specific, testable trade idea or risk-management action. Include entry trigger, invalidation trigger and what would confirm the setup.
-8. Data caveats — briefly state whether the note is based on complete live data, cached data, proxy data or static fallback.
-9. Risk flag — the single development that would make the view wrong.
+## JSE Morning Intelligence: Geopolitical & Macro Risk Radar
+**Date:** ${date}
+**Analyst:** Global Macro & Equity Strategy
+**CIS Regime:** [insert regime label and score]
 
-End the note with exactly: "— JSE Conflict Watch · ${date}"
+---
 
-Do not repeat the data table verbatim. No phrases like "as shown above" or "according to the data". Do not invent external news or facts not present in the prompt. Write as if to a smart colleague.`;
+### Market Dashboard
+
+| Indicator | Spot | Daily Change | Conflict Risk Premium |
+| :--- | :--- | :--- | :--- |
+| **Brent Crude** | [price] | [change] | [High/Moderate/Low — one-line rationale] |
+| **Gold** | [price] | [change] | [High/Moderate/Low — one-line rationale] |
+| **USD/ZAR** | [price] | [change] | [High/Moderate/Low — one-line rationale] |
+| **SA 10Y Bond** | [yield] | [change] | [High/Moderate/Low — one-line rationale] |
+| **JSE Top 40** | [level] | [change] | [Mixed/Positive/Negative — one-line rationale] |
+
+---
+
+### The Lead: [Concise macro thesis headline — e.g. "Supply Shock vs. Rand Carry: A Bifurcating JSE"]
+
+[2–3 paragraphs. State the dominant macro theme driving today's session. Connect geopolitical conflict drivers (Hormuz, Red Sea, oil supply, risk-off flows) to specific JSE transmission channels. Name the sectors and stocks at the epicentre. This section must include at least two specific percentage moves and one named stock.]
+
+---
+
+### Flash Notes: Stock-Specific Impact
+
+#### 1. [Ticker] [Company Name] | Rating: [BUY / HOLD / SELL / UNDERWEIGHT / OVERWEIGHT]
+- **Conflict Vector:** [Specific geopolitical linkage — e.g. Brent crude, shipping disruption, safe-haven flow]
+- **The Thesis:** [2–3 sentences. Include a specific price level, % move, or earnings impact estimate. Reference the conflict transmission mechanism precisely.]
+- **Key Risk / Opportunity:** [One sentence on the pivotal data point or price trigger to watch.]
+
+#### 2. [Ticker] [Company Name] | Rating: [RATING]
+- **Conflict Vector:** [linkage]
+- **The Thesis:** [2–3 sentences with a number]
+- **Key Risk / Opportunity:** [one sentence trigger]
+
+#### 3. [Ticker] [Company Name] | Rating: [RATING]
+- **Conflict Vector:** [linkage]
+- **The Thesis:** [2–3 sentences with a number]
+- **Key Risk / Opportunity:** [one sentence trigger]
+
+---
+
+### Conflict Heatmap & Portfolio Positioning
+
+- **Overweight / Long:** [2–3 specific names or sectors with a one-line rationale each]
+- **Underweight / Short:** [2–3 specific names or sectors with a one-line rationale each]
+- **Monitor:** [1–2 names or indicators that are approaching inflection, with the specific trigger level]
+
+> **Macro Note for the Open:** [Specific catalyst or data release to watch today. Include a precise price level or threshold — e.g. "A Brent break above $93 would force tactical rotation into JSE resource counters." One sentence, sharp.]
+
+---
+
+### Data Caveat
+[One sentence: state whether note is based on live data, partial coverage, cached/stale data, or static bond proxy. Reference the coverage stats from the data above.]
+
+---
+
+*— JSE Conflict Watch · ${date}*
+
+═══════════════════════════════════════════
+RULES:
+- Use only data provided. Do not invent news, analyst reports, or external facts not in the prompt.
+- Every claim must be tied to a number, a named stock/sector, or a data-quality caveat.
+- Stocks in the Flash Notes must come from the STOCK MOVERS or SECTOR LEADERS data above — do not invent tickers.
+- If a data point is unavailable (n/a), skip it or note it briefly — do not fabricate a value.
+- No filler phrases ("markets were mixed", "amid uncertainty", "it remains to be seen").
+- No repetition of the raw data table. Synthesise and interpret.
+═══════════════════════════════════════════`;
 }
 
 /* ── Handler ──────────────────────────────────────────────────────── */
@@ -283,7 +333,7 @@ module.exports = async function(req, res) {
   if (!assets || !sectors || !cis) return err(res, 'Missing assets, sectors, or cis in request body', 400);
 
   const prompt = buildPrompt(assets, sectors, cis, stocks || [], alerts || [], dataHealth || null);
-  const model  = 'gemini-2.5-flash';
+  const model  = 'gemini-2.5-pro';
 
   console.log('[morning-note] Calling Gemini API (' + model + ')…');
 
@@ -295,11 +345,9 @@ module.exports = async function(req, res) {
       {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          maxOutputTokens: 1800,
-          // Slightly higher temperature for more varied insight framings.
-          // Not so high that it hallucinates numbers — all data is in the prompt.
-          temperature: 0.68,
-          topP: 0.92,
+          maxOutputTokens: 3200,
+          temperature: 0.65,
+          topP: 0.90,
         },
       }
     );

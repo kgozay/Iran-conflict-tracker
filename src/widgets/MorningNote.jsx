@@ -2,6 +2,215 @@ import React, { useState, useRef, useCallback } from 'react';
 import clsx from 'clsx';
 import { CopyIcon, CheckIcon, SparkleIcon, RefreshIcon } from '../components/Icons.jsx';
 
+/* ── Inline markdown: **bold**, *italic*, `code` ─────────────────── */
+function renderInline(text, baseKey = 0) {
+  const parts = [];
+  const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+  let last = 0;
+  let m;
+  let k = baseKey;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    if (m[2])      parts.push(<strong key={k++} className="text-tp font-semibold">{m[2]}</strong>);
+    else if (m[3]) parts.push(<em key={k++} className="italic">{m[3]}</em>);
+    else if (m[4]) parts.push(<code key={k++} className="text-warn bg-bg-h px-1 rounded text-[12px] font-mono">{m[4]}</code>);
+    last = re.lastIndex;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : parts;
+}
+
+/* ── Markdown table ──────────────────────────────────────────────── */
+function MdTable({ lines, id }) {
+  const parseRow = (line) =>
+    line.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+
+  const isSep = (line) => /^\|?[\s|:-]+\|?$/.test(line.trim());
+  const rows = lines.filter(l => !isSep(l));
+  if (!rows.length) return null;
+
+  const headers = parseRow(rows[0]);
+  const body    = rows.slice(1).map(parseRow);
+
+  return (
+    <div className="overflow-x-auto my-4 rounded-lg border border-bd/40">
+      <table className="w-full text-[13px] border-collapse">
+        <thead>
+          <tr className="border-b border-bd/60 bg-bg-h/60">
+            {headers.map((h, i) => (
+              <th key={i} className="text-left py-2.5 px-3 text-tm font-semibold text-[11.5px] uppercase tracking-[0.06em] whitespace-nowrap">
+                {renderInline(h)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {body.map((row, ri) => (
+            <tr key={ri} className={clsx('border-b border-bd/20', ri % 2 === 1 && 'bg-bd/[0.04]')}>
+              {row.map((cell, ci) => (
+                <td key={ci} className="py-2.5 px-3 text-ts leading-snug align-top">
+                  {renderInline(cell)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ── List (bullet or numbered) ───────────────────────────────────── */
+function MdList({ items, ordered }) {
+  const Tag  = ordered ? 'ol' : 'ul';
+  return (
+    <Tag className={clsx('my-2 pl-5 space-y-1', ordered ? 'list-decimal' : 'list-disc')}>
+      {items.map((item, i) => (
+        <li key={i} className="text-ts leading-relaxed text-[13.5px]">
+          {renderInline(item)}
+        </li>
+      ))}
+    </Tag>
+  );
+}
+
+/* ── Block-level markdown renderer ──────────────────────────────── */
+function renderMarkdown(text) {
+  if (!text) return null;
+  const lines  = text.split('\n');
+  const out    = [];
+  let i        = 0;
+  let key      = 0;
+
+  while (i < lines.length) {
+    const raw  = lines[i];
+    const line = raw.trimEnd();
+
+    /* blank line */
+    if (!line.trim()) { i++; continue; }
+
+    /* horizontal rule */
+    if (/^(-{3,}|={3,}|━{3,})/.test(line.trim())) {
+      out.push(<hr key={key++} className="border-bd/40 my-5" />);
+      i++; continue;
+    }
+
+    /* headings */
+    const h4m = line.match(/^####\s+(.+)/);
+    const h3m = line.match(/^###\s+(.+)/);
+    const h2m = line.match(/^##\s+(.+)/);
+    const h1m = line.match(/^#\s+(.+)/);
+    if (h1m) {
+      out.push(<h1 key={key++} className="font-serif text-[22px] text-tp leading-tight mt-6 mb-2">{renderInline(h1m[1])}</h1>);
+      i++; continue;
+    }
+    if (h2m) {
+      out.push(<h2 key={key++} className="font-semibold text-[16px] text-tp leading-tight mt-6 mb-2 pb-1 border-b border-bd/40">{renderInline(h2m[1])}</h2>);
+      i++; continue;
+    }
+    if (h3m) {
+      out.push(<h3 key={key++} className="font-semibold text-[14.5px] text-tp leading-tight mt-5 mb-1.5">{renderInline(h3m[1])}</h3>);
+      i++; continue;
+    }
+    if (h4m) {
+      out.push(<h4 key={key++} className="font-semibold text-[13.5px] text-tp leading-tight mt-4 mb-1">{renderInline(h4m[1])}</h4>);
+      i++; continue;
+    }
+
+    /* table */
+    if (line.trimStart().startsWith('|')) {
+      const tableLines = [];
+      while (i < lines.length && lines[i].trimStart().startsWith('|')) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      out.push(<MdTable key={key++} lines={tableLines} id={key} />);
+      continue;
+    }
+
+    /* blockquote */
+    if (line.startsWith('> ')) {
+      const ql = [];
+      while (i < lines.length && lines[i].startsWith('> ')) {
+        ql.push(lines[i].slice(2));
+        i++;
+      }
+      out.push(
+        <blockquote key={key++} className="border-l-[3px] border-warn/60 pl-4 my-4 bg-warn/[0.04] rounded-r-lg py-2">
+          {ql.map((l, j) => (
+            <p key={j} className="text-[13.5px] text-ts italic leading-relaxed">{renderInline(l)}</p>
+          ))}
+        </blockquote>
+      );
+      continue;
+    }
+
+    /* bullet list */
+    if (/^[-*]\s/.test(line)) {
+      const items = [];
+      while (i < lines.length && /^[-*]\s/.test(lines[i])) {
+        items.push(lines[i].replace(/^[-*]\s/, ''));
+        i++;
+      }
+      out.push(<MdList key={key++} items={items} ordered={false} />);
+      continue;
+    }
+
+    /* numbered list */
+    if (/^\d+\.\s/.test(line)) {
+      const items = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+        items.push(lines[i].replace(/^\d+\.\s/, ''));
+        i++;
+      }
+      out.push(<MdList key={key++} items={items} ordered={true} />);
+      continue;
+    }
+
+    /* italic-only line used as caption (e.g. *— JSE Conflict Watch*) */
+    if (/^\*[^*]/.test(line) && line.endsWith('*')) {
+      out.push(
+        <p key={key++} className="text-[12px] text-tm italic mt-6 pt-4 border-t border-bd/30">
+          {renderInline(line)}
+        </p>
+      );
+      i++; continue;
+    }
+
+    /* paragraph — collect consecutive non-special lines */
+    const paraLines = [];
+    while (
+      i < lines.length &&
+      lines[i].trim() &&
+      !lines[i].trimStart().startsWith('|') &&
+      !/^#{1,4}\s/.test(lines[i]) &&
+      !lines[i].startsWith('> ') &&
+      !/^[-*]\s/.test(lines[i]) &&
+      !/^\d+\.\s/.test(lines[i]) &&
+      !/^(-{3,}|={3,}|━{3,})/.test(lines[i].trim()) &&
+      !/^\*[^*].*\*$/.test(lines[i])
+    ) {
+      paraLines.push(lines[i]);
+      i++;
+    }
+    if (paraLines.length) {
+      out.push(
+        <p key={key++} className="text-[13.5px] text-ts leading-[1.72] my-2">
+          {paraLines.map((l, j) => (
+            <React.Fragment key={j}>
+              {renderInline(l)}
+              {j < paraLines.length - 1 && <br />}
+            </React.Fragment>
+          ))}
+        </p>
+      );
+    }
+  }
+
+  return out;
+}
+
+/* ── Component ───────────────────────────────────────────────────── */
 export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasData, dataHealth }) {
   const [note, setNote]       = useState(null);
   const [loading, setLoading] = useState(false);
@@ -18,10 +227,10 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
     setLoading(true); setError(null); setNote(null); setMeta(null);
     try {
       const res  = await fetch('/api/morning-note', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assets, sectors, cis, stocks, alerts, dataHealth }),
-        signal: ctrl.signal,
+        body:    JSON.stringify({ assets, sectors, cis, stocks, alerts, dataHealth }),
+        signal:  ctrl.signal,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
@@ -37,8 +246,11 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
 
   async function handleCopy() {
     if (!note) return;
-    try { await navigator.clipboard.writeText(note); setCopied(true); setTimeout(() => setCopied(false), 2500); }
-    catch { /* clipboard unavailable */ }
+    try {
+      await navigator.clipboard.writeText(note);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch { /* clipboard unavailable */ }
   }
 
   const genTs = meta?.timestamp
@@ -47,7 +259,6 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
 
   return (
     <div className="relative glass rounded-[16px] p-[28px_32px] overflow-hidden">
-      {/* Gold accent rule */}
       <div className="absolute top-0 left-0 w-20 h-[2px] bg-warn opacity-90" />
 
       {/* Header */}
@@ -63,7 +274,7 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
             </span>
           </div>
           <div className="text-[12px] text-tm mt-1.5">
-            {genTs ? `Generated ${genTs} · ~3 min read` : 'Sell-side style brief — transmission channels, setups, caveats'}
+            {genTs ? `Generated ${genTs} · structured analyst brief` : 'Sell-side style brief — transmission channels, stock ratings, portfolio positioning'}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -88,11 +299,11 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
         </div>
       </div>
 
-      {/* Empty prompt */}
+      {/* Empty state */}
       {!loading && !note && !error && (
         <div className="border border-bd/60 border-dashed rounded-xl p-6 text-center">
           <div className="text-[13.5px] text-ts mb-4 leading-[1.6]">
-            Get a structured analyst brief: executive read, conflict transmission channels, sector calls, caveats and risk flags.
+            Get a structured analyst brief with market dashboard, stock ratings, conflict transmission analysis, and portfolio positioning.
           </div>
           <button onClick={generate} disabled={!hasData}
             className="inline-flex items-center gap-2 px-6 py-2.5 text-[13px] font-medium rounded-lg transition-opacity hover:opacity-90 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-paper"
@@ -106,11 +317,13 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
 
       {/* Loading skeleton */}
       {loading && (
-        <div className="space-y-2.5 mt-1">
-          {[0.75, 1, 0.83, 1, 0.67, 0.9, 0.6].map((w, i) => (
-            <div key={i} className="h-[14px] bg-bd/30 rounded animate-pulse" style={{ width: `${w * 100}%` }} />
+        <div className="space-y-3 mt-1">
+          <div className="h-[18px] bg-bd/30 rounded animate-pulse w-[60%]" />
+          <div className="h-[28px] bg-bd/20 rounded animate-pulse w-full mt-3" />
+          {[0.9, 0.75, 1, 0.6, 0.85, 0.7, 1, 0.55, 0.8, 0.65, 0.9, 0.5].map((w, i) => (
+            <div key={i} className="h-[13px] bg-bd/25 rounded animate-pulse" style={{ width: `${w * 100}%`, animationDelay: `${i * 60}ms` }} />
           ))}
-          <div className="text-[12px] text-ts mt-4">Generating a structured desk note…</div>
+          <div className="text-[12px] text-ts mt-4">Generating structured analyst brief…</div>
         </div>
       )}
 
@@ -126,7 +339,7 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
         </div>
       )}
 
-      {/* Note body — 2-column layout */}
+      {/* Note body — rendered markdown */}
       {note && !loading && (
         <>
           {dataHealth?.warnings?.length > 0 && (
@@ -134,12 +347,11 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
               {dataHealth.warnings.slice(0, 2).join(' ')}
             </div>
           )}
-          <div className="text-[14px] text-tp leading-[1.75] whitespace-pre-wrap opacity-92"
-            style={{ columnCount: 2, columnGap: 32 }}>
-            {note}
+          <div className="prose-note max-w-none">
+            {renderMarkdown(note)}
           </div>
           {meta && (
-            <div className="flex items-center gap-4 mt-5 pt-4 border-t border-bd/40 text-[11px] text-tm">
+            <div className="flex items-center gap-4 mt-6 pt-4 border-t border-bd/40 text-[11px] text-tm flex-wrap">
               <span>{meta.model?.replace('gemini-', 'Gemini ') ?? 'Gemini'}</span>
               <span>{meta.tokens_in} in / {meta.tokens_out} out tokens</span>
               <span className="ml-auto">For monitoring only · Not investment advice</span>
