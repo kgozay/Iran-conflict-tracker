@@ -30,7 +30,7 @@ const SENT_DOT   = { bearish: 'bg-bear',   bullish: 'bg-bull',   neutral: 'bg-ts
 
 function SkeletonCard() {
   return (
-    <div className="flex-shrink-0 w-[300px] bg-bg-c border border-bd rounded-xl p-[16px_18px] animate-pulse space-y-3">
+    <div className="flex-shrink-0 w-[300px] glass rounded-xl p-[16px_18px] animate-pulse space-y-3">
       <div className="flex justify-between">
         <div className="h-4 w-20 bg-bg-e rounded" />
         <div className="h-4 w-14 bg-bg-e rounded" />
@@ -55,8 +55,8 @@ function ArticleCard({ article }) {
 
   return (
     <a href={article.link} target="_blank" rel="noopener noreferrer"
-      className="flex-shrink-0 w-[300px] bg-bg-c border border-bd rounded-xl p-[16px_18px]
-                 flex flex-col gap-2.5 hover:border-warn/50 hover:-translate-y-px transition-all group">
+      className="flex-shrink-0 w-[300px] glass rounded-xl p-[16px_18px]
+                 flex flex-col gap-2.5 hover:opacity-90 hover:-translate-y-px transition-all group">
       {/* Source (italic serif) + sentiment */}
       <div className="flex items-center justify-between">
         <span className="font-serif italic text-[15px] text-tp leading-none">

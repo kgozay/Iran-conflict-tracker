@@ -52,7 +52,7 @@ export default function TopBar({
   const kicker  = `${meta.kicker} · ${dayStr}${isLoading && progress ? ` · ${progress}` : ''}`;
 
   return (
-    <header className="bg-bg border-b border-bd flex-shrink-0 flex items-center justify-between px-8 py-[22px] gap-4">
+    <header className="bg-black/40 border-b border-bd flex-shrink-0 flex items-center justify-between px-8 py-[22px] gap-4 backdrop-blur-[24px] backdrop-saturate-[160%]">
 
       {/* ── Left: hamburger (mobile) + kicker + title ────────── */}
       <div className="flex items-center gap-3 min-w-0">
@@ -104,7 +104,7 @@ export default function TopBar({
               Export
             </button>
             {exportOpen && (
-              <div className="absolute right-0 top-full mt-1 bg-bg-c border border-bd rounded-xl shadow-2xl z-[100] min-w-[180px] py-1">
+              <div className="absolute right-0 top-full mt-1 glass rounded-xl z-[100] min-w-[180px] py-1">
                 {[
                   { label: 'Watchlist CSV',  key: 'watchlist-csv',  Icon: TableIcon     },
                   { label: 'Macro CSV',      key: 'macro-csv',      Icon: LineChartIcon },

@@ -98,8 +98,8 @@ function KpiCard({ assetKey, asset, timeframe, sparklineData, sparkLoading }) {
   const showSpark = timeframe === '1D' && price != null;
 
   return (
-    <div className="bg-bg-c border border-bd rounded-[14px] p-[22px_26px_20px] flex flex-col min-h-[260px]
-                    transition-colors hover:border-warn/40">
+    <div className="glass rounded-[16px] p-[22px_26px_20px] flex flex-col min-h-[260px]
+                    transition-opacity hover:opacity-90">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -152,7 +152,7 @@ export function SecondaryKpiStrip({ assets, timeframe = '1D' }) {
   if (!present.length) return null;
 
   return (
-    <div className="flex bg-bg-c border border-bd rounded-xl overflow-hidden mb-4">
+    <div className="flex glass rounded-xl overflow-hidden mb-4">
       {present.map((k, i) => {
         const asset = assets[k];
         const changePct = timeframe === '5D' ? asset.changePct5D

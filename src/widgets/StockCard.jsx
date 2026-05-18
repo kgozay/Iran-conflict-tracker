@@ -64,7 +64,7 @@ export default function StockCard({ stock }) {
   const sigCls = SIGNAL_CLS[signal] ?? SIGNAL_CLS.NEUTRAL;
 
   return (
-    <div className="bg-bg-c border border-bd rounded-[14px] p-[16px_20px] transition-all hover:border-warn/40 hover:-translate-y-px">
+    <div className="glass rounded-[14px] p-[16px_20px] transition-all hover:opacity-90 hover:-translate-y-px">
       {/* Ticker + live dot */}
       <div className="flex items-center justify-between mb-1">
         <span className="font-mono text-[11px] text-ts">{stock.display}</span>

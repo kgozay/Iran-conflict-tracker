@@ -49,7 +49,7 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
 
   if (!hasData) {
     return (
-      <div className="bg-bg-c border border-bd rounded-[14px] p-[26px_30px]">
+      <div className="glass rounded-[16px] p-[26px_30px]">
         <div className="text-[11px] font-medium text-tm tracking-[0.08em] uppercase">Conflict Impact Score</div>
         <div className="font-serif text-[92px] text-tx leading-[0.9] tracking-[-0.04em] mt-4">—</div>
         <div className="text-[13.5px] text-tm leading-[1.6] mt-4">
@@ -66,7 +66,7 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
   ];
 
   return (
-    <div className="bg-bg-c border border-bd rounded-[14px] p-[26px_30px]">
+    <div className="glass rounded-[16px] p-[26px_30px]">
 
       {/* Kicker */}
       <div className="text-[11px] font-medium text-tm tracking-[0.08em] uppercase">

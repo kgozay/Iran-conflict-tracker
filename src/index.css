@@ -5,31 +5,44 @@
 /* ── Theme tokens ───────────────────────────────────────────────────── */
 :root {
   /* Surfaces */
-  --color-bg:    #141210;
-  --color-bg-s:  #1c1a16;
-  --color-bg-c:  #1c1a16;
-  --color-bg-h:  #252119;
-  --color-bg-e:  #2d2922;
+  --color-bg:    #000000;
+  --color-bg-s:  rgba(255,255,255,0.025);   /* sidebar tint */
+  --color-bg-c:  rgba(255,255,255,0.045);   /* glass tile fill */
+  --color-bg-h:  rgba(255,255,255,0.07);    /* pill / chip fill */
+  --color-bg-e:  rgba(255,255,255,0.035);   /* sub-surface */
 
   /* Borders */
-  --color-bd:    #2d2922;
-  --color-bd-x:  #3a3528;
+  --color-bd:    rgba(255,255,255,0.09);
+  --color-bd-x:  rgba(255,255,255,0.18);
 
   /* Text */
-  --color-tp:    #ede5d2;
-  --color-ts:    #a39d8d;
-  --color-tm:    #6e6a5e;
-  --color-tx:    #48443a;
+  --color-tp:    #f4f4f5;
+  --color-ts:    #a1a1aa;
+  --color-tm:    #71717a;
+  --color-tx:    #52525b;
 
   /* Brand / accent */
-  --color-ink:   #0d0b08;
-  --color-paper: #f1eadd;
+  --color-ink:   #0a0a0a;
+  --color-paper: #f4f4f5;
 }
 
 @layer base {
   html { font-size: 14px; }
-  body { overflow: hidden; }
+  body { overflow: hidden; background: #000; }
   * { box-sizing: border-box; }
+
+  /* Ambient radial gradient behind everything */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 18% 8%,   rgba(232,176,74,0.07)  0%, transparent 50%),
+      radial-gradient(ellipse at 92% 22%,  rgba(80,120,200,0.05)  0%, transparent 50%),
+      radial-gradient(ellipse at 50% 110%, rgba(120,90,200,0.04)  0%, transparent 50%);
+  }
 
   /* Custom scrollbar */
   ::-webkit-scrollbar       { width: 5px; height: 5px; }
@@ -56,4 +69,30 @@
   /* Hide scrollbar on controls strips */
   .scrollbar-none::-webkit-scrollbar { display: none; }
   .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+}
+
+/* ── Liquid glass surfaces ───────────────────────────────────────────── */
+.glass {
+  background: rgba(255,255,255,0.045);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.09);
+  box-shadow:
+    inset 0  1px 0 rgba(255,255,255,0.08),
+    inset 0  0   0 1px rgba(255,255,255,0.012),
+    0      1px 0   rgba(0,0,0,0.6),
+    0     24px 48px -28px rgba(0,0,0,0.9);
+}
+
+/* Sub-surface: used for tiles nested inside a glass card */
+.glass-sub {
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* Tabular numeric figures */
+.num {
+  font-feature-settings: "tnum", "ss01";
+  font-variant-numeric: tabular-nums;
 }

@@ -46,7 +46,7 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
     : null;
 
   return (
-    <div className="relative bg-bg-c border border-bd rounded-[14px] p-[28px_32px] overflow-hidden">
+    <div className="relative glass rounded-[16px] p-[28px_32px] overflow-hidden">
       {/* Gold accent rule */}
       <div className="absolute top-0 left-0 w-20 h-[2px] bg-warn opacity-90" />
 

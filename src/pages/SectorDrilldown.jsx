@@ -110,7 +110,7 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
           { kicker: 'Advancing',    value: stats.bulls,      sub: 'live names up today',                   col: 'text-bull' },
           { kicker: 'Declining',    value: stats.bears,      sub: 'live names down today',                 col: 'text-bear' },
         ].map(k => (
-          <div key={k.kicker} className="bg-bg-c border border-bd rounded-[14px] p-[20px_24px]">
+          <div key={k.kicker} className="glass rounded-[16px] p-[20px_24px]">
             <div className="font-sans text-[10px] font-medium tracking-[0.08em] uppercase text-tm mb-2">
               {k.kicker}
             </div>

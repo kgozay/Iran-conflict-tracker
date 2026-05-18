@@ -31,7 +31,7 @@ function Arr() { return <span className="text-tm text-[14px] select-none">›</s
 /* ── Transmission channel card ──────────────────────────────────────── */
 function ChannelCard({ title, italic, rows, impact, impactCls, isActive }) {
   return (
-    <div className="bg-bg-c border border-bd rounded-[14px] p-[22px_26px] flex flex-col gap-[14px]">
+    <div className="glass rounded-[16px] p-[22px_26px] flex flex-col gap-[14px]">
       {/* Header */}
       <div className="flex items-baseline justify-between">
         <div className="font-serif text-[20px] text-tp leading-[1.1]">
@@ -158,7 +158,7 @@ function MacroStrip({ assets, hasData }) {
 
   if (!hasData) {
     return (
-      <div className="bg-bg-c border border-bd rounded-xl px-4 py-3 text-[13px] text-tm text-center">
+      <div className="glass rounded-xl px-4 py-3 text-[13px] text-tm text-center">
         Fetch live data to see macro figures in the transmission analysis
       </div>
     );
@@ -173,7 +173,7 @@ function MacroStrip({ assets, hasData }) {
         const col   = pct == null ? 'text-tm' : good ? 'text-bull' : 'text-bear';
         const src   = asset?.source;
         return (
-          <div key={key} className="bg-bg-c border border-bd rounded-xl py-[14px] px-[18px] text-center">
+          <div key={key} className="glass-sub rounded-xl py-[14px] px-[18px] text-center">
             <div className="text-[11px] font-medium text-tm">
               {label}
               {src && <span className="text-tx ml-1">({src})</span>}
