@@ -19,11 +19,11 @@ function saveCache(articles) {
 }
 
 export function useNews() {
-  const cached = loadCache();
-  const [news,        setNews]        = useState(cached?.articles ?? []);
+  // Lazy initialisers so loadCache() is never called on re-renders
+  const [news,        setNews]        = useState(() => loadCache()?.articles ?? []);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsError,   setNewsError]   = useState(null);
-  const [lastFetched, setLastFetched] = useState(cached ? new Date(cached.ts) : null);
+  const [lastFetched, setLastFetched] = useState(() => { const c = loadCache(); return c ? new Date(c.ts) : null; });
   const abortRef = useRef(null);
 
   const fetchNews = useCallback(async () => {
@@ -50,9 +50,9 @@ export function useNews() {
     }
   }, []);
 
-  // Auto-fetch on mount if cache is empty or stale
+  // Auto-fetch on mount if no valid cache (news.length === 0 means cache was empty/expired)
   useEffect(() => {
-    if (!cached) fetchNews();
+    if (news.length === 0) fetchNews();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { news, newsLoading, newsError, lastFetched, refetchNews: fetchNews };

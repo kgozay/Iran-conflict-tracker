@@ -263,23 +263,22 @@ async function fromFred() {
 module.exports = async function(req, res) {
   if (req.method === 'OPTIONS') { setCors(res); return res.status(204).end(); }
 
-  /* 1. Stooq — primary (provides BOTH live and 12M history in one call) */
-  const stooq = await fromStooq();
+  /* 1+2. Stooq and Yahoo in parallel — cuts latency when one source is slow */
+  const [rStooq, rYahoo] = await Promise.allSettled([fromStooq(), fromYahooChart()]);
+  const stooq = rStooq.status === 'fulfilled' ? rStooq.value : null;
+  const yahoo = rYahoo.status === 'fulfilled' ? rYahoo.value : null;
+
   if (stooq) {
     console.log(`[sarb] ✓ Stooq 10zay.b → ${stooq.bond.price}% (${stooq.bond.date}) · ${stooq.history.length} history points`);
     return ok(res, { bond: stooq.bond, history: stooq.history, source: 'Stooq' });
   }
-  console.warn('[sarb] Stooq failed, trying Yahoo ^ZA10Y…');
-
-  /* 2. Yahoo chart endpoint (fallback — also gives history) */
-  const yahoo = await fromYahooChart();
   if (yahoo) {
     console.log(`[sarb] ✓ Yahoo ^ZA10Y → ${yahoo.bond.price}% (${yahoo.bond.date}) · ${yahoo.history.length} history points`);
     return ok(res, { bond: yahoo.bond, history: yahoo.history, source: 'Yahoo' });
   }
-  console.warn('[sarb] Yahoo failed, trying FRED…');
+  console.warn('[sarb] Stooq and Yahoo both failed, trying FRED…');
 
-  /* 3. FRED (monthly, lower freshness) */
+  /* 3. FRED (monthly, lower freshness — only called when fast sources fail) */
   const fred = await fromFred();
   if (fred) {
     console.log(`[sarb] ✓ FRED → ${fred.bond.price}% (${fred.bond.date})`);

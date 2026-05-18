@@ -139,11 +139,15 @@ async function scoreHeadlines(articles) {
     const prompt = `You are a financial sentiment analyst. For each headline below, return ONLY a JSON array (same order) of objects with keys "sentiment" ("bearish"|"neutral"|"bullish") and "score" (0.0–1.0 confidence). No explanation.\n\nHeadlines:\n${JSON.stringify(headlines)}`;
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
-    const scores = JSON.parse(text.replace(/```json|```/g, '').trim());
-    return articles.map((a, i) => ({ ...a, sentiment: scores[i]?.sentiment ?? a.sentiment, aiScore: scores[i]?.score ?? null }));
+    // Extract the JSON array robustly — avoids backtick-stripping corrupting headline content
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error('No JSON array in Gemini response');
+    const scores = JSON.parse(jsonMatch[0]);
+    return articles.map((a, i) => ({ ...a, sentiment: scores[i]?.sentiment ?? a.sentiment ?? 'neutral', aiScore: scores[i]?.score ?? null }));
   } catch (err) {
     console.error('[news] scoreHeadlines failed:', err.message);
-    return articles; // fallback to keyword-based sentiment on any error
+    // Ensure sentiment and aiScore fields always exist so the widget doesn't get undefined
+    return articles.map(a => ({ ...a, sentiment: a.sentiment ?? 'neutral', aiScore: null }));
   }
 }
 

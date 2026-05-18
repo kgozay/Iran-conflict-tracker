@@ -1,17 +1,15 @@
 /**
- * JSE Conflict Watch — AI Morning Note Generator (v2 prompt, 2026-04)
+ * JSE Conflict Watch — AI Morning Note Generator (v3 prompt, 2026-05)
  *
- * Uses Google Gemini 2.5 Flash (FREE tier — no billing required).
- * Get a free key at: https://aistudio.google.com/app/apikey
+ * Uses Google Gemini 2.5 Pro for high-quality sell-side brief formatting.
+ * Get a key at: https://aistudio.google.com/app/apikey
  * Add GEMINI_API_KEY to Vercel → Project Settings → Environment Variables
  *
  * POST /api/morning-note
  *
- * The prompt has been rewritten to force Gemini to surface SPECIFIC,
- * non-obvious insights: biggest dispersions, unusual cross-asset
- * configurations, where the conflict narrative fits vs diverges, and
- * one actionable trading setup. No generic summaries, no repetition
- * of the data tables it's given.
+ * Generates a structured markdown brief: market dashboard table,
+ * per-stock flash notes with ratings, portfolio positioning, and a
+ * Macro Note for the Open. Free-tier limit: 25 requests/day for Pro.
  */
 
 const https = require('https');

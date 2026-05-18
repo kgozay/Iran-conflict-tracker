@@ -132,10 +132,12 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
               ].map(col => (
                 <th key={col.key}
                   onClick={() => col.key !== 'spark' && toggleSort(col.key)}
+                  onKeyDown={col.key !== 'spark' ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort(col.key); } } : undefined}
+                  tabIndex={col.key !== 'spark' ? 0 : undefined}
                   className={clsx(
                     'text-[10.5px] font-medium text-tm tracking-[0.05em] uppercase pb-3 px-1',
                     col.align === 'right' ? 'text-right' : 'text-left',
-                    col.key !== 'spark' && 'cursor-pointer select-none hover:text-ts',
+                    col.key !== 'spark' && 'cursor-pointer select-none hover:text-ts focus-visible:outline-none focus-visible:text-warn',
                     col.hideMobile && 'hidden sm:table-cell',
                   )}>
                   {col.label}

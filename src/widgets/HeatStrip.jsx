@@ -47,7 +47,7 @@ export default function HeatStrip({ sectors, timeframe = '1D' }) {
           return (
             <div key={key}
               className="grid items-center gap-[14px]"
-              style={{ gridTemplateColumns: '120px 1fr 60px' }}>
+              style={{ gridTemplateColumns: 'minmax(72px, 120px) 1fr 56px' }}>
 
               {/* Label */}
               <div className={clsx('text-[13px] text-tp', isMkt ? 'font-semibold' : 'font-medium')}>

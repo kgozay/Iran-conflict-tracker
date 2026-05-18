@@ -83,6 +83,7 @@ export default function Sidebar({ page, setPage, cis, status, lastFetch, isOpen,
         {NAV.map(({ id, label, sub }) => (
           <button key={id}
             onClick={() => { setPage(id); onClose?.(); }}
+            aria-current={page === id ? 'page' : undefined}
             className={clsx(
               'w-full text-left px-[22px] py-3 border-l-[3px] transition-colors cursor-pointer',
               page === id ? 'border-warn bg-bg-h' : 'border-transparent hover:bg-bg-h',

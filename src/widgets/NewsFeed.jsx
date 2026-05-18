@@ -129,8 +129,9 @@ export default function NewsFeed({ news = [], loading, newsError, lastFetched, o
           <div className="flex items-center gap-1">
             {SENT_FILTERS.map(f => (
               <button key={f} type="button" onClick={() => setSentFilter(f)}
+                aria-pressed={f === sentFilter}
                 className={clsx(
-                  'px-3 py-[5px] text-[11.5px] font-medium rounded-full cursor-pointer transition-colors',
+                  'px-3 py-[5px] text-[11.5px] font-medium rounded-full cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warn/50',
                   f === sentFilter ? 'bg-paper' : 'text-ts hover:text-tp',
                 )}
                 style={f === sentFilter ? { color: 'var(--color-ink)' } : {}}>
