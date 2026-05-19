@@ -48,15 +48,17 @@ function SkeletonCard() {
   );
 }
 
-function ArticleCard({ article }) {
+function ArticleCard({ article, index }) {
   const sentiment = article.sentiment;
   const sentCol   = SENT_COLOR[sentiment] ?? SENT_COLOR.neutral;
   const sentDot   = SENT_DOT[sentiment]   ?? SENT_DOT.neutral;
+  const delay     = index != null ? `${index * 60}ms` : '0ms';
 
   return (
     <a href={article.link} target="_blank" rel="noopener noreferrer"
       className="flex-shrink-0 w-[300px] glass rounded-xl p-[16px_18px]
-                 flex flex-col gap-2.5 hover:opacity-90 hover:-translate-y-px transition-all group">
+                 flex flex-col gap-2.5 hover:-translate-y-px transition-all group feed-item-animate"
+      style={{ animationDelay: delay }}>
       {/* Source (italic serif) + sentiment */}
       <div className="flex items-center justify-between">
         <span className="font-serif italic text-[15px] text-tp leading-none">
@@ -166,8 +168,8 @@ export default function NewsFeed({ news = [], loading, newsError, lastFetched, o
           </div>
         ) : (
           filtered.map((article, i) => (
-            <div key={i} style={{ scrollSnapAlign: 'start' }}>
-              <ArticleCard article={article} />
+            <div key={article.link || i} style={{ scrollSnapAlign: 'start' }}>
+              <ArticleCard article={article} index={i} />
             </div>
           ))
         )}

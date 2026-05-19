@@ -67,7 +67,7 @@ function KpiSparkline({ assetKey, points, chg }) {
         </linearGradient>
       </defs>
       <path d={path.fill} fill={`url(#${id})`} />
-      <path d={path.line} stroke={`rgb(${col})`} strokeWidth="1.5" fill="none"
+      <path d={path.line} className="sparkline-path" stroke={`rgb(${col})`} strokeWidth="1.5" fill="none"
         strokeLinejoin="round" strokeLinecap="round" />
       <circle cx={path.last.x.toFixed(1)} cy={path.last.y.toFixed(1)} r="2.5" fill={hex} />
     </svg>
@@ -98,8 +98,7 @@ function KpiCard({ assetKey, asset, timeframe, sparklineData, sparkLoading }) {
   const showSpark = timeframe === '1D' && price != null;
 
   return (
-    <div className="glass rounded-[16px] p-[22px_26px_20px] flex flex-col min-h-[260px]
-                    transition-opacity hover:opacity-90">
+    <div className="glass rounded-[16px] p-[22px_26px_20px] flex flex-col min-h-[260px]">
 
       {/* Header */}
       <div className="flex items-center justify-between">

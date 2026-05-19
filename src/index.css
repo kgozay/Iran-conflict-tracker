@@ -31,6 +31,21 @@
   body { overflow: hidden; background: #000; }
   * { box-sizing: border-box; }
 
+  @keyframes aura-float {
+    0% {
+      background-position: 18% 8%, 92% 22%, 50% 110%;
+    }
+    33% {
+      background-position: 25% 15%, 85% 15%, 45% 95%;
+    }
+    66% {
+      background-position: 10% 18%, 95% 30%, 55% 105%;
+    }
+    100% {
+      background-position: 18% 8%, 92% 22%, 50% 110%;
+    }
+  }
+
   /* Ambient radial gradient behind everything */
   body::before {
     content: '';
@@ -42,6 +57,8 @@
       radial-gradient(ellipse at 18% 8%,   rgba(232,176,74,0.07)  0%, transparent 50%),
       radial-gradient(ellipse at 92% 22%,  rgba(80,120,200,0.05)  0%, transparent 50%),
       radial-gradient(ellipse at 50% 110%, rgba(120,90,200,0.04)  0%, transparent 50%);
+    background-size: 150% 150%;
+    animation: aura-float 30s ease-in-out infinite;
   }
 
   /* Custom scrollbar */
@@ -82,6 +99,21 @@
     inset 0  0   0 1px rgba(255,255,255,0.012),
     0      1px 0   rgba(0,0,0,0.6),
     0     24px 48px -28px rgba(0,0,0,0.9);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass:hover {
+  transform: translateY(-2px) scale(1.006);
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+  box-shadow:
+    inset 0  1px 0 rgba(255,255,255,0.12),
+    inset 0  0   0 1px rgba(255,255,255,0.02),
+    0 12px 30px -15px rgba(232, 176, 74, 0.08),
+    0 24px 48px -28px rgba(0,0,0,0.95);
 }
 
 /* Sub-surface: used for tiles nested inside a glass card */
@@ -95,4 +127,51 @@
 .num {
   font-feature-settings: "tnum", "ss01";
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Animations & Motion ────────────────────────────────────────────── */
+@keyframes draw-line {
+  from {
+    stroke-dashoffset: 200;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.sparkline-path {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: draw-line 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes feed-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.feed-item-animate {
+  opacity: 0;
+  animation: feed-slide-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(249, 112, 112, 0.45);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 10px 3px rgba(249, 112, 112, 0.2);
+  }
+}
+
+.status-dot-critical {
+  animation: pulse-glow 2s infinite ease-in-out;
 }
