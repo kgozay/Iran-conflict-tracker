@@ -34,7 +34,7 @@ export default function Overview({
   assets, stocks, sectors, cis, alerts, timeframe, returnMode,
   status, hasData, onFetch, cisChartData,
   sparklines, sparkLoading, dataHealth,
-  news, newsLoading, newsError, refetchNews,
+  news, newsLoading, newsError, newsLastFetched, refetchNews,
 }) {
   const isLoading = status === 'loading';
 
@@ -98,6 +98,7 @@ export default function Overview({
         news={news}
         loading={newsLoading}
         newsError={newsError}
+        lastFetched={newsLastFetched}
         onRefresh={refetchNews}
       />
     </div>

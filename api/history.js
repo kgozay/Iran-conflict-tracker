@@ -71,7 +71,7 @@ async function fetchHistoryOne(symbol) {
 
   for (const host of HOSTS) {
     try {
-      const url = `https://${host}/v8/finance/chart/${encoded}?interval=1d&range=1mo`;
+      const url = `https://${host}/v8/finance/chart/${encoded}?interval=1d&range=2mo`;
       const res = await get(url);
       if (res.status !== 200 || !res.json) continue;
 
@@ -164,7 +164,7 @@ module.exports = async function(req, res) {
   if (!symList.length) return err(res, 'No valid symbols', 400);
 
   try {
-    console.log(`[history] Fetching ${symList.length} symbols (range=1mo)…`);
+    console.log(`[history] Fetching ${symList.length} symbols (range=2mo)…`);
     const history  = await fetchAll(symList, 10);
     const resolved = Object.keys(history).length;
     console.log(`[history] ✓ Resolved ${resolved}/${symList.length}`);

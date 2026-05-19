@@ -62,8 +62,8 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
   const filtered = useMemo(() => {
     const base = filter === 'ALL' ? rows : rows.filter(s => s.sector === filter);
     return [...base].sort((a, b) => {
-      const av = sort.key === 'signal' ? (getSignal(a._chg) ?? '') : sort.key === 'changePct' ? (a._chg ?? -Infinity) : (a[sort.key] ?? '');
-      const bv = sort.key === 'signal' ? (getSignal(b._chg) ?? '') : sort.key === 'changePct' ? (b._chg ?? -Infinity) : (b[sort.key] ?? '');
+      const av = sort.key === 'signal' ? (getSignal(a._chg) ?? '') : sort.key === 'changePct' ? (a._chg ?? -Infinity) : sort.key === 'price' ? (a.price ?? -Infinity) : (a[sort.key] ?? '');
+      const bv = sort.key === 'signal' ? (getSignal(b._chg) ?? '') : sort.key === 'changePct' ? (b._chg ?? -Infinity) : sort.key === 'price' ? (b.price ?? -Infinity) : (b[sort.key] ?? '');
       const as = typeof av === 'string' ? av.toLowerCase() : av;
       const bs = typeof bv === 'string' ? bv.toLowerCase() : bv;
       if (as === bs) return 0;

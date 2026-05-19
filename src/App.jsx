@@ -82,7 +82,7 @@ export default function App() {
   } = useMarketData();
 
   const { sparklines, sparkLoading, fetchSparklines } = useSparklines();
-  const { news, newsLoading, newsError, refetchNews } = useNews();
+  const { news, newsLoading, newsError, lastFetched: newsLastFetched, refetchNews } = useNews();
 
   const { toasts, addToast, removeToast } = useToast();
 
@@ -111,7 +111,7 @@ export default function App() {
     brentChg:       assets.brent?.changePct      ?? 0,
     usdZarChg:      assets.usdZar?.changePct     ?? 0,
     goldChg:        assets.gold?.changePct       ?? 0,
-    r2035Chg:       assets.r2035?.isStale ? null : (assets.r2035?.changePct ?? 0),
+    r2035Chg:       assets.r2035?.isStale ? null : (assets.r2035?.change ?? 0),
     includeBond:    !assets.r2035?.isStale,
     top40Chg:       sectors.top40?.chg           ?? 0,
     minersChg:      sectors['Gold Miners']?.chg  ?? 0,
@@ -184,7 +184,7 @@ export default function App() {
     timeframe, returnMode, status, hasData, dataHealth, lastFetch,
     onFetch: handleFetch,
     sparklines, sparkLoading,
-    news, newsLoading, newsError, refetchNews,
+    news, newsLoading, newsError, newsLastFetched, refetchNews,
   };
 
   return (
@@ -201,7 +201,7 @@ export default function App() {
       <Sidebar page={page} setPage={setPage} cis={cis} status={status} lastFetch={lastFetch}
                isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex flex-col flex-1 overflow-hidden lg:ml-[220px] ml-0">
+      <div className="flex flex-col flex-1 overflow-hidden lg:ml-[240px] ml-0">
         <TopBar
           page={page}
           status={status} error={error} lastFetch={lastFetch} progress={progress}

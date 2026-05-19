@@ -312,7 +312,7 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
             </div>
             <span className="text-[10px] font-semibold text-warn tracking-[0.06em] px-[9px] py-[3px] rounded-full"
               style={{ background: 'rgba(232,176,74,0.12)', border: '1px solid rgba(232,176,74,0.25)' }}>
-              GEMINI 1.5
+              {meta?.model ? meta.model.replace('gemini-', 'Gemini ').toUpperCase() : 'GEMINI 2.5 LITE'}
             </span>
           </div>
           <div className="text-[12px] text-tm mt-1.5">

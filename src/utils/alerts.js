@@ -7,7 +7,7 @@ export function computeAlerts({ assets, sectors, stocks }) {
   const brent  = assets.brent?.changePct   ?? 0;
   const usdZar = assets.usdZar?.changePct  ?? 0;
   const gold   = assets.gold?.changePct    ?? 0;
-  const r2035  = assets.r2035?.isStale ? null : (assets.r2035?.changePct ?? 0);
+  const r2035  = assets.r2035?.isStale ? null : (assets.r2035?.change ?? 0);
   const top40  = sectors.top40?.chg        ?? 0;
   const banks  = sectors.Banks?.chg        ?? 0;
   const retail = sectors.Retailers?.chg    ?? 0;
