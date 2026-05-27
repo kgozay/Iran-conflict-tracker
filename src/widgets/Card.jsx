@@ -1,11 +1,30 @@
 import React from 'react';
 import clsx from 'clsx';
+import { SpotlightCard } from './Effects.jsx';
 
-export function Card({ children, className, style }) {
+/* ── PATCH SUMMARY ─────────────────────────────────────────────────────
+ * - `<Card>` now wraps its body in <SpotlightCard> (FX5) so every panel on
+ *   Macro Transmission and Sector Drilldown that uses Card (Historical
+ *   analogues, Alert status, Constituent performance, Sector read, etc.)
+ *   picks up the cursor halo with one change.
+ * - Opt out per call site by passing `spotlight={false}` if a particular
+ *   card shouldn't react (e.g. cards containing tables).
+ * - `CardHeader` and `Divider` are unchanged.
+ * ──────────────────────────────────────────────────────────────────── */
+
+export function Card({ children, className, style, spotlight = true, spotlightColor }) {
+  const cls = clsx('glass rounded-[16px] p-[24px_28px]', className);
+  if (!spotlight) {
+    return <div className={cls} style={style}>{children}</div>;
+  }
   return (
-    <div className={clsx('glass rounded-[16px] p-[24px_28px]', className)} style={style}>
+    <SpotlightCard
+      className={cls}
+      style={style}
+      spotlightColor={spotlightColor /* falls back to gold inside SpotlightCard */}
+    >
       {children}
-    </div>
+    </SpotlightCard>
   );
 }
 

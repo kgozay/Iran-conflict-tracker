@@ -1,6 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import clsx from 'clsx';
 import { DownloadIcon, TableIcon, LineChartIcon, FileIcon, MenuIcon } from './Icons.jsx';
+import { ShinyText, StarBorder } from '../widgets/Effects.jsx';
+
+/* ── PATCH SUMMARY ─────────────────────────────────────────────────────
+ * - Eyebrow line above the title now uses the `mag-eyebrow` class (V4
+ *   cover treatment: italic Instrument Serif "— today" instead of small caps).
+ * - Title body uses <ShinyText> (FX2) for a slow shine sweep.
+ * - "Refresh data" button is wrapped in <StarBorder> (FX8). It keeps the
+ *   loading state — when isLoading we render the plain disabled button so
+ *   the spinner stays legible and we don't animate around a busy CTA.
+ * ──────────────────────────────────────────────────────────────────── */
 
 const PAGE_META = {
   overview:  { kicker: 'Today',   pre: "Today's",      italic: 'transmission' },
@@ -31,7 +41,6 @@ export default function TopBar({
   page, status, error, lastFetch, progress,
   onFetch, timeframe, setTimeframe, returnMode, setReturnMode,
   autoRefresh, onExport, dataHealth, onMenuClick,
-  // theme / setTheme are intentionally not rendered — dark-only in v3
 }) {
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef(null);
@@ -45,16 +54,16 @@ export default function TopBar({
     return () => document.removeEventListener('mousedown', handler);
   }, [exportOpen]);
 
-  const meta    = PAGE_META[page] ?? PAGE_META.overview;
+  const meta      = PAGE_META[page] ?? PAGE_META.overview;
   const isLoading = status === 'loading';
-  const now     = new Date();
-  const dayStr  = now.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-  const kicker  = `${meta.kicker} · ${dayStr}${isLoading && progress ? ` · ${progress}` : ''}`;
+  const now       = new Date();
+  const dayStr    = now.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const eyebrow   = `${meta.kicker.toLowerCase()} · ${dayStr.toLowerCase()}${isLoading && progress ? ' · ' + progress : ''}`;
 
   return (
     <header className="bg-black/40 border-b border-bd flex-shrink-0 flex items-center justify-between px-8 py-[22px] gap-4 backdrop-blur-[24px] backdrop-saturate-[160%]">
 
-      {/* ── Left: hamburger (mobile) + kicker + title ────────── */}
+      {/* ── Left: hamburger + eyebrow + title (magazine cover treatment) ── */}
       <div className="flex items-center gap-3 min-w-0">
         <button onClick={onMenuClick} aria-label="Open menu"
           className="lg:hidden flex-shrink-0 p-1.5 text-ts hover:text-tp transition-colors cursor-pointer">
@@ -63,17 +72,20 @@ export default function TopBar({
 
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium text-tm tracking-[0.08em] uppercase leading-none">
-              {kicker}
-            </span>
+            <span className="mag-eyebrow">— {eyebrow}</span>
             {dataHealth?.bondIsStatic && (
               <span className="font-mono text-[9px] text-bear border border-bear/30 bg-bear/8 px-[6px] py-[2px] rounded">
                 SA 10Y STATIC
               </span>
             )}
           </div>
+          {/* FX2 ShinyText sweep on the title */}
           <div className="font-serif text-[32px] text-tp leading-[1.1] tracking-[-0.02em] mt-1">
-            {meta.pre} <span className="italic text-warn">{meta.italic}</span>
+            <ShinyText text={meta.pre} color="var(--color-tp)" shineColor="#ffffff" speed={3.6}/>
+            {' '}
+            <span className="italic" style={{ color: 'var(--color-warn)' }}>
+              <ShinyText text={meta.italic} color="var(--color-warn)" shineColor="#fff5d6" speed={3.6}/>
+            </span>
           </div>
         </div>
       </div>
@@ -123,19 +135,18 @@ export default function TopBar({
           </div>
         )}
 
-        {/* Refresh data */}
-        <button type="button" onClick={() => onFetch()} disabled={isLoading}
-          className={clsx(
-            'flex items-center gap-2 px-[18px] py-[9px] text-[12.5px] font-medium rounded-lg transition-colors cursor-pointer',
-            isLoading
-              ? 'bg-bg-e text-tm cursor-not-allowed'
-              : 'bg-paper hover:opacity-90 cursor-pointer',
-          )}
-          style={!isLoading ? { color: 'var(--color-ink)' } : {}}>
-          {isLoading
-            ? <><span className="w-3 h-3 border-2 border-tm/30 border-t-tm rounded-full animate-spin inline-block" />Refreshing…</>
-            : 'Refresh data'}
-        </button>
+        {/* Refresh data — wrapped in StarBorder when idle, plain when loading */}
+        {isLoading ? (
+          <button type="button" disabled
+            className="flex items-center gap-2 px-[18px] py-[9px] text-[12.5px] font-medium rounded-lg bg-bg-e text-tm cursor-not-allowed">
+            <span className="w-3 h-3 border-2 border-tm/30 border-t-tm rounded-full animate-spin inline-block" />
+            Refreshing…
+          </button>
+        ) : (
+          <StarBorder color="var(--color-warn)" speed="5s" onClick={() => onFetch()}>
+            Refresh data
+          </StarBorder>
+        )}
       </div>
     </header>
   );

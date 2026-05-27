@@ -6,6 +6,20 @@ import {
 import clsx from 'clsx';
 import { Card, CardHeader } from '../widgets/Card.jsx';
 import StockCard from '../widgets/StockCard.jsx';
+import { CountUp, SpotlightCard } from '../widgets/Effects.jsx';
+
+/* ── PATCH SUMMARY ─────────────────────────────────────────────────────
+ * Two targeted FX additions to this page (everything else is unchanged):
+ *   1. KPI strip (Avg / Total / Advancing / Declining) — each tile is
+ *      wrapped in <SpotlightCard> (FX5, tone-tinted) and the numeric
+ *      values render via <CountUp> (FX1).
+ *   2. Sector read aggregate ("Avg 1D change" / "vs market avg") values
+ *      use <CountUp> too.
+ * The two large Cards (Constituent performance, Sector read) pick up the
+ * spotlight halo automatically via the patched Card.jsx. We pass
+ * `spotlight={false}` on the chart card to keep the hover halo from
+ * fighting the bar-tooltip cursor.
+ * ──────────────────────────────────────────────────────────────────── */
 
 const SECTOR_TABS = ['All','Gold Miners','PGMs','Energy','Banks','Retailers','Industrials','Mining','Telecoms'];
 
@@ -32,6 +46,15 @@ const CustomTooltip = ({ active, payload, label }) => {
       </div>
     </div>
   );
+};
+
+/* Spotlight tints for the KPI strip — keyed by tone class */
+const SPOT = {
+  'text-bull': 'rgba(52, 211, 153, 0.18)',
+  'text-bear': 'rgba(249, 112, 112, 0.18)',
+  'text-warn': 'rgba(232, 176, 74, 0.20)',
+  'text-tp':   'rgba(244, 244, 245, 0.10)',
+  'text-tm':   'rgba(244, 244, 245, 0.08)',
 };
 
 export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
@@ -78,6 +101,37 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
     );
   }
 
+  /* KPI strip data — patched to carry a CountUp-friendly numeric value */
+  const kpiCards = [
+    {
+      kicker: 'Avg change',
+      numeric: stats.avg,
+      display: stats.avg != null
+        ? <><span>{stats.avg >= 0 ? '+' : ''}</span><CountUp to={stats.avg} decimals={2} suffix="%" /></>
+        : '—',
+      sub:    `${liveFiltered.length} live names`,
+      col:    avgColor,
+    },
+    {
+      kicker: 'Names total',
+      display: <CountUp to={filtered.length} decimals={0} />,
+      sub:    `${liveFiltered.length} with live data`,
+      col:    'text-tp',
+    },
+    {
+      kicker: 'Advancing',
+      display: <CountUp to={stats.bulls} decimals={0} />,
+      sub:    'live names up today',
+      col:    'text-bull',
+    },
+    {
+      kicker: 'Declining',
+      display: <CountUp to={stats.bears} decimals={0} />,
+      sub:    'live names down today',
+      col:    'text-bear',
+    },
+  ];
+
   return (
     <div className="p-[32px_36px] flex flex-col gap-5 animate-fadeUp">
 
@@ -97,32 +151,27 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
         ))}
       </div>
 
-      {/* KPI strip */}
+      {/* KPI strip — each tile wrapped in SpotlightCard with tone tint */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          {
-            kicker: 'Avg change',
-            value:  stats.avg != null ? `${stats.avg >= 0 ? '+' : ''}${stats.avg.toFixed(2)}%` : '—',
-            sub:    `${liveFiltered.length} live names`,
-            col:    avgColor,
-          },
-          { kicker: 'Names total',  value: filtered.length,  sub: `${liveFiltered.length} with live data`, col: 'text-tp'   },
-          { kicker: 'Advancing',    value: stats.bulls,      sub: 'live names up today',                   col: 'text-bull' },
-          { kicker: 'Declining',    value: stats.bears,      sub: 'live names down today',                 col: 'text-bear' },
-        ].map(k => (
-          <div key={k.kicker} className="glass rounded-[16px] p-[20px_24px]">
+        {kpiCards.map(k => (
+          <SpotlightCard
+            key={k.kicker}
+            spotlightColor={SPOT[k.col] ?? SPOT['text-tp']}
+            className="glass rounded-[16px] p-[20px_24px]"
+          >
             <div className="font-sans text-[10px] font-medium tracking-[0.08em] uppercase text-tm mb-2">
               {k.kicker}
             </div>
-            <div className={clsx('font-serif text-[40px] leading-none', k.col)}>{k.value}</div>
+            <div className={clsx('font-serif text-[40px] leading-none', k.col)}>{k.display}</div>
             <div className="font-sans text-[12px] text-ts mt-1.5">{k.sub}</div>
-          </div>
+          </SpotlightCard>
         ))}
       </div>
 
       {/* Chart + read */}
       <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-4">
-        <Card className="flex flex-col min-h-[340px]">
+        {/* Chart card — spotlight off to let recharts cursor breathe */}
+        <Card spotlight={false} className="flex flex-col min-h-[340px]">
           <CardHeader
             title="Constituent"
             italic="performance"
@@ -168,9 +217,11 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
           )}
         </Card>
 
+        {/* Sector read card — uses Card default (spotlight on) */}
         <Card>
           <CardHeader title="Sector" italic="read" />
-          <div className="font-sans text-[13.5px] leading-[1.7] text-ts">
+          {/* PATCH: drop-cap (magazine touch) on the read paragraph */}
+          <div className="font-sans text-[13.5px] leading-[1.7] text-ts mag-dropcap">
             {readText.split(/(\*\*[^*]+\*\*)/).map((part, i) =>
               part.startsWith('**') && part.endsWith('**')
                 ? <span key={i} className="text-warn font-semibold">{part.slice(2, -2)}</span>
@@ -185,14 +236,14 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
               <div className="flex justify-between font-sans text-[13px] mb-1.5">
                 <span className="text-ts">Avg 1D change</span>
                 <span className={clsx('font-mono font-semibold', sectorInfo.chg >= 0 ? 'text-bull' : 'text-bear')}>
-                  {sectorInfo.chg >= 0 ? '+' : ''}{sectorInfo.chg.toFixed(2)}%
+                  {sectorInfo.chg >= 0 ? '+' : ''}<CountUp to={sectorInfo.chg} decimals={2} suffix="%" />
                 </span>
               </div>
               {sectorInfo.rel != null && (
                 <div className="flex justify-between font-sans text-[13px]">
                   <span className="text-ts">vs market avg</span>
                   <span className={clsx('font-mono', sectorInfo.rel >= 0 ? 'text-bull' : 'text-bear')}>
-                    {sectorInfo.rel >= 0 ? '+' : ''}{sectorInfo.rel.toFixed(2)}%
+                    {sectorInfo.rel >= 0 ? '+' : ''}<CountUp to={sectorInfo.rel} decimals={2} suffix="%" />
                   </span>
                 </div>
               )}

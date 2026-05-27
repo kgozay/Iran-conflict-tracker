@@ -241,3 +241,97 @@
 .active-node-green {
   animation: node-pulse-green 2s infinite ease-in-out;
 }
+/* ─────────────────────────────────────────────────────────────────────
+ * Append these blocks to the END of src/index.css.
+ * They add:
+ *   1. React-Bits FX runtime CSS (rb-shine keyframe, rb-spot, rb-star)
+ *   2. Magazine-cover touches (eyebrow italic, double rule, italic KPI
+ *      name, drop-cap) — light, additive, non-destructive.
+ * ───────────────────────────────────────────────────────────────────── */
+
+/* ── React-Bits FX runtime ─────────────────────────────────────────── */
+@keyframes rb-shine {
+  0%   { background-position: 150% center; }
+  100% { background-position: -50% center; }
+}
+
+/* DecryptedText — colour of the unresolved cipher chars */
+.rb-decrypt-enc { color: var(--color-warn); opacity: 0.82; }
+
+/* SpotlightCard — radial halo following the cursor */
+.rb-spot { position: relative; }
+.rb-spot::before {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 2;
+  background: radial-gradient(
+    circle var(--rb-spot-size, 240px) at var(--rb-sx, 50%) var(--rb-sy, 50%),
+    var(--rb-spot, rgba(232, 176, 74, 0.22)),
+    transparent 65%
+  );
+}
+.rb-spot:hover::before { opacity: 1; }
+
+/* StarBorder — rotating gradient ring around a button */
+.rb-star {
+  position: relative; display: inline-block; overflow: hidden;
+  border-radius: 10px; background: transparent; border: none;
+  padding: 1px 0; cursor: pointer;
+}
+.rb-star[disabled] { opacity: 0.6; cursor: not-allowed; }
+.rb-star-grad {
+  position: absolute; width: 300%; height: 60%; left: -100%;
+  opacity: 0.85;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+.rb-star-bot { bottom: -16px; animation-name: rb-star-bot; }
+.rb-star-top { top: -16px; animation-name: rb-star-top; }
+@keyframes rb-star-bot { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+@keyframes rb-star-top { 0% { transform: translateX(0); } 100% { transform: translateX(50%); } }
+.rb-star-inner {
+  position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 8px;
+  background: var(--color-paper); color: var(--color-ink);
+  padding: 9px 18px; border-radius: 9px;
+  font-size: 12.5px; font-weight: 500;
+  transition: opacity 0.2s ease;
+}
+.rb-star:hover .rb-star-inner { opacity: 0.92; }
+/* Variant for status pills / secondary actions */
+.rb-star-inner.rb-star-ghost {
+  background: rgba(0, 0, 0, 0.55); color: var(--color-tp);
+  border: 1px solid rgba(244, 244, 245, 0.10);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+
+/* ── Magazine-cover touches (lightly applied) ──────────────────────── */
+.mag-eyebrow {
+  font-family: 'Instrument Serif', serif; font-style: italic;
+  font-size: 16px; color: var(--color-warn);
+  line-height: 1; letter-spacing: -0.005em;
+}
+.mag-italic { font-family: 'Instrument Serif', serif; font-style: italic; }
+.mag-rule { height: 1px; background: rgba(244, 244, 245, 0.18); }
+.mag-rule-double {
+  height: 5px;
+  background:
+    linear-gradient(to bottom,
+      rgba(244, 244, 245, 0.28) 0,  rgba(244, 244, 245, 0.28) 1px,
+      transparent 1px, transparent 4px,
+      rgba(244, 244, 245, 0.28) 4px, rgba(244, 244, 245, 0.28) 5px);
+}
+.mag-kpi-name {
+  font-family: 'Instrument Serif', serif; font-style: italic;
+  font-size: 22px; color: var(--color-tp);
+  line-height: 1; letter-spacing: -0.005em;
+}
+.mag-dropcap::first-letter {
+  font-family: 'Instrument Serif', serif; font-style: italic;
+  font-size: 52px; line-height: 0.85; float: left;
+  padding: 4px 10px 0 0; color: var(--color-warn);
+}

@@ -1,5 +1,15 @@
 import React from 'react';
 import clsx from 'clsx';
+import { CountUp, DecryptedText } from './Effects.jsx';
+
+/* ── PATCH SUMMARY ─────────────────────────────────────────────────────
+ * - Hero CIS score uses <CountUp> (FX1) — spring-counts to the value.
+ * - Regime label uses <DecryptedText> (FX3) — scramble → reveal loop.
+ *   Pass `loop={false}` if you'd rather the effect runs once on mount.
+ * - Each composition cell number (Macro / JSE / Signals) also uses CountUp.
+ * - Interpretation paragraph adds the `mag-dropcap` class (magazine drop-cap
+ *   on the first letter — V4 cover touch, very light).
+ * ──────────────────────────────────────────────────────────────────── */
 
 const TONE_TEXT = { bear: 'text-bear', warn: 'text-warn', bull: 'text-bull', neutral: 'text-ts' };
 const TONE_BG   = { bear: 'bg-bear',  warn: 'bg-warn',   bull: 'bg-bull',   neutral: 'bg-ts'   };
@@ -35,7 +45,7 @@ function computeTrend(data) {
 }
 
 export default function RegimeBanner({ cis, hasData, cisChartData }) {
-  const rc      = cis.regimeClass ?? 'neutral';
+  const rc       = cis.regimeClass ?? 'neutral';
   const toneText = TONE_TEXT[rc] ?? TONE_TEXT.neutral;
   const toneBg   = TONE_BG[rc]   ?? TONE_BG.neutral;
   const toneHex  = TONE_HEX[rc]  ?? TONE_HEX.neutral;
@@ -75,13 +85,17 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
 
       {/* Hero score + regime label */}
       <div className="flex items-end gap-[18px] mt-[18px]">
-        <div className={clsx('font-serif leading-[0.9] tracking-[-0.04em]', toneText)}
-          style={{ fontSize: 92 }}>
-          {cis.total}
+        <div
+          className={clsx('font-serif leading-[0.9] tracking-[-0.04em]', toneText)}
+          style={{ fontSize: 92 }}
+          key={`cis-${cis.total}`}
+        >
+          <CountUp to={cis.total} decimals={0} />
         </div>
         <div className="pb-2">
+          {/* FX3 DecryptedText — scramble → reveal, then loops */}
           <div className={clsx('font-serif italic text-[24px] leading-none', toneText)}>
-            {cis.regime.toLowerCase()}
+            <DecryptedText text={cis.regime.toLowerCase()} />
           </div>
           {trend && trend.dir !== 'flat' && (
             <div className="text-[12px] font-semibold text-bear mt-2 font-mono">
@@ -92,8 +106,8 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
         </div>
       </div>
 
-      {/* Interpretation */}
-      <div className="text-[13.5px] text-ts leading-[1.6] mt-[18px]">{interp}</div>
+      {/* Interpretation — magazine drop-cap on first letter */}
+      <div className="text-[13.5px] text-ts leading-[1.6] mt-[18px] mag-dropcap">{interp}</div>
 
       {/* Slider with thumb */}
       <div className="mt-[22px]">
@@ -118,7 +132,7 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
               <span className="text-[10px] text-tm">{wt}</span>
             </div>
             <div className={clsx('font-mono text-[24px] font-semibold mt-1 tracking-[-0.01em]', componentColor(score))}>
-              {score > 0 ? '+' : ''}{score}
+              {score > 0 ? '+' : ''}<CountUp to={score} decimals={0} />
             </div>
             <div className="text-[11px] text-ts mt-0.5">{componentLabel(score)}</div>
           </div>

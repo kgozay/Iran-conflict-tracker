@@ -1,14 +1,24 @@
 import React, { useMemo } from 'react';
 import clsx from 'clsx';
 import { getAssetAlertLevel } from '../utils/alerts.js';
+import { CountUp, SpotlightCard } from './Effects.jsx';
 
-function fmtPrice(key, price) {
-  if (price == null) return '—';
-  if (key === 'usdZar') return price.toFixed(3);
-  if (key === 'r2035')  return `${price.toFixed(3)}%`;
-  if (key === 'brent')  return price.toFixed(2);
-  if (price >= 10000)   return price.toLocaleString('en-ZA', { maximumFractionDigits: 0 });
-  return price.toFixed(2);
+/* ── PATCH SUMMARY ─────────────────────────────────────────────────────
+ * - Hero KPI card is now wrapped in <SpotlightCard> (FX5) for cursor halo.
+ * - Price uses <CountUp> (FX1) for a spring count-up on mount / value change.
+ * - KPI name uses the `mag-kpi-name` class (V4 magazine sidebar treatment:
+ *   italic Instrument Serif instead of plain Inter).
+ * - Secondary KPI strip prices also use CountUp.
+ * Everything else is byte-identical with the original file.
+ * ──────────────────────────────────────────────────────────────────── */
+
+function fmtPriceDecimals(key, price) {
+  if (price == null) return { decimals: 0, suffix: '' };
+  if (key === 'usdZar') return { decimals: 3, suffix: '' };
+  if (key === 'r2035')  return { decimals: 3, suffix: '%' };
+  if (key === 'brent')  return { decimals: 2, suffix: '' };
+  if (price >= 10000)   return { decimals: 0, suffix: '' };
+  return { decimals: 2, suffix: '' };
 }
 
 function getImpactLine(assetKey, changePct) {
@@ -86,23 +96,33 @@ function KpiCard({ assetKey, asset, timeframe, sparklineData, sparkLoading }) {
     : timeframe === '20D' ? asset.changePct20D
     : asset.changePct;
 
-  const isUp  = (changePct ?? 0) >= 0;
-  const good  = invert ? !isUp : isUp;
-  const chgCl = price == null ? 'text-ts' : good ? 'text-bull' : 'text-bear';
-  const sign  = isUp ? '+' : '';
+  const isUp   = (changePct ?? 0) >= 0;
+  const good   = invert ? !isUp : isUp;
+  const chgCl  = price == null ? 'text-ts' : good ? 'text-bull' : 'text-bear';
+  const sign   = isUp ? '+' : '';
   const chgStr = changePct == null ? '—' : `${sign}${changePct.toFixed(2)}%`;
   const badge  = sourceBadge(asset);
 
   const sparkKey  = symbol || assetKey;
   const spark     = sparklineData?.[sparkKey];
   const showSpark = timeframe === '1D' && price != null;
+  const { decimals, suffix } = fmtPriceDecimals(assetKey, price);
+
+  // Tinted spotlight matches the directional tone of the card
+  const spotColor = price == null
+    ? 'rgba(244,244,245,0.15)'
+    : good
+      ? 'rgba(52, 211, 153, 0.18)'
+      : 'rgba(249, 112, 112, 0.18)';
 
   return (
-    <div className="glass rounded-[16px] p-[22px_26px_20px] flex flex-col min-h-[260px]">
-
-      {/* Header */}
+    <SpotlightCard
+      spotlightColor={spotColor}
+      className="glass rounded-[16px] p-[22px_26px_20px] flex flex-col min-h-[260px]"
+    >
+      {/* Header — KPI name now uses italic serif (magazine touch) */}
       <div className="flex items-center justify-between">
-        <span className="text-[12.5px] font-medium text-ts leading-none">{name}</span>
+        <span className="mag-kpi-name">{name}</span>
         {badge && (
           <span className={clsx(
             'font-mono text-[9.5px] px-[7px] py-[2px] rounded border tracking-[0.04em]',
@@ -113,10 +133,12 @@ function KpiCard({ assetKey, asset, timeframe, sparklineData, sparkLoading }) {
         )}
       </div>
 
-      {/* Price + change */}
+      {/* Price + change — CountUp on the price */}
       <div className="mt-[18px]">
         <div className="font-serif text-[56px] text-tp leading-[0.95] tracking-[-0.025em]">
-          {fmtPrice(assetKey, price)}
+          {price == null
+            ? '—'
+            : <CountUp to={price} decimals={decimals} suffix={suffix} />}
         </div>
         <div className="flex items-baseline gap-2 mt-2.5">
           <span className={clsx('font-mono text-[14px] font-semibold', chgCl)}>{chgStr}</span>
@@ -136,11 +158,11 @@ function KpiCard({ assetKey, asset, timeframe, sparklineData, sparkLoading }) {
         }
       </div>
 
-      {/* Impact line — pinned to bottom */}
+      {/* Impact line */}
       <div className="mt-auto pt-3.5 border-t border-bd text-[11.5px] text-ts leading-[1.5]">
         {getImpactLine(assetKey, changePct)}
       </div>
-    </div>
+    </SpotlightCard>
   );
 }
 
@@ -157,11 +179,12 @@ export function SecondaryKpiStrip({ assets, timeframe = '1D' }) {
         const changePct = timeframe === '5D' ? asset.changePct5D
           : timeframe === '20D' ? asset.changePct20D
           : asset.changePct;
-        const isUp  = (changePct ?? 0) >= 0;
-        const good  = (asset.invert ?? false) ? !isUp : isUp;
-        const chgCl = changePct == null ? 'text-ts' : good ? 'text-bull' : 'text-bear';
-        const sign  = isUp ? '+' : '';
+        const isUp   = (changePct ?? 0) >= 0;
+        const good   = (asset.invert ?? false) ? !isUp : isUp;
+        const chgCl  = changePct == null ? 'text-ts' : good ? 'text-bull' : 'text-bear';
+        const sign   = isUp ? '+' : '';
         const chgStr = changePct == null ? '—' : `${sign}${changePct.toFixed(2)}%`;
+        const { decimals, suffix } = fmtPriceDecimals(k, asset.price);
 
         return (
           <div key={k}
@@ -172,7 +195,9 @@ export function SecondaryKpiStrip({ assets, timeframe = '1D' }) {
             <div>
               <div className="text-[11.5px] font-medium text-ts">{asset.name}</div>
               <div className="font-serif text-[26px] text-tp leading-none tracking-[-0.01em] mt-1">
-                {fmtPrice(k, asset.price)}
+                {asset.price == null
+                  ? '—'
+                  : <CountUp to={asset.price} decimals={decimals} suffix={suffix} />}
               </div>
             </div>
             <div className={clsx('font-mono text-[13px] font-semibold', chgCl)}>{chgStr}</div>

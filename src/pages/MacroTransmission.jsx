@@ -3,6 +3,20 @@ import clsx from 'clsx';
 import { Card } from '../widgets/Card.jsx';
 import BrentSlider from '../widgets/BrentSlider.jsx';
 import CorrelationHeatmap from '../widgets/CorrelationHeatmap.jsx';
+import { CountUp, SpotlightCard } from '../widgets/Effects.jsx';
+
+/* ── PATCH SUMMARY ─────────────────────────────────────────────────────
+ * Two targeted FX additions to this page (everything else is unchanged):
+ *   1. <MacroStrip>  — each of the 6 macro tiles is wrapped in
+ *      <SpotlightCard> (FX5, directional tint) and the % value is
+ *      animated with <CountUp> (FX1).
+ *   2. <ChannelCard> — each transmission channel card is wrapped in
+ *      <SpotlightCard>. Spotlight colour follows isActive (bear when
+ *      active, neutral when dormant).
+ * Card.jsx already wraps its body in SpotlightCard, so the Historical
+ * analogues / Alert status / Correlation cards below pick up the halo
+ * automatically.
+ * ──────────────────────────────────────────────────────────────────── */
 
 /* ── Flow node styles ───────────────────────────────────────────────── */
 const NODE_CLS = {
@@ -38,10 +52,17 @@ function Arr({ active }) {
   );
 }
 
-/* ── Transmission channel card ──────────────────────────────────────── */
+/* ── Transmission channel card ─────────────────────────────────────── *
+ * PATCH: outer container is now <SpotlightCard>. Spotlight colour shifts
+ * to the bear tint when the channel is firing.
+ */
 function ChannelCard({ title, italic, rows, impact, impactCls, isActive }) {
+  const spot = isActive ? 'rgba(249, 112, 112, 0.20)' : 'rgba(232, 176, 74, 0.16)';
   return (
-    <div className="glass rounded-[16px] p-[22px_26px] flex flex-col gap-[14px]">
+    <SpotlightCard
+      spotlightColor={spot}
+      className="glass rounded-[16px] p-[22px_26px] flex flex-col gap-[14px]"
+    >
       {/* Header */}
       <div className="flex items-baseline justify-between">
         <div className="font-serif text-[20px] text-tp leading-[1.1]">
@@ -79,7 +100,7 @@ function ChannelCard({ title, italic, rows, impact, impactCls, isActive }) {
         <div className="text-[10.5px] font-medium text-tm tracking-[0.06em] uppercase">Net sector impact</div>
         <div className={clsx('text-[13.5px] font-semibold mt-[3px]', impactCls)}>{impact}</div>
       </div>
-    </div>
+    </SpotlightCard>
   );
 }
 
@@ -119,7 +140,10 @@ const STATUS_CLS = {
   off:   'bg-bg-h text-tm border-bd',
 };
 
-/* ── MacroStrip ─────────────────────────────────────────────────────── */
+/* ── MacroStrip ─────────────────────────────────────────────────────── *
+ * PATCH: each tile wrapped in <SpotlightCard> with directional tint;
+ *        % change rendered with <CountUp>.
+ */
 function MacroStrip({ assets, hasData }) {
   const items = [
     { label:'Brent',    key:'brent',    inv:false },
@@ -146,16 +170,25 @@ function MacroStrip({ assets, hasData }) {
         const good  = pct == null ? null : inv ? pct <= 0 : pct >= 0;
         const col   = pct == null ? 'text-tm' : good ? 'text-bull' : 'text-bear';
         const src   = asset?.source;
+        const spot  = pct == null ? 'rgba(244,244,245,0.10)'
+          : good ? 'rgba(52, 211, 153, 0.16)' : 'rgba(249, 112, 112, 0.16)';
+
         return (
-          <div key={key} className="glass-sub rounded-xl py-[14px] px-[18px] text-center">
+          <SpotlightCard
+            key={key}
+            spotlightColor={spot}
+            className="glass-sub rounded-xl py-[14px] px-[18px] text-center"
+          >
             <div className="text-[11px] font-medium text-tm">
               {label}
               {src && <span className="text-tx ml-1">({src})</span>}
             </div>
             <div className={clsx('font-serif text-[28px] leading-none tracking-[-0.02em] mt-1', col)}>
-              {pct != null ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%` : '—'}
+              {pct != null
+                ? <><span>{pct >= 0 ? '+' : ''}</span><CountUp to={pct} decimals={2} suffix="%" /></>
+                : '—'}
             </div>
-          </div>
+          </SpotlightCard>
         );
       })}
     </div>
@@ -262,11 +295,14 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
         </div>
       )}
 
-      {/* Tab 2: Historical Analogues & Alerts */}
+      {/* Tab 2: Historical Analogues & Alerts
+          (Both Card panels below pick up SpotlightCard automatically via
+          the patched Card.jsx — `spotlight={false}` opts out if needed.) */}
       {activeTab === 'analogues' && (
         <div className="grid grid-cols-1 xl:grid-cols-[1.55fr_1fr] gap-[18px] items-start animate-fadeUp">
-          {/* Historical analogues */}
-          <Card>
+          {/* Historical analogues — table-heavy card; spotlight={false} keeps
+              the hover halo from competing with row highlights. */}
+          <Card spotlight={false}>
             <div className="flex items-baseline justify-between mb-[18px]">
               <div className="font-serif text-[22px] text-tp leading-[1.1]">
                 Historical <span className="italic text-warn">analogues</span>
@@ -314,7 +350,7 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
             </div>
           </Card>
 
-          {/* Alert status */}
+          {/* Alert status — uses Card default (spotlight on) */}
           <Card>
             <div className="flex items-baseline justify-between mb-[18px]">
               <div className="font-serif text-[22px] text-tp leading-[1.1]">

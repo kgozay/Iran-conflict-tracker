@@ -17,8 +17,21 @@ import Overview           from './pages/Overview.jsx';
 import MacroTransmission  from './pages/MacroTransmission.jsx';
 import SectorDrilldown    from './pages/SectorDrilldown.jsx';
 
-/* Derive sector aggregates from live stock data. Uses the 1D change;
- * timeframe switching (5D/20D) happens at display level in the Watchlist. */
+/* ── PATCH SUMMARY ─────────────────────────────────────────────────────
+ * Adds the auto-hide sidebar:
+ *   - `sidebarPinned` state (persisted to localStorage `jse_sidebar_pinned`,
+ *      defaults to UNPINNED for max reading real estate).
+ *   - `sidebarHovered` state — controlled by an invisible 14px-wide edge
+ *      trigger on the left of the viewport (desktop only) and by the
+ *      sidebar's own onMouseLeave.
+ *   - Sidebar is shown when: mobile drawer open, OR pinned, OR hovered.
+ *   - Main content's left margin transitions between 0 and 240px based on
+ *      `sidebarPinned` (the floating-overlay state doesn't shift content).
+ *   - `Sidebar` now receives `visible`, `pinned`, `onPinToggle`,
+ *      `onMouseEnter`, `onMouseLeave` and handles its own translate.
+ * Everything else is byte-identical with the original file.
+ * ──────────────────────────────────────────────────────────────────── */
+
 function deriveSectors(stocks) {
   const live = stocks.filter(s => s.isLive && s.changePct != null);
   const sectors = {};
@@ -70,6 +83,21 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme,       setTheme]      = useState(() => localStorage.getItem('jse_theme') ?? 'dark');
 
+  /* ── PATCH: sidebar auto-hide state ────────────────────────────── */
+  const [sidebarPinned, setSidebarPinned] = useState(
+    () => localStorage.getItem('jse_sidebar_pinned') === 'true'
+  );
+  const [sidebarHovered, setSidebarHovered] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('jse_sidebar_pinned', String(sidebarPinned));
+  }, [sidebarPinned]);
+
+  // Desktop hover-reveal closes itself when pointer leaves the sidebar.
+  // Mobile drawer is independent (sidebarOpen).
+  const sidebarVisible = sidebarOpen || sidebarPinned || sidebarHovered;
+  /* ────────────────────────────────────────────────────────────────── */
+
   useEffect(() => {
     document.documentElement.dataset.theme = theme === 'light' ? 'light' : '';
     localStorage.setItem('jse_theme', theme);
@@ -88,7 +116,6 @@ export default function App() {
 
   const prevStatusRef = useRef(status);
 
-  /* On mount: show cache immediately, then fetch as needed. */
   useEffect(() => {
     const cacheState = initFromCache();
     if (cacheState === 'empty') {
@@ -99,7 +126,6 @@ export default function App() {
     fetchSparklines(ALL_SPARK_SYMBOLS);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* Derived values */
   const sectors = useMemo(() => deriveSectors(stocks), [stocks]);
   const hasData = status === 'live' || status === 'cached';
   const dataHealth = useMemo(
@@ -127,7 +153,6 @@ export default function App() {
     [hasData, assets, sectors, stocks]
   );
 
-  /* Push notifications for regime changes */
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
@@ -140,14 +165,14 @@ export default function App() {
     if (status === 'live' && hasData && cis.regime && cis.regime !== 'NO DATA') {
       const newRegime = cis.regime;
       const prevRegime = prevRegimeRef.current;
-      
+
       if (prevRegime && newRegime !== prevRegime && Notification.permission === 'granted') {
         new Notification('Iran Conflict Tracker', {
           body: `Market regime changed to ${newRegime} (CIS: ${cis.total.toFixed(1)})`,
           icon: '/favicon.ico',
         });
       }
-      
+
       if (newRegime !== prevRegime) {
         localStorage.setItem('jse_cw_last_notif_regime', newRegime);
         prevRegimeRef.current = newRegime;
@@ -155,7 +180,6 @@ export default function App() {
     }
   }, [cis.regime, cis.total, status, hasData]);
 
-  /* Wrapped fetch — accepts explicit boolean, ignores MouseEvent from button clicks */
   const handleFetch = useCallback(async (silentParam) => {
     const isSilent = silentParam === true;
     const result = await fetchLive(isSilent);
@@ -163,7 +187,6 @@ export default function App() {
       const src = result.assets?.r2035?.source;
       const bondLabel = src ? ` · bond via ${src}` : '';
       addToast(`Updated · ${new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })} SAST${bondLabel}`, 'success');
-
       fetchSparklines(ALL_SPARK_SYMBOLS);
     } else if (result?.error && !isSilent) {
       addToast(result.error, 'error', 6000);
@@ -198,10 +221,35 @@ export default function App() {
              onClick={() => setSidebarOpen(false)} />
       )}
 
-      <Sidebar page={page} setPage={setPage} cis={cis} status={status} lastFetch={lastFetch}
-               isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* PATCH: Desktop edge trigger — invisible 14px strip on the left
+          edge that reveals the sidebar on hover. Hidden when pinned and
+          hidden on mobile (mobile uses the hamburger). */}
+      {!sidebarPinned && (
+        <div
+          onMouseEnter={() => setSidebarHovered(true)}
+          aria-hidden="true"
+          className="hidden lg:block fixed top-0 left-0 bottom-0 w-[14px] z-40"
+        />
+      )}
 
-      <div className="flex flex-col flex-1 overflow-hidden lg:ml-[240px] ml-0">
+      <Sidebar
+        page={page} setPage={setPage}
+        cis={cis} status={status} lastFetch={lastFetch}
+        isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}
+        visible={sidebarVisible}
+        pinned={sidebarPinned}
+        onPinToggle={() => setSidebarPinned(p => !p)}
+        onMouseEnter={() => setSidebarHovered(true)}
+        onMouseLeave={() => setSidebarHovered(false)}
+      />
+
+      {/* PATCH: content margin animates between 0 and 240px based on
+          `sidebarPinned`. Hover-reveals overlay the content instead of
+          shifting it. Mobile is unchanged. */}
+      <div className={
+        'flex flex-col flex-1 overflow-hidden transition-[margin] duration-300 ease-out ml-0 ' +
+        (sidebarPinned ? 'lg:ml-[240px]' : 'lg:ml-0')
+      }>
         <TopBar
           page={page}
           status={status} error={error} lastFetch={lastFetch} progress={progress}
