@@ -24,7 +24,11 @@
   /* Brand / accent */
   --color-ink:   #0a0a0a;
   --color-paper: #f4f4f5;
+  --color-warn:  #e8b04a;
+  --color-bull:  #34d399;
+  --color-bear:  #f97070;
 }
+
 
 @layer base {
   html { font-size: 14px; }
