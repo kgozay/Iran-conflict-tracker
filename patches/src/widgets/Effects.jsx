@@ -140,7 +140,7 @@ export function DecryptedText({
  */
 export function SpotlightCard({
   children,
-  spotlightColor = 'var(--color-spotlight)',
+  spotlightColor = 'rgba(232, 176, 74, 0.22)',
   size = 240,
   className = '',
   style = {},

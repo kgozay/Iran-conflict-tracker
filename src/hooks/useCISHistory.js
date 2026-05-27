@@ -25,14 +25,17 @@ export function useCISHistory() {
   const [history, setHistory] = useState(load);
 
   // Add a new CIS reading — called after each successful data fetch
-  const addReading = useCallback((total, regime, regimeClass) => {
+  const addReading = useCallback((total, regime, regimeClass, customTs) => {
+    const ts = customTs || Date.now();
     setHistory(prev => {
+      // Avoid duplicate logs for the exact same fetch event
+      if (prev.length > 0 && prev[prev.length - 1].ts === ts) return prev;
       const next = [
         ...prev,
         {
-          ts:          Date.now(),
-          time:        new Date().toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit' }),
-          date:        new Date().toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: 'numeric' }),
+          ts,
+          time:        new Date(ts).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit' }),
+          date:        new Date(ts).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: 'numeric' }),
           total,
           regime,
           regimeClass,

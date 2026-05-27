@@ -9,7 +9,6 @@ import { useAutoRefresh } from './hooks/useAutoRefresh.js';
 import { useToast }       from './hooks/useToast.js';
 import { useSparklines }  from './hooks/useSparklines.js';
 import { useNews }        from './hooks/useNews.js';
-import { useCISHistory }  from './hooks/useCISHistory.js';
 import Sidebar            from './components/Sidebar.jsx';
 import TopBar             from './components/TopBar.jsx';
 import LoadingOverlay     from './components/LoadingOverlay.jsx';
@@ -84,19 +83,6 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme,       setTheme]      = useState(() => localStorage.getItem('jse_theme') ?? 'dark');
 
-  const { chartData: cisChartData, addReading: addCisReading } = useCISHistory();
-
-  /* ── Navigate wrapper with View Transitions API fallback ── */
-  const navigateTo = useCallback((newPage) => {
-    if (document.startViewTransition) {
-      document.startViewTransition(() => {
-        setPage(newPage);
-      });
-    } else {
-      setPage(newPage);
-    }
-  }, []);
-
   /* ── PATCH: sidebar auto-hide state ────────────────────────────── */
   const [sidebarPinned, setSidebarPinned] = useState(
     () => localStorage.getItem('jse_sidebar_pinned') === 'true'
@@ -113,10 +99,9 @@ export default function App() {
   /* ────────────────────────────────────────────────────────────────── */
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.dataset.theme = theme === 'light' ? 'light' : '';
     localStorage.setItem('jse_theme', theme);
   }, [theme]);
-
 
   const {
     assets, stocks, r2035History, history,
@@ -195,13 +180,6 @@ export default function App() {
     }
   }, [cis.regime, cis.total, status, hasData]);
 
-  // Log CIS reading to history on successful live fetch
-  useEffect(() => {
-    if (status === 'live' && hasData && lastFetch && cis.regime && cis.regime !== 'NO DATA') {
-      addCisReading(cis.total, cis.regime, cis.regimeClass, lastFetch.getTime());
-    }
-  }, [lastFetch, status, hasData, cis.total, cis.regime, cis.regimeClass, addCisReading]);
-
   const handleFetch = useCallback(async (silentParam) => {
     const isSilent = silentParam === true;
     const result = await fetchLive(isSilent);
@@ -230,7 +208,6 @@ export default function App() {
     onFetch: handleFetch,
     sparklines, sparkLoading,
     news, newsLoading, newsError, newsLastFetched, refetchNews,
-    cisChartData,
   };
 
   return (
@@ -256,7 +233,7 @@ export default function App() {
       )}
 
       <Sidebar
-        page={page} setPage={navigateTo}
+        page={page} setPage={setPage}
         cis={cis} status={status} lastFetch={lastFetch}
         isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}
         visible={sidebarVisible}
@@ -264,7 +241,6 @@ export default function App() {
         onPinToggle={() => setSidebarPinned(p => !p)}
         onMouseEnter={() => setSidebarHovered(true)}
         onMouseLeave={() => setSidebarHovered(false)}
-        theme={theme} setTheme={setTheme}
       />
 
       {/* PATCH: content margin animates between 0 and 240px based on

@@ -61,7 +61,7 @@ export default function TopBar({
   const eyebrow   = `${meta.kicker.toLowerCase()} · ${dayStr.toLowerCase()}${isLoading && progress ? ' · ' + progress : ''}`;
 
   return (
-    <header className="bg-bg/40 border-b border-bd flex-shrink-0 flex items-center justify-between px-8 py-[22px] gap-4 backdrop-blur-[24px] backdrop-saturate-[160%]">
+    <header className="bg-black/40 border-b border-bd flex-shrink-0 flex items-center justify-between px-8 py-[22px] gap-4 backdrop-blur-[24px] backdrop-saturate-[160%]">
 
       {/* ── Left: hamburger + eyebrow + title (magazine cover treatment) ── */}
       <div className="flex items-center gap-3 min-w-0">
@@ -81,10 +81,10 @@ export default function TopBar({
           </div>
           {/* FX2 ShinyText sweep on the title */}
           <div className="font-serif text-[32px] text-tp leading-[1.1] tracking-[-0.02em] mt-1">
-            <ShinyText text={meta.pre} color="var(--color-tp)" shineColor="var(--color-shine-tp)" speed={3.6}/>
+            <ShinyText text={meta.pre} color="var(--color-tp)" shineColor="#ffffff" speed={3.6}/>
             {' '}
             <span className="italic" style={{ color: 'var(--color-warn)' }}>
-              <ShinyText text={meta.italic} color="var(--color-warn)" shineColor="var(--color-shine-warn)" speed={3.6}/>
+              <ShinyText text={meta.italic} color="var(--color-warn)" shineColor="#fff5d6" speed={3.6}/>
             </span>
           </div>
         </div>

@@ -25,9 +25,23 @@
   --color-ink:   #0a0a0a;
   --color-paper: #f4f4f5;
   --color-warn:  #e8b04a;
+  --color-warn-d:#3d2a08;
   --color-bull:  #34d399;
+  --color-bull-d:#052e1a;
   --color-bear:  #f97070;
+  --color-bear-d:#3d1010;
 
+  /* Faint backgrounds and borders for alerts and tickers */
+  --color-bull-faint: rgba(52, 211, 153, 0.08);
+  --color-bear-faint: rgba(249, 112, 112, 0.08);
+  --color-warn-faint: rgba(232, 176, 74, 0.08);
+  --color-bull-border: rgba(52, 211, 153, 0.3);
+  --color-bear-border: rgba(249, 112, 112, 0.3);
+  --color-warn-border: rgba(232, 176, 74, 0.3);
+
+  /* Shines & Spotlights */
+  --color-shine-tp: #ffffff;
+  --color-shine-warn: #fff5d6;
   --color-shadow: rgba(0, 0, 0, 0.7);
   --color-spotlight: rgba(232, 176, 74, 0.15);
   --color-bull-spotlight: rgba(52, 211, 153, 0.15);
@@ -43,8 +57,8 @@
 html[data-theme="light"] {
   /* Surfaces */
   --color-bg:    #faf8f5; /* warm cream/sepia */
-  --color-bg-s:  rgba(28, 25, 23, 0.025);   /* sidebar tint */
-  --color-bg-c:  rgba(255, 255, 255, 0.72);   /* glass tile fill - opaque for readability */
+  --color-bg-s:  rgba(250, 248, 245, 0.90);   /* sidebar tint - more opaque to block underlying text */
+  --color-bg-c:  rgba(255, 255, 255, 0.85);   /* glass tile fill - opaque for readability */
   --color-bg-h:  rgba(28, 25, 23, 0.05);    /* pill / chip fill */
   --color-bg-e:  rgba(28, 25, 23, 0.035);   /* sub-surface */
 
@@ -62,9 +76,23 @@ html[data-theme="light"] {
   --color-ink:   #faf8f5;
   --color-paper: #1c1917;
   --color-warn:  #b47a18; /* slightly darker gold for high contrast on light */
+  --color-warn-d:#fef3c7; /* light gold block for alert backgrounds */
   --color-bull:  #0d9488; /* teal-600 */
+  --color-bull-d:#e6f4f1; /* light teal block */
   --color-bear:  #dc2626; /* red-600 */
-  
+  --color-bear-d:#fde8e8; /* light red block */
+
+  /* Faint backgrounds and borders for alerts and tickers */
+  --color-bull-faint: rgba(13, 148, 136, 0.08);
+  --color-bear-faint: rgba(220, 38, 38, 0.08);
+  --color-warn-faint: rgba(180, 122, 24, 0.08);
+  --color-bull-border: rgba(13, 148, 136, 0.3);
+  --color-bear-border: rgba(220, 38, 38, 0.3);
+  --color-warn-border: rgba(180, 122, 24, 0.3);
+
+  /* Shines & Spotlights */
+  --color-shine-tp: #78716c; /* stone-500 reflection for black text */
+  --color-shine-warn: #e8b04a; /* gold shine for warn text */
   --color-shadow: rgba(28, 25, 23, 0.04);
   --color-spotlight: rgba(180, 122, 24, 0.07);
   --color-bull-spotlight: rgba(13, 148, 136, 0.07);
@@ -122,20 +150,20 @@ html[data-theme="light"] {
 }
 
 @layer utilities {
-  .text-bull  { color: #34d399; }
-  .text-bear  { color: #f97070; }
-  .text-warn  { color: #e8b04a; }
+  .text-bull  { color: var(--color-bull); }
+  .text-bear  { color: var(--color-bear); }
+  .text-warn  { color: var(--color-warn); }
   .text-ts    { color: var(--color-ts); }
   .text-tm    { color: var(--color-tm); }
   .text-tx    { color: var(--color-tx); }
 
-  .bg-bull-faint  { background: rgba(52,211,153,.08); }
-  .bg-bear-faint  { background: rgba(249,112,112,.08); }
-  .bg-warn-faint  { background: rgba(232,176,74,.08); }
+  .bg-bull-faint  { background: var(--color-bull-faint); }
+  .bg-bear-faint  { background: var(--color-bear-faint); }
+  .bg-warn-faint  { background: var(--color-warn-faint); }
 
-  .border-bull-faint  { border-color: rgba(52,211,153,.3); }
-  .border-bear-faint  { border-color: rgba(249,112,112,.3); }
-  .border-warn-faint  { border-color: rgba(232,176,74,.3); }
+  .border-bull-faint  { border-color: var(--color-bull-border); }
+  .border-bear-faint  { border-color: var(--color-bear-border); }
+  .border-warn-faint  { border-color: var(--color-warn-border); }
 
   /* Hide scrollbar on controls strips */
   .scrollbar-none::-webkit-scrollbar { display: none; }
@@ -144,15 +172,15 @@ html[data-theme="light"] {
 
 /* ── Liquid glass surfaces ───────────────────────────────────────────── */
 .glass {
-  background: rgba(255,255,255,0.045);
+  background: var(--color-bg-c);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid rgba(255,255,255,0.09);
+  border: 1px solid var(--color-bd);
   box-shadow:
-    inset 0  1px 0 rgba(255,255,255,0.08),
+    inset 0  1px 0 var(--color-glass-inset, rgba(255,255,255,0.08)),
     inset 0  0   0 1px rgba(255,255,255,0.012),
-    0      1px 0   rgba(0,0,0,0.6),
-    0     24px 48px -28px rgba(0,0,0,0.9);
+    0      1px 0   rgba(0,0,0,0.2),
+    0     24px 48px -28px var(--color-shadow);
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
               background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
               border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
@@ -161,20 +189,20 @@ html[data-theme="light"] {
 
 .glass:hover {
   transform: translateY(-2px) scale(1.006);
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.15);
+  background: var(--color-bg-h);
+  border-color: var(--color-bd-x);
   box-shadow:
-    inset 0  1px 0 rgba(255,255,255,0.12),
+    inset 0  1px 0 var(--color-glass-inset, rgba(255,255,255,0.12)),
     inset 0  0   0 1px rgba(255,255,255,0.02),
-    0 12px 30px -15px rgba(232, 176, 74, 0.08),
-    0 24px 48px -28px rgba(0,0,0,0.95);
+    0 12px 30px -15px var(--color-spotlight),
+    0 24px 48px -28px var(--color-shadow);
 }
 
 /* Sub-surface: used for tiles nested inside a glass card */
 .glass-sub {
-  background: rgba(255,255,255,0.035);
-  border: 1px solid rgba(255,255,255,0.07);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  background: var(--color-bg-e);
+  border: 1px solid var(--color-bd);
+  box-shadow: inset 0 1px 0 var(--color-glass-inset, rgba(255,255,255,0.05));
 }
 
 /* Tabular numeric figures */
@@ -370,14 +398,14 @@ html[data-theme="light"] {
   line-height: 1; letter-spacing: -0.005em;
 }
 .mag-italic { font-family: 'Instrument Serif', serif; font-style: italic; }
-.mag-rule { height: 1px; background: rgba(244, 244, 245, 0.18); }
+.mag-rule { height: 1px; background: var(--color-bd); }
 .mag-rule-double {
   height: 5px;
   background:
     linear-gradient(to bottom,
-      rgba(244, 244, 245, 0.28) 0,  rgba(244, 244, 245, 0.28) 1px,
-      transparent 1px, transparent 4px,
-      rgba(244, 244, 245, 0.28) 4px, rgba(244, 244, 245, 0.28) 5px);
+      var(--color-bd-x) 0,   var(--color-bd-x) 1px,
+      transparent 1px,       transparent 4px,
+      var(--color-bd-x) 4px, var(--color-bd-x) 5px);
 }
 .mag-kpi-name {
   font-family: 'Instrument Serif', serif; font-style: italic;
