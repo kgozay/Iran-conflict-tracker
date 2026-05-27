@@ -44,6 +44,7 @@ export default function Sidebar({
   page, setPage, cis, status, lastFetch,
   isOpen, onClose,
   visible, pinned, onPinToggle, onMouseEnter, onMouseLeave,
+  theme, setTheme,
 }) {
   const toneText = TONE_TEXT[cis.regimeClass] ?? TONE_TEXT.neutral;
   const toneBg   = TONE_BG[cis.regimeClass]   ?? TONE_BG.neutral;
@@ -156,6 +157,42 @@ export default function Sidebar({
           </button>
         ))}
       </nav>
+
+      {/* ── Theme Switcher ───────────────────────────────────────── */}
+      <div className="px-[22px] py-3.5 border-t border-bd flex items-center justify-between">
+        <span className="text-[10.5px] font-medium text-tm tracking-[0.08em] uppercase select-none">Theme</span>
+        <button
+          type="button"
+          onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+          className="flex items-center gap-1.5 px-3 py-[6px] text-[11.5px] font-medium text-ts border border-bd rounded-lg hover:text-tp hover:border-ts transition-colors cursor-pointer"
+        >
+          {theme === 'light' ? (
+            <>
+              {/* Sun Icon */}
+              <svg className="w-3.5 h-3.5 text-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+              <span>Ivory</span>
+            </>
+          ) : (
+            <>
+              {/* Moon Icon */}
+              <svg className="w-3.5 h-3.5 text-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+              <span>Midnight</span>
+            </>
+          )}
+        </button>
+      </div>
 
       {/* ── Status footer ───────────────────────────────────────── */}
       <div className="px-[22px] py-4 border-t border-bd">

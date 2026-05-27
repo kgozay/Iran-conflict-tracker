@@ -110,10 +110,10 @@ function KpiCard({ assetKey, asset, timeframe, sparklineData, sparkLoading }) {
 
   // Tinted spotlight matches the directional tone of the card
   const spotColor = price == null
-    ? 'rgba(244,244,245,0.15)'
+    ? 'var(--color-spotlight)'
     : good
-      ? 'rgba(52, 211, 153, 0.18)'
-      : 'rgba(249, 112, 112, 0.18)';
+      ? 'var(--color-bull-spotlight)'
+      : 'var(--color-bear-spotlight)';
 
   return (
     <SpotlightCard

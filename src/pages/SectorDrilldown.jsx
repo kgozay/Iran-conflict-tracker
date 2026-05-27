@@ -50,11 +50,11 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 /* Spotlight tints for the KPI strip — keyed by tone class */
 const SPOT = {
-  'text-bull': 'rgba(52, 211, 153, 0.18)',
-  'text-bear': 'rgba(249, 112, 112, 0.18)',
-  'text-warn': 'rgba(232, 176, 74, 0.20)',
-  'text-tp':   'rgba(244, 244, 245, 0.10)',
-  'text-tm':   'rgba(244, 244, 245, 0.08)',
+  'text-bull': 'var(--color-bull-spotlight)',
+  'text-bear': 'var(--color-bear-spotlight)',
+  'text-warn': 'var(--color-spotlight)',
+  'text-tp':   'var(--color-spotlight)',
+  'text-tm':   'var(--color-bg-s)',
 };
 
 export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {

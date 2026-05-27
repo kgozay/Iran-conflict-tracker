@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSE Conflict Watch - Design Proposal & Theme Preview</title>
+  
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── CSS Reset & Variables ────────────────────────────────────────── */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      /* Shared values */
+      --font-serif: 'Instrument Serif', serif;
+      --font-sans: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --transition-speed: 0.4s;
+      --transition-curve: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Midnight Obsidian (Default Dark) */
+    .theme-dark {
+      --color-bg: #09090b;
+      --color-bg-ambient: radial-gradient(ellipse at 18% 8%, rgba(232, 176, 74, 0.09) 0%, transparent 50%),
+                          radial-gradient(ellipse at 92% 22%, rgba(80, 120, 200, 0.07) 0%, transparent 50%),
+                          radial-gradient(ellipse at 50% 110%, rgba(120, 90, 200, 0.06) 0%, transparent 50%);
+      --color-card: rgba(255, 255, 255, 0.035);
+      --color-card-hover: rgba(255, 255, 255, 0.055);
+      --color-border: rgba(255, 255, 255, 0.09);
+      --color-border-hover: rgba(255, 255, 255, 0.16);
+      --color-text-primary: #f4f4f5;
+      --color-text-secondary: #a1a1aa;
+      --color-text-muted: #71717a;
+      
+      --color-warn: #e8b04a;
+      --color-bull: #34d399;
+      --color-bear: #f97070;
+      
+      --color-warn-bg: rgba(232, 176, 74, 0.08);
+      --color-bull-bg: rgba(52, 211, 153, 0.08);
+      --color-bear-bg: rgba(249, 112, 112, 0.08);
+
+      --color-shadow: rgba(0, 0, 0, 0.8);
+      --color-spotlight: rgba(232, 176, 74, 0.15);
+      
+      --color-btn-bg: #f4f4f5;
+      --color-btn-text: #0a0a0a;
+      
+      color-scheme: dark;
+    }
+
+    /* Editorial Ivory (Light/Newspaper Theme) */
+    .theme-light {
+      --color-bg: #faf8f5;
+      --color-bg-ambient: radial-gradient(ellipse at 20% 10%, rgba(175, 121, 29, 0.04) 0%, transparent 60%),
+                          radial-gradient(ellipse at 80% 90%, rgba(80, 110, 180, 0.02) 0%, transparent 60%);
+      --color-card: rgba(255, 255, 255, 0.72);
+      --color-card-hover: rgba(255, 255, 255, 0.95);
+      --color-border: rgba(28, 25, 23, 0.09);
+      --color-border-hover: rgba(28, 25, 23, 0.18);
+      --color-text-primary: #1c1917;
+      --color-text-secondary: #57534e;
+      --color-text-muted: #878681;
+      
+      --color-warn: #b47a18; /* Higher contrast gold */
+      --color-bull: #0d9488; /* Teal-600 */
+      --color-bear: #dc2626; /* Red-600 */
+      
+      --color-warn-bg: rgba(180, 122, 24, 0.06);
+      --color-bull-bg: rgba(13, 148, 136, 0.06);
+      --color-bear-bg: rgba(220, 38, 38, 0.06);
+
+      --color-shadow: rgba(28, 25, 23, 0.04);
+      --color-spotlight: rgba(180, 122, 24, 0.07);
+
+      --color-btn-bg: #1c1917;
+      --color-btn-text: #faf8f5;
+
+      color-scheme: light;
+    }
+
+    /* ── Base Styling ─────────────────────────────────────────────────── */
+    body {
+      font-family: var(--font-sans);
+      background-color: #0c0a09;
+      color: #fafaf9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.5rem;
+      overflow-x: hidden;
+    }
+
+    header.proposal-header {
+      width: 100%;
+      max-width: 1100px;
+      margin-bottom: 2.5rem;
+      text-align: center;
+    }
+
+    header.proposal-header h1 {
+      font-family: var(--font-serif);
+      font-size: 3rem;
+      font-weight: 400;
+      color: #e8b04a;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+
+    header.proposal-header p {
+      font-size: 1.1rem;
+      color: #a1a1aa;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ── Tabs & Navigation ────────────────────────────────────────────── */
+    .tab-container {
+      width: 100%;
+      max-width: 1100px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 20px;
+      padding: 1.5rem;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .tab-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .tab-buttons {
+      display: flex;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      color: #a1a1aa;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: rgba(255, 255, 255, 0.08);
+      color: #faf8f5;
+    }
+
+    .theme-controller {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .theme-label {
+      font-size: 0.85rem;
+      color: #a1a1aa;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .theme-switch {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 30px;
+      padding: 3px;
+      cursor: pointer;
+      position: relative;
+      width: 140px;
+      height: 38px;
+    }
+
+    .theme-switch-slider {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 65px;
+      height: 30px;
+      background: #e8b04a;
+      border-radius: 20px;
+      transition: transform 0.3s var(--transition-curve);
+      z-index: 1;
+    }
+
+    .theme-switch-option {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #faf8f5;
+      z-index: 2;
+      transition: color 0.3s ease;
+    }
+
+    .theme-switch-option.active-option {
+      color: #0f0e0d;
+    }
+
+    /* ── Preview Sandbox Frame ────────────────────────────────────────── */
+    .preview-sandbox {
+      width: 100%;
+      border-radius: 16px;
+      background-color: var(--color-bg);
+      background-image: var(--color-bg-ambient);
+      background-size: 150% 150%;
+      border: 1px solid var(--color-border);
+      padding: 2rem;
+      transition: all var(--transition-speed) var(--transition-curve);
+      box-shadow: 0 10px 30px var(--color-shadow);
+      position: relative;
+    }
+
+    /* ── Mockup Dashboard Header ──────────────────────────────────────── */
+    .mock-header {
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .mock-eyebrow {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 1.15rem;
+      color: var(--color-warn);
+      margin-bottom: 4px;
+    }
+
+    .mock-title {
+      font-family: var(--font-serif);
+      font-size: 2.2rem;
+      color: var(--color-text-primary);
+      line-height: 1.1;
+      letter-spacing: -0.015em;
+    }
+
+    .mock-title span.italic {
+      font-style: italic;
+      color: var(--color-warn);
+    }
+
+    /* Animated ShinyText emulation */
+    .shiny-text-proposal {
+      background-size: 200% auto;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: preview-shine 3.5s linear infinite;
+    }
+    .shiny-text-primary {
+      background-image: linear-gradient(120deg, var(--color-text-primary) 0%, var(--color-text-primary) 35%, #ffffff 50%, var(--color-text-primary) 65%, var(--color-text-primary) 100%);
+    }
+    .shiny-text-accent {
+      background-image: linear-gradient(120deg, var(--color-warn) 0%, var(--color-warn) 35%, #ffffff 50%, var(--color-warn) 65%, var(--color-warn) 100%);
+    }
+    @keyframes preview-shine {
+      0% { background-position: 150% center; }
+      100% { background-position: -50% center; }
+    }
+
+    /* ── Mockup KPI Grid ──────────────────────────────────────────────── */
+    .mock-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Spotlight Card Mockup */
+    .mock-card {
+      background: var(--color-card);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      transition: transform 0.4s var(--transition-curve), 
+                  background-color 0.4s var(--transition-curve), 
+                  border-color 0.4s var(--transition-curve);
+    }
+
+    .mock-card:hover {
+      transform: translateY(-2px);
+      background-color: var(--color-card-hover);
+      border-color: var(--color-border-hover);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    /* spotlight halo */
+    .mock-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      background: radial-gradient(
+        circle 180px at var(--mouse-x, 50%) var(--mouse-y, 50%),
+        var(--color-spotlight),
+        transparent 65%
+      );
+    }
+
+    .mock-card:hover::before {
+      opacity: 1;
+    }
+
+    .kpi-title {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 1.5rem;
+      color: var(--color-text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      font-family: var(--font-sans);
+      margin-bottom: 0.25rem;
+    }
+
+    .kpi-change {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .kpi-change.bullish { color: var(--color-bull); }
+    .kpi-change.bearish { color: var(--color-bear); }
+
+    .kpi-change-bg {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      margin-left: 6px;
+    }
+    .kpi-change-bg.bullish { background: var(--color-bull-bg); color: var(--color-bull); }
+    .kpi-change-bg.bearish { background: var(--color-bear-bg); color: var(--color-bear); }
+
+    /* ── Regime Banner Mockup ─────────────────────────────────────────── */
+    .mock-regime-banner {
+      background: var(--color-card);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .regime-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .regime-label {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-text-secondary);
+    }
+
+    .regime-value {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 1.3rem;
+      color: var(--color-bear);
+    }
+
+    .regime-bar-container {
+      position: relative;
+      height: 6px;
+      background: rgba(120, 120, 120, 0.1);
+      border-radius: 3px;
+      margin: 1rem 0;
+    }
+
+    .regime-bar-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      border-radius: 3px;
+      background: var(--color-bear);
+      width: 78%;
+    }
+
+    .regime-desc {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: var(--color-text-secondary);
+    }
+
+    .regime-desc::first-letter {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 3.2rem;
+      line-height: 0.85;
+      float: left;
+      padding: 4px 8px 0 0;
+      color: var(--color-warn);
+    }
+
+    /* ── Proposal Text / Explanations ────────────────────────────────── */
+    .proposal-details {
+      margin-top: 2.5rem;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    @media (min-width: 768px) {
+      .proposal-details {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .proposal-section {
+      background: rgba(255, 255, 255, 0.015);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 14px;
+      padding: 1.5rem;
+    }
+
+    .proposal-section h3 {
+      font-family: var(--font-serif);
+      font-size: 1.4rem;
+      color: #e8b04a;
+      margin-bottom: 1rem;
+      font-weight: 500;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 0.5rem;
+    }
+
+    .proposal-section ul {
+      list-style-type: none;
+    }
+
+    .proposal-section li {
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #d4d4d8;
+      line-height: 1.5;
+      position: relative;
+      padding-left: 1.25rem;
+    }
+
+    .proposal-section li::before {
+      content: '✦';
+      position: absolute;
+      left: 0;
+      color: #e8b04a;
+      font-size: 0.8rem;
+    }
+
+    .proposal-section li strong {
+      color: #ffffff;
+    }
+
+    /* Custom StarBorder button mockup */
+    .star-btn-proposal {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 20px;
+      background: var(--color-btn-bg);
+      color: var(--color-btn-text);
+      font-weight: 600;
+      border-radius: 30px;
+      font-size: 0.85rem;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 10px var(--color-shadow);
+      transition: all 0.2s ease;
+    }
+
+    .star-btn-proposal:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body class="theme-dark">
+
+  <header class="proposal-header">
+    <h1>JSE Conflict Watch</h1>
+    <p>Theme preview and design improvements proposal. Switch themes below to preview the visual updates interactively.</p>
+  </header>
+
+  <div class="tab-container">
+    <div class="tab-header">
+      <div class="tab-buttons">
+        <button class="tab-btn active">Overview Mockup</button>
+      </div>
+      
+      <div class="theme-controller">
+        <span class="theme-label">Active Theme</span>
+        <div class="theme-switch" id="themeSwitch">
+          <div class="theme-switch-slider" id="themeSlider"></div>
+          <div class="theme-switch-option active-option" id="optDark">Midnight</div>
+          <div class="theme-switch-option" id="optLight">Ivory</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Sandbox Visual Preview ── -->
+    <div class="preview-sandbox">
+      
+      <!-- Mock TopBar -->
+      <div class="mock-header">
+        <div>
+          <div class="mock-eyebrow">— overview · today</div>
+          <div class="mock-title">
+            <span class="shiny-text-proposal shiny-text-primary">Today's</span> 
+            <span class="italic"><span class="shiny-text-proposal shiny-text-accent">transmission</span></span>
+          </div>
+        </div>
+        <div>
+          <button class="star-btn-proposal">Refresh data</button>
+        </div>
+      </div>
+
+      <!-- Mock KPI Grid -->
+      <div class="mock-kpi-grid">
+        <div class="mock-card">
+          <div class="kpi-title">Brent Crude</div>
+          <div class="kpi-value">$84.42</div>
+          <div class="kpi-change bearish">
+            ↓ 1.62% <span class="kpi-change-bg bearish">Bearish</span>
+          </div>
+        </div>
+        <div class="mock-card">
+          <div class="kpi-title">Gold Spot</div>
+          <div class="kpi-value">$2,342.10</div>
+          <div class="kpi-change bullish">
+            ↑ 0.88% <span class="kpi-change-bg bullish">Bullish</span>
+          </div>
+        </div>
+        <div class="mock-card">
+          <div class="kpi-title">USD/ZAR</div>
+          <div class="kpi-value">R18.52</div>
+          <div class="kpi-change bearish">
+            ↓ 0.42% <span class="kpi-change-bg bearish">Risk-Off</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mock Regime Banner -->
+      <div class="mock-regime-banner">
+        <div class="regime-header">
+          <span class="regime-label">Conflict Intensity Index (CIS)</span>
+          <span class="regime-value">Bearish Regime</span>
+        </div>
+        <div class="regime-bar-container">
+          <div class="regime-bar-fill"></div>
+        </div>
+        <div class="regime-desc">
+          The Conflict Intensity Score has risen above +40. Structural commodity channels (Brent Oil and Gold) are showing elevated risk pricing. Systemic rand depreciation vectors have triggered macro hedging allocations across JSE mining names.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Explanations & Next Steps ── -->
+    <div class="proposal-details">
+      <div class="proposal-section">
+        <h3>Theme Refinement Proposal</h3>
+        <ul>
+          <li>
+            <strong>Editorial Ivory (Newspaper Theme)</strong>: Replaces the flat pitch black with a sophisticated cream/ivory backdrop mimicking professional financial publications. Perfect for high-contrast reading.
+          </li>
+          <li>
+            <strong>Midnight Obsidian (Soft Dark Theme)</strong>: Replaces pure `#000` black with a rich, deep charcoal (`#09090b`), reducing eye strain while adding subtle glowing ambient backdrops for an ultra-premium feel.
+          </li>
+          <li>
+            <strong>Theme Swapper</strong>: We can add a clean, animated theme switcher to your sidebar or topbar that persists the user's choice in local storage and defaults dynamically to their system setting.
+          </li>
+        </ul>
+      </div>
+
+      <div class="proposal-section">
+        <h3>Technical Optimizations</h3>
+        <ul>
+          <li>
+            <strong>Smooth View Transitions</strong>: Leverage baseline View Transitions API to smoothly morph elements (like cards, headers, and pages) when clicking navigation links, avoiding jarring content snaps.
+          </li>
+          <li>
+            <strong>CSS Variables Restructuring</strong>: Consolidate color definitions into semantic CSS variables (e.g. `--color-bg`, `--color-text-primary`) so changing the app's look and adding new themes takes less than 10 lines of code.
+          </li>
+          <li>
+            <strong>Dynamic Spotlight Colors</strong>: Allow spotlight gradients to dynamically inherit context (e.g., a green spotlight glow for bullish card states, and a red glow for bearish ones).
+          </li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ── Interactive Theme Toggle Slider Logic ───────────────────────
+    const themeSwitch = document.getElementById('themeSwitch');
+    const themeSlider = document.getElementById('themeSlider');
+    const optDark = document.getElementById('optDark');
+    const optLight = document.getElementById('optLight');
+
+    themeSwitch.addEventListener('click', () => {
+      const isDark = document.body.classList.contains('theme-dark');
+      
+      if (isDark) {
+        // Toggle to Light Theme
+        document.body.classList.remove('theme-dark');
+        document.body.classList.add('theme-light');
+        themeSlider.style.transform = 'translateX(68px)';
+        optDark.classList.remove('active-option');
+        optLight.classList.add('active-option');
+      } else {
+        // Toggle to Dark Theme
+        document.body.classList.remove('theme-light');
+        document.body.classList.add('theme-dark');
+        themeSlider.style.transform = 'translateX(0px)';
+        optLight.classList.remove('active-option');
+        optDark.classList.add('active-option');
+      }
+    });
+
+    // ── Interactive Spotlight Mousemove Logic ──────────────────────
+    const cards = document.querySelectorAll('.mock-card');
+    cards.forEach(card => {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        card.style.setProperty('--mouse-x', `${x}px`);
+        card.style.setProperty('--mouse-y', `${y}px`);
+      });
+    });
+  </script>
+</body>
+</html>

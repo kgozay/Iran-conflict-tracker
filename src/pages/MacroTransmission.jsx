@@ -57,7 +57,7 @@ function Arr({ active }) {
  * to the bear tint when the channel is firing.
  */
 function ChannelCard({ title, italic, rows, impact, impactCls, isActive }) {
-  const spot = isActive ? 'rgba(249, 112, 112, 0.20)' : 'rgba(232, 176, 74, 0.16)';
+  const spot = isActive ? 'var(--color-bear-spotlight)' : 'var(--color-spotlight)';
   return (
     <SpotlightCard
       spotlightColor={spot}
@@ -170,8 +170,8 @@ function MacroStrip({ assets, hasData }) {
         const good  = pct == null ? null : inv ? pct <= 0 : pct >= 0;
         const col   = pct == null ? 'text-tm' : good ? 'text-bull' : 'text-bear';
         const src   = asset?.source;
-        const spot  = pct == null ? 'rgba(244,244,245,0.10)'
-          : good ? 'rgba(52, 211, 153, 0.16)' : 'rgba(249, 112, 112, 0.16)';
+        const spot  = pct == null ? 'var(--color-spotlight)'
+          : good ? 'var(--color-bull-spotlight)' : 'var(--color-bear-spotlight)';
 
         return (
           <SpotlightCard

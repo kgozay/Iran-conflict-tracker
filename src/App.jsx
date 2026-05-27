@@ -83,6 +83,17 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme,       setTheme]      = useState(() => localStorage.getItem('jse_theme') ?? 'dark');
 
+  /* ── Navigate wrapper with View Transitions API fallback ── */
+  const navigateTo = useCallback((newPage) => {
+    if (document.startViewTransition) {
+      document.startViewTransition(() => {
+        setPage(newPage);
+      });
+    } else {
+      setPage(newPage);
+    }
+  }, []);
+
   /* ── PATCH: sidebar auto-hide state ────────────────────────────── */
   const [sidebarPinned, setSidebarPinned] = useState(
     () => localStorage.getItem('jse_sidebar_pinned') === 'true'
@@ -99,9 +110,10 @@ export default function App() {
   /* ────────────────────────────────────────────────────────────────── */
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme === 'light' ? 'light' : '';
+    document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('jse_theme', theme);
   }, [theme]);
+
 
   const {
     assets, stocks, r2035History, history,
@@ -233,7 +245,7 @@ export default function App() {
       )}
 
       <Sidebar
-        page={page} setPage={setPage}
+        page={page} setPage={navigateTo}
         cis={cis} status={status} lastFetch={lastFetch}
         isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}
         visible={sidebarVisible}
@@ -241,6 +253,7 @@ export default function App() {
         onPinToggle={() => setSidebarPinned(p => !p)}
         onMouseEnter={() => setSidebarHovered(true)}
         onMouseLeave={() => setSidebarHovered(false)}
+        theme={theme} setTheme={setTheme}
       />
 
       {/* PATCH: content margin animates between 0 and 240px based on

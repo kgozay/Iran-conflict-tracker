@@ -61,7 +61,7 @@ export default function TopBar({
   const eyebrow   = `${meta.kicker.toLowerCase()} · ${dayStr.toLowerCase()}${isLoading && progress ? ' · ' + progress : ''}`;
 
   return (
-    <header className="bg-black/40 border-b border-bd flex-shrink-0 flex items-center justify-between px-8 py-[22px] gap-4 backdrop-blur-[24px] backdrop-saturate-[160%]">
+    <header className="bg-bg/40 border-b border-bd flex-shrink-0 flex items-center justify-between px-8 py-[22px] gap-4 backdrop-blur-[24px] backdrop-saturate-[160%]">
 
       {/* ── Left: hamburger + eyebrow + title (magazine cover treatment) ── */}
       <div className="flex items-center gap-3 min-w-0">
