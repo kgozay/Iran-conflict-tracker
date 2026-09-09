@@ -5,7 +5,7 @@
  * v9 STRATEGY (2026-04 rewrite):
  *   Primary: /v8/finance/chart/{symbol}?interval=1d&range=5d — per symbol, in parallel.
  *            Does NOT require cookie+crumb, reliable from Vercel edge IPs,
- *            works for all symbols incl. ^ZA10Y (which the quote endpoint does NOT resolve).
+ *            works for equities, commodities, FX, and the ^TNX US 10Y yield index.
  *   Fallback: /v8/finance/quote bulk (requires crumb) — tried FIRST as a fast path,
  *             chart endpoint tops up anything missing. Kept because when bulk works
  *             it costs 1 HTTP call instead of 40.

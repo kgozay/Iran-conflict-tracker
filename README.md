@@ -95,8 +95,8 @@ Add the variable name and value, then redeploy.
 - Impact-aware macro KPI cards with source badges, sparklines and market read-through lines.
 - Data Quality / Source Status panel.
 - Source and fallback badges on macro KPI cards.
-- SA bond metric renamed to **SA 10Y Yield Proxy**.
-- Static SA 10Y fallback is displayed but excluded from CIS scoring.
+- Replaced the stale SA 10Y proxy with the **US 10Y Yield** (`^TNX`).
+- Quote and history failures are isolated so partial market data remains usable.
 - CIS driver attribution showing the biggest weighted positive/negative contributors.
 - Watchlist CSV export respects selected `1D / 5D / 20D` and `ABS / REL` modes.
 - More detailed Gemini Morning Note prompt with market diagnosis, stock watchlist, risk flag and action setup.
@@ -111,8 +111,8 @@ Add the variable name and value, then redeploy.
 ```text
 /api/quotes        Yahoo Finance quote/chart proxy
 /api/history       Yahoo Finance 5D/20D history proxy
+/api/treasury      Official US Treasury daily 10-year yield fallback
 /api/sparklines    Intraday macro sparklines
-/api/sarb          SA 10Y yield proxy: Stooq → Yahoo → FRED → static fallback
 /api/morning-note  Gemini-generated analyst note
 ```
 
@@ -121,8 +121,8 @@ Add the variable name and value, then redeploy.
 ## Data-source caveats
 
 - Yahoo Finance, Stooq and FRED are free/fragile data sources and can occasionally fail, delay or return partial coverage.
-- The **SA 10Y Yield Proxy** is not guaranteed to be the exact R2035 yield unless you replace the source with a true R2035 feed.
-- If the SA 10Y source falls back to `STATIC`, the value is displayed for continuity but excluded from CIS scoring.
+- The specific R2035 yield is intentionally omitted because dependable live JSE bond data requires a licensed market-data feed.
+- The US 10Y card uses Yahoo Finance's `^TNX` market series, with the official US Treasury daily par-yield feed as a fallback. The intraday reading is indicative rather than exchange-certified data.
 - Sector performance is an **equal-weight basket** of selected JSE names, not an official index-weighted sector return.
 - Market cap and P/E fields in `src/data/stocks.js` are static reference fields and may become stale.
 
@@ -147,7 +147,7 @@ Then open the local URL shown by Vercel.
 - Tune the CIS weights: edit `src/utils/scoring.js`.
 - Add more alert types: edit `src/utils/alerts.js`.
 - Change cache duration: edit `CACHE_TTL` and `STALE_TTL` in `src/hooks/useMarketData.js`.
-- Use a true R2035 source: replace or extend `/api/sarb.js`, then change the UI label from `SA 10Y Yield Proxy` to `R2035`.
+- Add a licensed JSE fixed-income feed if security-level R2035 pricing becomes a requirement.
 
 ---
 

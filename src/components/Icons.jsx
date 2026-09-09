@@ -66,5 +66,5 @@ export const ASSET_ICONS = {
   palladium: PalladiumIcon,
   usdZar:    FxIcon,
   coal:      CoalIcon,
-  r2035:     BondIcon,
+  us10y:     BondIcon,
 };

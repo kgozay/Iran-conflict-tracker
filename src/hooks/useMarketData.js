@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { JSE_STOCKS, MACRO_SYMBOLS, ALL_YAHOO_SYMBOLS } from '../data/stocks.js';
 
-const CACHE_KEY  = 'jse_cw_v6_cache';
+const CACHE_KEY  = 'jse_cw_v7_cache';
 const CACHE_TTL  = 5  * 60 * 1000;  // 5 min — fresh
 const STALE_TTL  = 30 * 60 * 1000;  // 30 min — still usable
 const FOCUS_LAG  = 5  * 60 * 1000;  // refetch when tab returns after 5 min
@@ -47,7 +47,7 @@ function applyQuotes(quotes, baseAssets, baseStocks) {
     'PA=F':     'palladium',
     'USDZAR=X': 'usdZar',
     'MTF=F':    'coal',
-    '^ZA10Y':   'r2035',
+    '^TNX':     'us10y',
   };
 
   const assets = { ...baseAssets };
@@ -60,6 +60,8 @@ function applyQuotes(quotes, baseAssets, baseStocks) {
         changePct: q.changePct,
         change:    q.change,
         prevClose: q.prevClose,
+        marketState: q.marketState,
+        timestamp: q.timestamp,
         name:      q.name || assets[key].name,
         isLive:    true,
         source:    q.source || 'Yahoo',
@@ -86,7 +88,7 @@ function applyHistory(history, assets, stocks) {
     'PA=F':     'palladium',
     'USDZAR=X': 'usdZar',
     'MTF=F':    'coal',
-    '^ZA10Y':   'r2035',
+    '^TNX':     'us10y',
   };
 
   const nextAssets = { ...assets };
@@ -122,14 +124,13 @@ function loadCache() {
   } catch { return null; }
 }
 
-function saveCache(quotes, bond, r2035History, history) {
+function saveCache(quotes, history, sourceHealth) {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({
       ts: Date.now(),
       quotes,
-      bond: bond ?? null,
-      r2035History: r2035History ?? null,
       history: history ?? null,
+      sourceHealth: sourceHealth ?? null,
     }));
   } catch { /* storage full — ignore */ }
 }
@@ -138,8 +139,8 @@ function saveCache(quotes, bond, r2035History, history) {
 export function useMarketData() {
   const [assets,       setAssets]       = useState(makeEmptyAssets);
   const [stocks,       setStocks]       = useState(makeEmptyStocks);
-  const [r2035History, setR2035History] = useState([]);   // [{month,yield,date},…]
   const [history,      setHistory]      = useState({});
+  const [sourceHealth, setSourceHealth] = useState({ quotes: 'idle', history: 'idle' });
   const [status,       setStatus]       = useState('empty');
   const [error,        setError]        = useState(null);
   const [lastFetch,    setLastFetch]    = useState(null);
@@ -169,21 +170,17 @@ export function useMarketData() {
       const merged = applyHistory(cached.history, a, s);
       a = merged.assets; s = merged.stocks;
     }
-    if (cached.bond?.price != null) {
-      a.r2035 = { ...a.r2035, ...cached.bond, isLive: true };
-    }
-
     setAssets(a);
     setStocks(s);
-    setR2035History(cached.r2035History || []);
     setHistory(cached.history || {});
+    setSourceHealth(cached.sourceHealth || { quotes: 'cached', history: cached.history ? 'cached' : 'missing' });
     setStatus(isStale ? 'cached' : 'live');
     setLastFetch(new Date(cached.ts));
     lastFetchTs.current = cached.ts;
     return isStale ? 'stale' : 'fresh';
   }, []);
 
-  /* Main fetch — runs /api/quotes, /api/sarb, /api/history in parallel */
+  /* Quote and history failures are isolated so partial data remains usable. */
   const fetchLive = useCallback(async (silent = false) => {
     const environment = envRef.current ?? getEnv();
 
@@ -201,22 +198,22 @@ export function useMarketData() {
     setProgress('Connecting…');
 
     try {
-      setProgress('Fetching market data (quotes, bond yield, historical)…');
+      setProgress('Fetching current quotes and historical returns…');
 
       const fetchOpts = { signal: ctrl.signal };
       const symbolStr = ALL_YAHOO_SYMBOLS.join(',');
 
-      const [rYahoo, rSarb, rHistory] = await Promise.allSettled([
+      const [rYahoo, rHistory, rTreasury] = await Promise.allSettled([
         fetch(`/api/quotes?symbols=${encodeURIComponent(symbolStr)}`, fetchOpts).then(async r => {
           if (!r.ok) throw new Error(`Yahoo HTTP ${r.status}`);
           return r.json();
         }),
-        fetch(`/api/sarb`, fetchOpts).then(async r => {
-          if (!r.ok) throw new Error(`SARB HTTP ${r.status}`);
-          return r.json();
-        }),
         fetch(`/api/history?symbols=${encodeURIComponent(symbolStr)}`, fetchOpts).then(async r => {
           if (!r.ok) throw new Error(`History HTTP ${r.status}`);
+          return r.json();
+        }),
+        fetch('/api/treasury', fetchOpts).then(async r => {
+          if (!r.ok) throw new Error(`US Treasury HTTP ${r.status}`);
           return r.json();
         }),
       ]);
@@ -232,17 +229,6 @@ export function useMarketData() {
         console.error('[useMarketData] Yahoo failed:', rYahoo.reason?.message);
       }
 
-      /* ── SARB bond yield + 12M history ── */
-      let bond = null;
-      let r2035Hist = [];
-      if (rSarb.status === 'fulfilled') {
-        bond = rSarb.value?.bond ?? null;
-        r2035Hist = rSarb.value?.history ?? [];
-        if (bond) console.log(`[useMarketData] Bond: ${bond.price}% from ${bond.source} · ${r2035Hist.length} history points`);
-      } else {
-        console.error('[useMarketData] SARB failed:', rSarb.reason?.message);
-      }
-
       /* ── History (5D/20D for every symbol) ── */
       let history = {};
       if (rHistory.status === 'fulfilled') {
@@ -250,6 +236,13 @@ export function useMarketData() {
         console.log(`[useMarketData] History: ${Object.keys(history).length} symbols`);
       } else {
         console.error('[useMarketData] History failed:', rHistory.reason?.message);
+      }
+
+      if (!quotes['^TNX'] && rTreasury.status === 'fulfilled' && rTreasury.value?.quote) {
+        quotes['^TNX'] = rTreasury.value.quote;
+      }
+      if (!history['^TNX'] && rTreasury.status === 'fulfilled' && rTreasury.value?.history) {
+        history['^TNX'] = rTreasury.value.history;
       }
 
       if (Object.keys(quotes).length === 0) {
@@ -266,35 +259,41 @@ export function useMarketData() {
         a = merged.assets; s = merged.stocks;
       }
 
-      if (bond && bond.price != null) {
-        a.r2035 = {
-          ...a.r2035,
-          ...bond,
-          isLive: true,
-          // Preserve 5D/20D from history endpoint if bond endpoint didn't supply them
-          changePct5D:  a.r2035.changePct5D,
-          changePct20D: a.r2035.changePct20D,
-        };
-      }
-
       setAssets(a);
       setStocks(s);
-      setR2035History(r2035Hist);
       setHistory(history || {});
       setStatus('live');
-      setLastFetch(new Date());
-      setError(null);
+      const fetchedAt = new Date();
+      const returned = Object.keys(quotes).length;
+      const requested = ALL_YAHOO_SYMBOLS.length;
+      const health = {
+        quotes: 'available',
+        history: rHistory.status === 'fulfilled' ? 'available' : 'unavailable',
+        treasury: rTreasury.status === 'fulfilled' ? 'available' : 'unavailable',
+        returned,
+        requested,
+        fetchedAt: fetchedAt.toISOString(),
+      };
+      const warnings = [];
+      if (returned < requested) warnings.push(`${requested - returned} instruments are temporarily unavailable.`);
+      if (rHistory.status !== 'fulfilled') warnings.push('Historical returns are unavailable; current prices remain usable.');
+      if (!quotes['^TNX']) warnings.push('US 10Y yield is temporarily unavailable from both Yahoo and US Treasury.');
+      setLastFetch(fetchedAt);
+      setSourceHealth(health);
+      setError(warnings.join(' '));
       setProgress('');
       lastFetchTs.current = Date.now();
 
-      saveCache(quotes, bond, r2035Hist, history);
-      return { success: true, assets: a, stocks: s };
+      saveCache(quotes, history, health);
+      return { success: true, assets: a, stocks: s, warning: warnings.join(' ') };
 
     } catch (e) {
       if (e.name === 'AbortError') return { success: false };
       const msg = e.message || 'Unknown fetch error';
       console.error('[useMarketData]', msg);
-      if (!silent) { setError(msg); setStatus('error'); }
+      setError(msg);
+      setSourceHealth(h => ({ ...h, quotes: 'unavailable', lastError: msg }));
+      setStatus(lastFetchTs.current ? 'cached' : 'error');
       setProgress('');
       return { success: false, error: msg };
     }
@@ -315,7 +314,7 @@ export function useMarketData() {
   }, [fetchLive]);
 
   return {
-    assets, stocks, r2035History, history,
+    assets, stocks, history, sourceHealth,
     status, error, lastFetch, progress, env,
     fetchLive, initFromCache,
     clearError: () => { setError(null); setStatus(s => s === 'error' ? (lastFetchTs.current ? 'cached' : 'empty') : s); },

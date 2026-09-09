@@ -120,8 +120,8 @@ const THEMATIC_META = {
   'domestic-stress': { name:'Domestic Stress',          detail:'ZAR >+1% AND Banks <-1.5% AND Retail <-1.5%' },
   'miner-support':   { name:'Miner Support',            detail:'Gold >+1.5% AND ZAR >+0.5% AND Miners >+1%' },
   'deescalation':    { name:'De-escalation Relief',     detail:'Brent <-2% AND ZAR stable AND market >+1%' },
-  'r2035-red':       { name:'SA 10Y Critical',          detail:'SA 10Y proxy change >+0.3%' },
-  'r2035-amber':     { name:'SA 10Y Amber',             detail:'SA 10Y proxy change >+0.1%' },
+  'us10y-red':       { name:'US 10Y Surge',             detail:'US 10Y change >+5%' },
+  'us10y-amber':     { name:'US 10Y Rising',            detail:'US 10Y change >+2%' },
   'brent-red':       { name:'Brent >+4% Critical',      detail:'Hard red threshold' },
   'brent-amber':     { name:'Brent >+2% Amber',         detail:'Amber threshold' },
   'zar-red':         { name:'USD/ZAR >+1.5% Critical',  detail:'Hard red threshold' },
@@ -150,7 +150,7 @@ function MacroStrip({ assets, hasData }) {
     { label:'USD/ZAR',  key:'usdZar',   inv:true  },
     { label:'Gold',     key:'gold',     inv:false },
     { label:'Platinum', key:'platinum', inv:false },
-    { label:'SA 10Y',   key:'r2035',    inv:true  },
+    { label:'US 10Y',   key:'us10y',    inv:true  },
     { label:'Palladium',key:'palladium',inv:false },
   ];
 
@@ -202,9 +202,9 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
   const brentChg = assets.brent?.changePct;
   const zarChg   = assets.usdZar?.changePct;
   const goldChg  = assets.gold?.changePct;
-  const r2035Chg = assets.r2035?.changePct;
-  const r2035Prc = assets.r2035?.price;
-  const r2035Src = assets.r2035?.source || 'fetching…';
+  const us10yChg = assets.us10y?.changePct;
+  const us10yPrc = assets.us10y?.price;
+  const us10ySrc = assets.us10y?.source || 'fetching…';
 
   const fmt = (v, label) => v != null ? `${label} ${v>=0?'+':''}${v.toFixed(1)}%` : `${label} (fetch data)`;
 
@@ -276,14 +276,14 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
                 [{v:'warn',t:'ZAR weak'},{v:'green',t:'ZAR-denom rev ↑'},{v:'green',t:'Miner margins ↑'}],
               ]}
             />
-            <ChannelCard title="SA 10Y /" italic="SARB"
-              isActive={hasData && r2035Chg != null && r2035Chg > 0.1}
-              impactCls={(r2035Chg ?? 0) > 0 ? 'text-bear' : 'text-bull'}
-              impact={(r2035Chg ?? 0) > 0 ? 'Tighter conditions — Banks DOWN' : 'Easing conditions — Banks UP'}
+            <ChannelCard title="US rates /" italic="global discount rate"
+              isActive={hasData && us10yChg != null && us10yChg > 2}
+              impactCls={(us10yChg ?? 0) > 0 ? 'text-bear' : 'text-bull'}
+              impact={(us10yChg ?? 0) > 0 ? 'Higher discount rate: EM assets pressured' : 'Lower discount rate: EM assets supported'}
               rows={[
-                [{v:'red',t:fmt(r2035Chg,'SA 10Y')},{v:'warn',t:`Yield ${r2035Prc?.toFixed(3)??'—'}%`},{v:'neutral',t:`Source: ${r2035Src}`}],
-                [{v:'red',t:'NII outlook ↓'},{v:'red',t:'Credit quality ↑'},{v:'red',t:'Bank P/B ↓'}],
-                [{v:'warn',t:'Consumer rates ↑'},{v:'red',t:'Debt servicing ↑'},{v:'red',t:'Retail spend ↓'}],
+                [{v:'red',t:fmt(us10yChg,'US 10Y')},{v:'warn',t:`Yield ${us10yPrc?.toFixed(3)??'—'}%`},{v:'neutral',t:`Source: ${us10ySrc}`}],
+                [{v:'red',t:'Global discount rate ↑'},{v:'red',t:'EM funding cost ↑'},{v:'red',t:'Equity multiples ↓'}],
+                [{v:'warn',t:'Dollar support'},{v:'red',t:'Rand pressure'},{v:'red',t:'JSE duration ↓'}],
               ]}
             />
           </div>

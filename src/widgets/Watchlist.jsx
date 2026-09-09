@@ -45,6 +45,7 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
   const [filter, setFilter] = useState('ALL');
   const [sort, setSort] = useState({ key: 'sector', dir: 'asc' });
   const [csvDone, setCsvDone] = useState(false);
+  const [mobileDetail, setMobileDetail] = useState('sector');
 
   const liveCount = stocks.filter(s => s.isLive).length;
   const marketAvgTF = useMemo(() => {
@@ -114,11 +115,75 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
             className="min-h-11 sm:min-h-0 inline-flex items-center gap-1.5 px-3 py-[5px] text-[11.5px] text-ts border border-bd rounded-full hover:text-tp hover:border-ts transition-colors cursor-pointer ml-1">
             {csvDone ? <><CheckIcon className="w-3 h-3" />Saved</> : <><DownloadIcon className="w-3 h-3" />CSV</>}
           </button>
+          <label className="sm:hidden flex items-center gap-2 min-h-11 px-3 text-[11.5px] text-ts border border-bd rounded-full">
+            Detail
+            <select
+              value={mobileDetail}
+              onChange={event => setMobileDetail(event.target.value)}
+              className="bg-transparent text-tp outline-none"
+              aria-label="Choose mobile watchlist detail"
+            >
+              <option value="sector">Sector</option>
+              <option value="signal">Signal</option>
+              <option value="trend">Trend</option>
+            </select>
+          </label>
+          <label className="sm:hidden flex items-center gap-2 min-h-11 px-3 text-[11.5px] text-ts border border-bd rounded-full">
+            Sort
+            <select
+              value={sort.key}
+              onChange={event => setSort({ key: event.target.value, dir: event.target.value === 'name' ? 'asc' : 'desc' })}
+              className="bg-transparent text-tp outline-none"
+              aria-label="Sort mobile watchlist"
+            >
+              <option value="changePct">Return</option>
+              <option value="price">Price</option>
+              <option value="name">Name</option>
+              <option value="sector">Sector</option>
+              <option value="signal">Signal</option>
+            </select>
+          </label>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Compact mobile rows */}
+      <div className="sm:hidden divide-y divide-bd border-y border-bd">
+        {filtered.map(s => {
+          const chg = s._chg;
+          const isUp = (chg ?? 0) >= 0;
+          const signal = getSignal(chg);
+          const sigCls = SIGNAL_CLS[signal] ?? 'bg-bg-e text-ts border-bd';
+          return (
+            <div key={s.ticker} className="py-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1">
+              <div className="min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono text-[12px] font-semibold text-tp">{s.display || s.ticker}</span>
+                  <span className="truncate text-[12px] text-ts">{s.name}</span>
+                </div>
+                <div className="mt-1 text-[10.5px] text-tm min-h-[18px] flex items-center">
+                  {mobileDetail === 'sector' && s.sector}
+                  {mobileDetail === 'signal' && (signal
+                    ? <span className={clsx('font-mono text-[9px] px-2 py-0.5 rounded-full border', sigCls)}>{signal}</span>
+                    : 'No signal')}
+                  {mobileDetail === 'trend' && <MiniSparkline points={sparklines?.[s.ticker]?.points} />}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="font-mono text-[13px] font-semibold text-tp">{fmtP(s.price)}</div>
+                <div className={clsx('mt-1 font-mono text-[12px] font-semibold', chg == null ? 'text-tm' : isUp ? 'text-bull' : 'text-bear')}>
+                  {chg == null ? '—' : `${isUp ? '+' : ''}${chg.toFixed(2)}%`}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div className="py-8 text-center text-[13px] text-tm">No stocks found for this filter</div>
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full border-collapse">
           <caption className="sr-only">JSE watchlist prices, returns, sectors and market signals</caption>
           <thead>

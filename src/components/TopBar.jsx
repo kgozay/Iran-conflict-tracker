@@ -29,9 +29,9 @@ function SegBtn({ label, active, onClick }) {
 }
 
 export default function TopBar({
-  page, status, error, lastFetch, progress,
+  page, status, progress,
   onFetch, timeframe, setTimeframe, returnMode, setReturnMode,
-  autoRefresh, onExport, dataHealth, onMenuClick, menuOpen, menuButtonRef,
+  onExport, onMenuClick, menuOpen, menuButtonRef,
 }) {
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef(null);
@@ -68,11 +68,6 @@ export default function TopBar({
               <span className="sm:hidden">{meta.kicker} · {shortDay.toLowerCase()}</span>
               <span className="hidden sm:inline">{meta.kicker.toLowerCase()} · {dayStr.toLowerCase()}{loadingText}</span>
             </span>
-            {dataHealth?.bondIsStatic && (
-              <span className="hidden sm:inline-flex font-mono text-[10px] text-bear border border-bear/30 bg-bear/8 px-[6px] py-[2px] rounded">
-                SA 10Y STATIC
-              </span>
-            )}
           </div>
           <h1 className="font-serif text-[28px] sm:text-[32px] text-tp leading-[1.05] tracking-[-0.02em] mt-1 whitespace-nowrap">
             <span>{meta.pre}</span>

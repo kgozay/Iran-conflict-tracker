@@ -23,15 +23,15 @@ There is no test suite. Verify logic changes manually via `vercel dev` or agains
 1. On mount, `App.jsx` calls `useMarketData().initFromCache()` to show cached localStorage data immediately, then `fetchLive()` for fresh data.
 2. `fetchLive()` fires three Vercel serverless functions in parallel:
    - `/api/quotes` — Yahoo Finance bulk/chart endpoint for all macro + JSE stock symbols.
-   - `/api/sarb` — SA 10Y bond yield (Stooq primary → Yahoo → FRED → static fallback).
    - `/api/history` — 5D/20D historical changes via Yahoo chart endpoint.
-3. Results are merged in layers (`applyQuotes` → `applyHistory` → bond overlay) then stored in state and localStorage.
+   - `/api/treasury` — official US Treasury daily 10-year par-yield fallback when Yahoo omits `^TNX`.
+3. Results are merged in layers (`applyQuotes` → Treasury fallback → `applyHistory`) then stored in state and localStorage.
 4. `useSparklines` fetches `/api/sparklines` (intraday 5m data) separately, on mount and after each refresh.
 
 ### Scoring (`src/utils/scoring.js`)
 
 The **Conflict Impact Score (CIS)** is a heuristic in the range ±100:
-- **Macro score** (40%): Brent, USD/ZAR, Gold, SA 10Y — directional, magnitude-weighted.
+- **Macro score** (40%): Brent, USD/ZAR, Gold, US 10Y yield — directional, magnitude-weighted.
 - **JSE score** (35%): Weighted basket of sector averages (Top40 25%, Miners 20%, Banks 20%, Retailers 15%, Energy 10%, Industrials 10%), divided by 10.
 - **Confirmation score** (25%): Binary bull/bear signal tests, each ±16 pts.
 
@@ -47,8 +47,8 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
 | `src/utils/alerts.js` | Threshold alert generation + `getAssetAlertLevel` for KPI dot indicators |
 | `src/data/stocks.js` | Static universe: `MACRO_SYMBOLS`, `JSE_STOCKS`, `ALL_YAHOO_SYMBOLS`, `SECTOR_ORDER` |
 | `api/quotes.js` | Yahoo Finance proxy — bulk crumb path first, per-symbol chart fallback |
-| `api/sarb.js` | SA 10Y bond yield — Stooq → Yahoo → FRED → static fallback chain |
 | `api/history.js` | 5D/20D historical changes via Yahoo chart endpoint |
+| `api/treasury.js` | Official US Treasury daily 10-year par-yield fallback |
 | `api/morning-note.js` | Gemini 2.5 Flash AI morning note — requires `GEMINI_API_KEY` env var |
 
 ### Sector derivation
@@ -57,14 +57,14 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
 
 ### Caching
 
-- Market data: `jse_cw_v6_cache` in localStorage — fresh for 5 min, usable (stale) for 30 min.
+- Market data: `jse_cw_v7_cache` in localStorage — fresh for 5 min, usable (stale) for 30 min.
 - Sparklines: `jse_cw_sparklines_v1` — 8-min TTL.
 - CIS history: `jse_cw_cis_history_v1` — up to 200 readings (≈7 days at 5-min refresh).
 
 ### API / environment
 
 - `api/` functions are CommonJS (`require`), frontend is ESM.
-- No API key required for Yahoo Finance or Stooq. `FRED_API_KEY` is optional (anonymous FRED calls work but are rate-limited). `GEMINI_API_KEY` is required for the morning note feature.
+- No API key is required for Yahoo Finance or the US Treasury fallback. `GEMINI_API_KEY` is required for the morning note feature.
 - `getEnv()` in `useMarketData.js` detects `stackblitz` | `local` | `vercel` — API functions are disabled on Stackblitz.
 
 ## Features added (2026-05)
@@ -84,7 +84,7 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
 ## Known fixes applied (2026-05)
 
 - `useSparklines` now exports `sparkLoading` (was `loading`) to match App.jsx destructuring — skeleton loader was always hidden.
-- `alerts.js` r2035 thresholds use `else if` so only one severity fires at a time.
+- `alerts.js` US 10Y thresholds use `else if` so only one severity fires at a time.
 - `alerts.js` gold-surge alert (`gold > 2`) uses `lvl:'green'` (was `'amber'`).
 - `useMarketData.clearError` reverts to `'cached'` status when prior data exists (was always `'empty'`, which wiped the cached data view).
 - `BrentSlider` slider track label now shows live Brent price dynamically (was hardcoded `$92 NOW`).
@@ -161,8 +161,8 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
      return den === 0 ? 0 : num / den;
    }
    ```
-2. Props: `{ history, macro }` — `history` is the 20D daily returns object keyed by symbol; `macro` contains Brent, Gold, USD/ZAR, SA 10Y series.
-3. Define an `ASSETS` array with display name + data key for: Brent, Gold, USD/ZAR, SA 10Y, Top40, Miners, Banks, Retailers, Energy, Industrials (10 items).
+2. Props: `{ history, macro }` — `history` is the 20D daily returns object keyed by symbol; `macro` contains Brent, Gold, USD/ZAR, and US 10Y series.
+3. Define an `ASSETS` array with display name + data key for: Brent, Gold, USD/ZAR, US 10Y, Top40, Miners, Banks, Retailers, Energy, Industrials (10 items).
 4. Build an N×N matrix of Pearson r values from the 20D return arrays for each pair.
 5. Render as a CSS grid (`grid-cols-[repeat(N,1fr)]`) where each cell background is:
    - Positive r: `rgba(34,197,94, Math.abs(r))` 

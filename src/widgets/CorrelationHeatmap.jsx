@@ -20,7 +20,7 @@ const ASSETS = [
   { short: 'Brent',   name: 'Brent',      key: 'BZ=F',        type: 'macro'  },
   { short: 'Gold',    name: 'Gold',        key: 'GC=F',        type: 'macro'  },
   { short: 'ZAR',     name: 'USD/ZAR',     key: 'USDZAR=X',    type: 'macro'  },
-  { short: 'SA 10Y',  name: 'SA 10Y',      key: '^ZA10Y',      type: 'macro'  },
+  { short: 'US 10Y',  name: 'US 10Y',      key: '^TNX',        type: 'macro'  },
   { short: 'JSE',     name: 'Top40',       key: 'top40',       type: 'sector' },
   { short: 'Miners',  name: 'Miners',      key: 'Gold Miners', type: 'sector' },
   { short: 'Banks',   name: 'Banks',       key: 'Banks',       type: 'sector' },

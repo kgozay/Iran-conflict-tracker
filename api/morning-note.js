@@ -63,7 +63,7 @@ function detectPatterns({ assets, sectors, stocks }) {
   const brent = assets.brent?.changePct ?? null;
   const gold  = assets.gold?.changePct  ?? null;
   const zar   = assets.usdZar?.changePct ?? null;
-  const r2035 = assets.r2035?.changePct  ?? null;
+  const us10y = assets.us10y?.changePct  ?? null;
   const miners = sectors['Gold Miners']?.chg ?? null;
   const energy = sectors.Energy?.chg ?? null;
   const banks  = sectors.Banks?.chg  ?? null;
@@ -72,7 +72,7 @@ function detectPatterns({ assets, sectors, stocks }) {
 
   if (brent > 1 && zar < -0.3)                          p.push('Brent/ZAR DIVERGENCE: oil rising but ZAR strengthening — SA-specific bid overriding classic oil-shock channel.');
   if (gold > 1 && miners > 1.5 && zar > 0.3)            p.push('CLASSIC HAVEN TRADE: gold + weak ZAR + miners all firing — textbook conflict transmission.');
-  if (banks > 0.5 && r2035 > 0.15)                      p.push('BANKS vs BONDS DIVERGENCE: yields up but banks outperforming — market pricing NIM expansion > volume concern.');
+  if (banks > 0.5 && us10y > 2)                         p.push('BANKS vs GLOBAL RATES DIVERGENCE: US yields are rising while banks outperform, suggesting local equity strength is offsetting the global discount-rate move.');
   if (energy > 2 && brent < 1)                           p.push('ENERGY WITHOUT OIL: JSE energy basket up while Brent quiet — likely Sasol-specific or coal-tracking move.');
   if (retail > 0 && zar > 0.5)                           p.push('RETAIL RESILIENCE: ZAR weak but retailers flat/up — offshore-revenue names (TFG, Mr Price) leading cohort.');
   if (top40 > 0.5 && brent > 2 && zar > 0.5)            p.push('RISK-OFF RALLY PARADOX: conflict macro (oil up, ZAR weak) but the equal-weight watchlist average is higher, with commodity shares masking domestic weakness.');
@@ -96,7 +96,7 @@ function buildPrompt(assets, sectors, cis, stocks, alerts, dataHealth) {
   const b  = assets.brent    || {};
   const g  = assets.gold     || {};
   const u  = assets.usdZar   || {};
-  const r  = assets.r2035    || {};
+  const y  = assets.us10y    || {};
   const pt = assets.platinum || {};
   const c  = assets.coal     || {};
 
@@ -120,20 +120,20 @@ function buildPrompt(assets, sectors, cis, stocks, alerts, dataHealth) {
 DATA (${date} · ${time} SAST)
 CIS: ${cis.total ?? '—'} / ${cis.regime ?? 'N/A'} | Macro 40%: ${cis.components?.macro?.score?.toFixed(1)??'—'} | JSE 35%: ${cis.components?.jse?.score?.toFixed(1)??'—'} | Conf 25%: ${cis.components?.conf?.score?.toFixed(1)??'—'}
 Brent: ${fmt(b.price,2,'$','/bbl')} (${pct(b.changePct)}) | Gold: ${fmt(g.price,0,'$','/oz')} (${pct(g.changePct)}) | Platinum: ${fmt(pt.price,0,'$','/oz')} (${pct(pt.changePct)})
-USD/ZAR: R${fmt(u.price,3)} (${pct(u.changePct)}) | SA 10Y: ${fmt(r.price,3,'','%')} (${pct(r.changePct)}) [${r.source||'unknown'}${r.isStale?' STATIC':''}] | Coal: ${fmt(c.price,2,'$','/t')} (${pct(c.changePct)})
+USD/ZAR: R${fmt(u.price,3)} (${pct(u.changePct)}) | US 10Y: ${fmt(y.price,3,'','%')} (${pct(y.changePct)}) [${y.source||'unknown'}] | Coal: ${fmt(c.price,2,'$','/t')} (${pct(c.changePct)})
 Sectors: Top40 ${pct(top.chg)} | Miners ${pct(m.chg)} | PGMs ${pct(pgm.chg)} | Energy ${pct(en.chg)} | Banks ${pct(bk.chg)} | Retail ${pct(re.chg)} | Industrials ${pct(ind.chg)}
 Top gainers: ${gainers || 'n/a'}
 Top losers: ${losers || 'n/a'}
 Patterns: ${patterns.length ? patterns.join(' / ') : 'No notable divergences.'}
 Alerts: ${(alerts||[]).map(a=>`[${(a.lvl||'').toUpperCase()}] ${a.label}: ${a.text}`).join(' | ') || 'None'}
-Data: ${health.quoteCoverage??'n/a'}% coverage, ${health.liveStocks??'n/a'}/${health.totalStocks??'n/a'} live stocks, bond source: ${health.bondSource||r.source||'unknown'}${health.bondIsStatic?' (STATIC)':''}
+Data: ${health.quoteCoverage??'n/a'}% coverage, ${health.liveStocks??'n/a'}/${health.totalStocks??'n/a'} live stocks, market status: ${health.market?.label||'unknown'}
 
 OUTPUT — write in this exact markdown structure:
 ## JSE Morning Intelligence: Geopolitical & Macro Risk Radar
 **Date:** ${date} | **CIS Regime:** [label + score]
 
 ### Market Dashboard
-[Markdown table: Indicator | Spot | Change | Conflict Risk Premium (High/Moderate/Low + one-line rationale). Rows: Brent, Gold, USD/ZAR, SA 10Y proxy, equal-weight watchlist average.]
+[Markdown table: Indicator | Spot | Change | Conflict Risk Premium (High/Moderate/Low + one-line rationale). Rows: Brent, Gold, USD/ZAR, US 10Y yield, equal-weight watchlist average.]
 
 ### The Lead: [sharp one-line thesis headline]
 [2–3 paragraphs. Name the dominant conflict transmission channel. Reference specific % moves and at least two named stocks. No filler phrases.]

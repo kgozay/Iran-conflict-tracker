@@ -12,8 +12,8 @@ function FetchPrompt({ onFetch }) {
       <div className="font-serif text-[32px] text-ts mb-3">No live data yet</div>
       <div className="text-[14px] text-tm mb-2 leading-relaxed max-w-md">
         Click below to fetch real-time prices for the JSE watchlist, Brent crude, gold,
-        platinum, palladium, USD/ZAR, coal — plus the{' '}
-        <span className="text-warn">SA 10Y Yield Proxy</span>.
+        platinum, palladium, USD/ZAR, coal, and the{' '}
+        <span className="text-warn">US 10-year yield</span>.
       </div>
       <div className="font-mono text-[11px] text-tx mb-6">
         Single request · No API key required · Yahoo Finance + Stooq/FRED
@@ -50,7 +50,7 @@ export default function Overview({
       {/* Secondary KPI strip: Platinum · Palladium · Coal */}
       <SecondaryKpiStrip assets={assets} timeframe={timeframe} />
 
-      {/* Hero macro KPIs: Brent · USD/ZAR · Gold · SA 10Y */}
+      {/* Hero macro KPIs: Brent · USD/ZAR · Gold · US 10Y */}
       <KpiGrid
         assets={assets}
         sparklines={sparklines}

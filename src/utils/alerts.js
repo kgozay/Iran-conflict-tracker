@@ -7,7 +7,7 @@ export function computeAlerts({ assets, sectors, stocks }) {
   const brent  = assets.brent?.changePct   ?? 0;
   const usdZar = assets.usdZar?.changePct  ?? 0;
   const gold   = assets.gold?.changePct    ?? 0;
-  const r2035  = assets.r2035?.isStale ? null : (assets.r2035?.change ?? 0);
+  const us10y  = assets.us10y?.changePct ?? null;
   const top40  = sectors.top40?.chg        ?? 0;
   const banks  = sectors.Banks?.chg        ?? 0;
   const retail = sectors.Retailers?.chg    ?? 0;
@@ -31,13 +31,12 @@ export function computeAlerts({ assets, sectors, stocks }) {
     alerts.push({ id:'deescalation', lvl:'green', tag:'ms', label:'DE-ESCALATION RELIEF',
       text:`COMPOSITE: Brent ${brent.toFixed(1)}%, ZAR stable, market +${top40.toFixed(1)}%. Conflict relief rally.`, time:now });
 
-  // SA 10Y yield proxy alerts. Static fallback is ignored.
-  if (r2035 != null && r2035 > 0.6)
-    alerts.push({ id:'r2035-red', lvl:'red', tag:'ds', label:'SA 10Y CRITICAL',
-      text:`SA 10Y yield proxy surge +${r2035.toFixed(2)}% — rate-sensitive equities under pressure.`, time:now });
-  else if (r2035 != null && r2035 > 0.3)
-    alerts.push({ id:'r2035-amber', lvl:'amber', tag:'in', label:'SA 10Y RISING',
-      text:`SA 10Y yield proxy +${r2035.toFixed(2)}% — tighter conditions weighing on bank valuations and retail credit.`, time:now });
+  if (us10y != null && us10y > 5)
+    alerts.push({ id:'us10y-red', lvl:'red', tag:'ds', label:'US 10Y SURGE',
+      text:`US 10Y yield +${us10y.toFixed(2)}% versus the previous close. Global discount-rate pressure is elevated.`, time:now });
+  else if (us10y != null && us10y > 2)
+    alerts.push({ id:'us10y-amber', lvl:'amber', tag:'in', label:'US 10Y RISING',
+      text:`US 10Y yield +${us10y.toFixed(2)}%. Watch emerging-market funding conditions and equity multiples.`, time:now });
 
   // Individual thresholds
   if (brent > 4)
@@ -86,7 +85,7 @@ export function getAssetAlertLevel(key, changePct) {
     platinum:  { amber:1.5, red:3,   bearish:false  },
     palladium: { amber:1.5, red:3,   bearish:false  },
     coal:      { amber:2,   red:4,   bearish:false  },
-    r2035:     { amber:0.1, red:0.3, bearish:true   },  // rising yield = bad for JSE
+    us10y:     { amber:2,   red:5,   bearish:true   },
   };
   const t = T[key];
   if (!t) return null;

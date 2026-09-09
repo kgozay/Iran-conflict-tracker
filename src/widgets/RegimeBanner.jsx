@@ -1,10 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { Suspense, lazy, useState, useMemo } from 'react';
 import clsx from 'clsx';
 import { CountUp, DecryptedText } from './Effects.jsx';
-import {
-  AreaChart, Area, XAxis, YAxis, ReferenceArea, ReferenceLine, Label, Tooltip, ResponsiveContainer
-} from 'recharts';
 import { CONFLICT_EVENTS } from '../data/conflictEvents.js';
+
+const RegimeHistoryChart = lazy(() => import('./RegimeHistoryChart.jsx'));
 
 const TONE_TEXT = { bear: 'text-bear', warn: 'text-warn', bull: 'text-bull', neutral: 'text-ts' };
 const TONE_BG   = { bear: 'bg-bear',  warn: 'bg-warn',   bull: 'bg-bull',   neutral: 'bg-ts'   };
@@ -90,6 +89,7 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
   const conf  = cis.components?.conf?.score  ?? 0;
 
   const playbookData = PLAYBOOK[rc] ?? PLAYBOOK.neutral;
+  const topDrivers = (cis.drivers || []).slice(0, 5);
 
   // Determine Recharts color variable dynamically based on regime
   const toneVar = rc === 'bear' ? 'var(--color-bear)' : rc === 'warn' ? 'var(--color-warn)' : rc === 'bull' ? 'var(--color-bull)' : 'var(--color-ts)';
@@ -100,14 +100,7 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
     const minTs = cisChartData[0].ts;
     const maxTs = cisChartData[cisChartData.length - 1].ts;
 
-    // Combine static conflict events with live/dynamic demo events for display feedback
-    const totalEvents = [
-      ...CONFLICT_EVENTS,
-      { date: new Date(Date.now() - 25 * 60 * 1000).toISOString(), label: 'Escalation Alert', type: 'escalation' },
-      { date: new Date(Date.now() - 75 * 60 * 1000).toISOString(), label: 'Relief Signal', type: 'de-escalation' },
-    ];
-
-    const mapped = totalEvents.map(ev => {
+    const mapped = CONFLICT_EVENTS.map(ev => {
       const evTs = new Date(ev.date).getTime();
       if (evTs >= minTs && evTs <= maxTs) {
         let closestPoint = cisChartData[0];
@@ -225,13 +218,45 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
           <svg className={clsx("w-3.5 h-3.5 transition-transform duration-300", isExpanded ? "rotate-180" : "")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
-          {isExpanded ? "Hide History & Playbook" : "View History & Hedging Playbook"}
+          {isExpanded ? 'Hide score details' : 'Explain this score'}
         </button>
       </div>
 
       {/* Expanded Trajectory Chart and Playbook Tray */}
       {isExpanded && (
         <div className="mt-5 pt-5 border-t border-bd grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-5 animate-fadeUp">
+          <div className="lg:col-span-2 bg-bg-e border border-bd rounded-xl p-4 sm:p-5">
+            <div className="font-medium text-[13px] text-tp">How the score is calculated</div>
+            <p className="mt-1.5 text-[11.5px] leading-relaxed text-ts max-w-[72ch]">{cis.methodology}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-4">
+              {Object.entries(cis.components || {}).map(([key, component]) => (
+                <div key={key} className="rounded-lg border border-bd bg-bg-c px-3 py-2.5">
+                  <div className="flex justify-between text-[10.5px] text-tm">
+                    <span className="capitalize">{key === 'jse' ? 'JSE watchlist' : key === 'conf' ? 'Confirmations' : key}</span>
+                    <span>{Math.round(component.weight * 100)}% weight</span>
+                  </div>
+                  <div className="mt-1 font-mono text-[13px] text-tp">
+                    Score {component.score > 0 ? '+' : ''}{component.score} · contribution {component.contrib > 0 ? '+' : ''}{component.contrib}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4">
+              <div className="text-[10.5px] font-medium text-tm">Largest current drivers</div>
+              {topDrivers.length ? (
+                <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {topDrivers.map(driver => (
+                    <li key={`${driver.bucket}-${driver.label}`} className="flex items-start justify-between gap-3 text-[11.5px] border-b border-bd pb-2">
+                      <span><span className="text-tp font-medium">{driver.label}</span><span className="text-tm">: {driver.reason}</span></span>
+                      <span className={clsx('font-mono flex-shrink-0', driver.weightedImpact >= 0 ? 'text-bull' : 'text-bear')}>
+                        {driver.weightedImpact > 0 ? '+' : ''}{driver.weightedImpact}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : <div className="mt-2 text-[11.5px] text-tm">No non-zero drivers in the current reading.</div>}
+            </div>
+          </div>
           
           {/* Left: Historical CIS Area Chart */}
           <div className="flex flex-col">
@@ -241,76 +266,9 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
                 No history points logged yet. Trigger active refreshes.
               </div>
             ) : (
-              <div className="h-[180px] w-full relative">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={cisChartData} margin={{ top: 12, right: 8, left: -25, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="cisGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={toneVar.includes('var') ? toneHex : toneVar} stopOpacity={0.25}/>
-                        <stop offset="95%" stopColor={toneVar.includes('var') ? toneHex : toneVar} stopOpacity={0.0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis 
-                      dataKey="time" 
-                      tickLine={false} 
-                      axisLine={false}
-                      tick={{ fill: 'var(--color-tm)', fontSize: 9, fontFamily: 'monospace' }}
-                    />
-                    <YAxis 
-                      domain={[-100, 100]} 
-                      tickLine={false} 
-                      axisLine={false}
-                      tick={{ fill: 'var(--color-tm)', fontSize: 9, fontFamily: 'monospace' }}
-                    />
-                    {/* Shaded bands for regimes */}
-                    <ReferenceArea y1={-100} y2={-40} fill="rgba(249, 112, 112, 0.08)" ifOverflow="hidden" />
-                    <ReferenceArea y1={-40}  y2={-15} fill="rgba(232, 176, 74, 0.08)" ifOverflow="hidden" />
-                    <ReferenceArea y1={-15}  y2={15}  fill="rgba(113, 113, 122, 0.05)" ifOverflow="hidden" />
-                    <ReferenceArea y1={15}   y2={40}  fill="rgba(52, 211, 153, 0.06)"  ifOverflow="hidden" />
-                    <ReferenceArea y1={40}   y2={100} fill="rgba(52, 211, 153, 0.12)"  ifOverflow="hidden" />
-                    
-                    {/* Event Reference Lines */}
-                    {visibleEvents.map((ev, idx) => (
-                      <ReferenceLine
-                        key={idx}
-                        x={ev.xValue}
-                        stroke={ev.type === 'escalation' ? 'var(--color-bear)' : 'var(--color-bull)'}
-                        strokeDasharray="3 3"
-                        strokeWidth={1}
-                      >
-                        <Label 
-                          value={ev.label} 
-                          position="top" 
-                          fill="var(--color-ts)" 
-                          fontSize={8} 
-                          fontFamily="monospace"
-                          offset={4}
-                        />
-                      </ReferenceLine>
-                    ))}
-                    
-                    <Tooltip
-                      contentStyle={{
-                        background: 'var(--color-bg-c)',
-                        border: '1px solid var(--color-bd)',
-                        borderRadius: '8px',
-                        fontFamily: 'monospace',
-                        fontSize: '11px',
-                        color: 'var(--color-tp)'
-                      }}
-                      labelFormatter={(label) => `Time: ${label}`}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="total" 
-                      stroke={toneVar} 
-                      strokeWidth={1.5}
-                      fillOpacity={1} 
-                      fill="url(#cisGradient)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              <Suspense fallback={<div className="h-[180px] rounded-xl bg-bg-e animate-pulse" />}>
+                <RegimeHistoryChart data={cisChartData} events={visibleEvents} toneVar={toneVar} toneHex={toneHex} />
+              </Suspense>
             )}
           </div>
 

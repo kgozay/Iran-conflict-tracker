@@ -1,21 +1,26 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { SECTOR_ORDER } from './data/stocks.js';
 import { computeCIS }    from './utils/scoring.js';
 import { computeAlerts } from './utils/alerts.js';
 import { buildDataHealth } from './utils/dataQuality.js';
 import { exportWatchlistCSV, exportMacroCSV, exportSnapshotJSON } from './utils/export.js';
 import { useMarketData }  from './hooks/useMarketData.js';
-import { useAutoRefresh } from './hooks/useAutoRefresh.js';
 import { useToast }       from './hooks/useToast.js';
 import { useSparklines }  from './hooks/useSparklines.js';
 import { useCISHistory }  from './hooks/useCISHistory.js';
 import Sidebar            from './components/Sidebar.jsx';
 import TopBar             from './components/TopBar.jsx';
 import LoadingOverlay     from './components/LoadingOverlay.jsx';
+import DataStatusBanner   from './components/DataStatusBanner.jsx';
 import Toast              from './components/Toast.jsx';
-import Overview           from './pages/Overview.jsx';
-import MacroTransmission  from './pages/MacroTransmission.jsx';
-import SectorDrilldown    from './pages/SectorDrilldown.jsx';
+
+const Overview = lazy(() => import('./pages/Overview.jsx'));
+const MacroTransmission = lazy(() => import('./pages/MacroTransmission.jsx'));
+const SectorDrilldown = lazy(() => import('./pages/SectorDrilldown.jsx'));
+
+function PageFallback() {
+  return <div role="status" className="p-8 text-[13px] text-tm">Loading dashboard view…</div>;
+}
 
 function deriveSectors(stocks) {
   const live = stocks.filter(s => s.isLive && s.changePct != null);
@@ -44,7 +49,7 @@ function deriveSectors(stocks) {
 }
 
 const ALL_SPARK_SYMBOLS = [
-  'BZ=F','GC=F','PL=F','PA=F','USDZAR=X','MTF=F','^ZA10Y',
+  'BZ=F','GC=F','PL=F','PA=F','USDZAR=X','MTF=F','^TNX',
   'GFI.JO','ANG.JO','IMP.JO','AMS.JO','SOL.JO',
   'FSR.JO','SBK.JO','CPI.JO','SHP.JO','NPN.JO',
   'PRX.JO','CFR.JO','AGL.JO','MTN.JO','SSW.JO',
@@ -58,7 +63,7 @@ const EMPTY_CIS = {
     conf:  { score: 0, weight: 0.25, contrib: 0, parts: [] },
   },
   drivers: [],
-  methodology: 'Heuristic score: Macro 40%, JSE equal-weight basket reaction 35%, confirmation signals 25%.',
+  methodology: 'Heuristic score: macro markets 40%, equal-weight JSE watchlist reaction 35%, confirmation signals 25%.',
 };
 
 export default function App() {
@@ -95,7 +100,7 @@ export default function App() {
 
 
   const {
-    assets, stocks, r2035History, history,
+    assets, stocks, history, sourceHealth,
     status, error, lastFetch, progress,
     fetchLive, initFromCache, clearError,
   } = useMarketData();
@@ -118,16 +123,15 @@ export default function App() {
   const sectors = useMemo(() => deriveSectors(stocks), [stocks]);
   const hasData = status === 'live' || status === 'cached';
   const dataHealth = useMemo(
-    () => buildDataHealth({ assets, stocks, status, lastFetch, sparklines }),
-    [assets, stocks, status, lastFetch, sparklines]
+    () => buildDataHealth({ assets, stocks, status, lastFetch, sparklines, sourceHealth }),
+    [assets, stocks, status, lastFetch, sparklines, sourceHealth]
   );
 
   const cisInput = useMemo(() => ({
     brentChg:       assets.brent?.changePct      ?? 0,
     usdZarChg:      assets.usdZar?.changePct     ?? 0,
     goldChg:        assets.gold?.changePct       ?? 0,
-    r2035Chg:       assets.r2035?.isStale ? null : (assets.r2035?.change ?? 0),
-    includeBond:    !assets.r2035?.isStale,
+    us10yChg:       assets.us10y?.changePct ?? 0,
     top40Chg:       sectors.top40?.chg           ?? 0,
     minersChg:      sectors['Gold Miners']?.chg  ?? 0,
     energyChg:      sectors.Energy?.chg          ?? 0,
@@ -153,16 +157,12 @@ export default function App() {
     const isSilent = silentParam === true;
     const result = await fetchLive(isSilent);
     if (result?.success) {
-      const src = result.assets?.r2035?.source;
-      const bondLabel = src ? ` · bond via ${src}` : '';
-      addToast(`Updated · ${new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })} SAST${bondLabel}`, 'success');
+      addToast(`Updated · ${new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })} SAST`, result.warning ? 'info' : 'success');
       fetchSparklines(ALL_SPARK_SYMBOLS);
     } else if (result?.error && !isSilent) {
       addToast(result.error, 'error', 6000);
     }
   }, [fetchLive, addToast, fetchSparklines]);
-
-  const autoRefresh = useAutoRefresh(handleFetch);
 
   const handleExport = useCallback((key) => {
     if (key === 'watchlist-csv') exportWatchlistCSV(stocks, timeframe, returnMode);
@@ -172,7 +172,7 @@ export default function App() {
   }, [stocks, assets, sectors, cis, alerts, timeframe, returnMode, addToast]);
 
   const shared = {
-    assets, stocks, sectors, cis, alerts, r2035History, history,
+    assets, stocks, sectors, cis, alerts, history,
     timeframe, returnMode, status, hasData, dataHealth, lastFetch,
     onFetch: handleFetch,
     sparklines, sparkLoading,
@@ -182,7 +182,7 @@ export default function App() {
   return (
     <div className="flex h-screen overflow-hidden bg-bg text-tp font-sans">
       <Toast toasts={toasts} onRemove={removeToast} />
-      <LoadingOverlay status={status} progress={progress} error={error} onDismiss={clearError} />
+      <LoadingOverlay status={status} progress={progress} />
 
       {/* Mobile backdrop */}
       {sidebarOpen && (
@@ -202,22 +202,28 @@ export default function App() {
       <div className="flex flex-col flex-1 overflow-hidden ml-0 lg:ml-[240px]">
         <TopBar
           page={page}
-          status={status} error={error} lastFetch={lastFetch} progress={progress}
+          status={status} progress={progress}
           onFetch={handleFetch}
           timeframe={timeframe}   setTimeframe={setTimeframe}
           returnMode={returnMode} setReturnMode={setReturnMode}
-          autoRefresh={autoRefresh}
           onExport={handleExport}
-          dataHealth={dataHealth}
           onMenuClick={openSidebar}
           menuOpen={sidebarOpen}
           menuButtonRef={menuButtonRef}
           theme={theme} setTheme={setTheme}
         />
+        <DataStatusBanner
+          dataHealth={dataHealth}
+          error={error}
+          onRetry={handleFetch}
+          onDismiss={clearError}
+        />
         <main id="main-content" tabIndex="-1" className="flex-1 overflow-y-auto">
-          {page === 'overview'  && <Overview          {...shared} />}
-          {page === 'macro'     && <MacroTransmission {...shared} />}
-          {page === 'drilldown' && <SectorDrilldown   {...shared} />}
+          <Suspense fallback={<PageFallback />}>
+            {page === 'overview'  && <Overview          {...shared} />}
+            {page === 'macro'     && <MacroTransmission {...shared} />}
+            {page === 'drilldown' && <SectorDrilldown   {...shared} />}
+          </Suspense>
         </main>
       </div>
     </div>

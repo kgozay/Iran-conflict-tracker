@@ -15,7 +15,7 @@ import { CountUp, SpotlightCard } from './Effects.jsx';
 function fmtPriceDecimals(key, price) {
   if (price == null) return { decimals: 0, suffix: '' };
   if (key === 'usdZar') return { decimals: 3, suffix: '' };
-  if (key === 'r2035')  return { decimals: 3, suffix: '%' };
+  if (key === 'us10y')  return { decimals: 3, suffix: '%' };
   if (key === 'brent')  return { decimals: 2, suffix: '' };
   if (price >= 10000)   return { decimals: 0, suffix: '' };
   return { decimals: 2, suffix: '' };
@@ -31,7 +31,7 @@ function getImpactLine(assetKey, changePct) {
     platinum:  up ? 'PGM support: helps diversified miners and PGM names' : 'PGM softness: drag for platinum-linked shares',
     palladium: up ? 'Palladium support: watch PGM beta and auto demand read-through' : 'Palladium softness: weak read-through for PGM exposure',
     coal:      up ? 'Coal support: positive for coal/energy-linked earnings' : 'Coal weakness: weaker energy export tailwind',
-    r2035:     up ? 'Yield pressure: tighter financial conditions' : 'Yield relief: supportive for duration and credit-sensitive equities',
+    us10y:     up ? 'Higher global discount rate: pressure on risk assets and EM funding' : 'Lower global discount rate: support for risk assets and EM flows',
   };
   return map[assetKey] || (up ? 'Positive market read-through' : 'Negative market read-through');
 }
@@ -44,7 +44,7 @@ function sourceBadge(asset) {
 }
 
 function changeContext(assetKey, timeframe, unit) {
-  if (assetKey === 'r2035') return timeframe === '1D' ? 'vs previous monthly observation' : `${timeframe} proxy change`;
+  if (assetKey === 'us10y') return timeframe === '1D' ? 'change vs previous close' : `${timeframe} yield move`;
   return timeframe === '1D' ? unit : timeframe;
 }
 
@@ -213,9 +213,9 @@ export function SecondaryKpiStrip({ assets, timeframe = '1D' }) {
   );
 }
 
-/* ── Hero KPI grid (Brent · USD/ZAR · Gold · SA 10Y) ───────────────── */
+/* ── Hero KPI grid (Brent · USD/ZAR · Gold · US 10Y) ───────────────── */
 export default function KpiGrid({ assets, sparklines, sparkLoading, timeframe = '1D' }) {
-  const keys = ['brent', 'usdZar', 'gold', 'r2035'];
+  const keys = ['brent', 'usdZar', 'gold', 'us10y'];
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">

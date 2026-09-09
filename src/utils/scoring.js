@@ -5,17 +5,17 @@ function contribution(label, raw, impact, reason) {
   return { label, raw: valid(raw) ? +raw.toFixed(4) : null, impact: Math.round(impact), reason };
 }
 
-export function computeMacroScore({ brentChg, usdZarChg, goldChg, r2035Chg, includeBond = true }) {
+export function computeMacroScore({ brentChg, usdZarChg, goldChg, us10yChg }) {
   const parts = [];
   const brentImpact = valid(brentChg) ? clamp(-brentChg * 8, -40, 40) : 0;
   const zarImpact   = valid(usdZarChg) ? clamp(-usdZarChg * 15, -30, 30) : 0;
   const goldImpact  = valid(goldChg) ? clamp(goldChg * 5, -20, 20) : 0;
-  const bondImpact  = includeBond && valid(r2035Chg) ? clamp(-r2035Chg * 60, -15, 15) : 0;
+  const ratesImpact = valid(us10yChg) ? clamp(-us10yChg * 5, -15, 15) : 0;
 
   parts.push(contribution('Brent', brentChg, brentImpact, 'Higher oil is usually negative for SA inflation, the rand and domestic cyclicals.'));
   parts.push(contribution('USD/ZAR', usdZarChg, zarImpact, 'Rand weakness is treated as a risk-off / imported-inflation signal.'));
   parts.push(contribution('Gold', goldChg, goldImpact, 'Gold strength can cushion the JSE through miners during geopolitical stress.'));
-  if (includeBond) parts.push(contribution('SA 10Y yield proxy', r2035Chg, bondImpact, 'Rising yields tighten financial conditions; falling yields are supportive.'));
+  parts.push(contribution('US 10Y yield', us10yChg, ratesImpact, 'Rising US yields lift the global discount rate and can pressure emerging-market funding and equity multiples.'));
 
   return { score: clamp(Math.round(parts.reduce((a, p) => a + p.impact, 0))), parts };
 }
@@ -40,21 +40,21 @@ export function computeJSEScore({ top40Chg, minersChg, energyChg, banksChg, reta
   return { score, parts };
 }
 
-export function computeConfirmationScore({ brentChg, usdZarChg, goldChg, r2035Chg, minersChg, banksChg, retailersChg, top40Chg, includeBond = true }) {
+export function computeConfirmationScore({ brentChg, usdZarChg, goldChg, us10yChg, minersChg, banksChg, retailersChg, top40Chg }) {
   const bearTests = [
     { on: valid(brentChg) && brentChg > 2, label: 'Brent shock', raw: brentChg, reason: 'Brent above +2% confirms oil-shock pressure.' },
     { on: valid(usdZarChg) && usdZarChg > 0.8, label: 'Rand weakness', raw: usdZarChg, reason: 'USD/ZAR above +0.8% confirms EM risk-off.' },
     { on: valid(banksChg) && banksChg < -1, label: 'Banks sell-off', raw: banksChg, reason: 'Banks below -1% confirms domestic stress.' },
     { on: valid(retailersChg) && retailersChg < -1, label: 'Retailers sell-off', raw: retailersChg, reason: 'Retailers below -1% confirms consumer/rand stress.' },
     { on: valid(top40Chg) && top40Chg < -0.5, label: 'Market drawdown', raw: top40Chg, reason: 'Market average below -0.5% confirms broad de-risking.' },
-    { on: includeBond && valid(r2035Chg) && r2035Chg > 0.2, label: 'Yield pressure', raw: r2035Chg, reason: 'SA 10Y proxy up more than 0.2% confirms tighter conditions.' },
+    { on: valid(us10yChg) && us10yChg > 2, label: 'US yield pressure', raw: us10yChg, reason: 'US 10Y yield up more than 2% confirms a higher global discount rate.' },
   ];
   const bullTests = [
     { on: valid(goldChg) && goldChg > 1, label: 'Gold bid', raw: goldChg, reason: 'Gold above +1% supports haven/miner hedge.' },
     { on: valid(minersChg) && minersChg > 1, label: 'Miners bid', raw: minersChg, reason: 'Gold miners above +1% confirms equity hedge channel.' },
     { on: valid(brentChg) && brentChg < -2, label: 'Oil relief', raw: brentChg, reason: 'Brent below -2% lowers inflation/rand pressure.' },
     { on: valid(usdZarChg) && usdZarChg < -0.5, label: 'Rand strength', raw: usdZarChg, reason: 'USD/ZAR below -0.5% confirms risk appetite/carry support.' },
-    { on: includeBond && valid(r2035Chg) && r2035Chg < -0.1, label: 'Yield relief', raw: r2035Chg, reason: 'Falling SA 10Y proxy supports equity duration and banks.' },
+    { on: valid(us10yChg) && us10yChg < -2, label: 'US yield relief', raw: us10yChg, reason: 'US 10Y yield down more than 2% supports global risk appetite and emerging-market flows.' },
   ];
   const bears = bearTests.filter(t => t.on);
   const bulls = bullTests.filter(t => t.on);
@@ -90,5 +90,5 @@ export function computeCIS(data) {
     .filter(p => p.impact !== 0)
     .sort((a, b) => Math.abs(b.weightedImpact) - Math.abs(a.weightedImpact));
 
-  return { total, regime, regimeClass, components, drivers, methodology: 'Heuristic score: Macro 40%, JSE equal-weight basket reaction 35%, confirmation signals 25%.' };
+  return { total, regime, regimeClass, components, drivers, methodology: 'Heuristic score: macro markets 40%, equal-weight JSE watchlist reaction 35%, confirmation signals 25%. Inputs use percentage moves and capped contributions; this is a monitoring indicator, not a forecast.' };
 }

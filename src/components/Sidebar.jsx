@@ -188,7 +188,7 @@ export default function Sidebar({
               : ts ? `Live · ${ts} SAST` : 'Connecting…'}
         </div>
         <div className="font-mono text-[10.5px] text-tm mt-[6px] leading-[1.5]">
-          SA 10Y: monthly proxy, not the exact R2035 yield
+          Quotes refresh independently; cached values remain visible during outages
         </div>
       </div>
     </aside>
