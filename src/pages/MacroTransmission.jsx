@@ -163,7 +163,7 @@ function MacroStrip({ assets, hasData }) {
   }
 
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
       {items.map(({ label, key, inv }) => {
         const asset = assets[key];
         const pct   = asset?.changePct;
@@ -218,21 +218,21 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
   ];
 
   return (
-    <div className="p-[32px_36px] flex flex-col gap-6 animate-fadeUp">
+    <div className="p-4 sm:p-6 lg:p-[32px_36px] flex flex-col gap-5 sm:gap-6 animate-fadeUp">
 
       {/* 6-up macro strip */}
       <MacroStrip assets={assets} hasData={hasData} />
 
       {/* Tab Selector */}
-      <div className="flex justify-center sm:justify-start">
-        <div className="flex items-center bg-bg-c border border-bd rounded-xl p-[4px] gap-[4px] glass">
+      <div className="flex justify-start">
+        <div className="grid grid-cols-1 sm:flex sm:items-center w-full sm:w-auto bg-bg-c border border-bd rounded-xl p-[4px] gap-[4px] glass">
           {tabs.map(t => (
             <button
               key={t.id}
               type="button"
               onClick={() => setActiveTab(t.id)}
               className={clsx(
-                'px-[18px] py-[8px] text-[13px] font-medium rounded-lg transition-all cursor-pointer select-none',
+                'min-h-11 px-[18px] py-[8px] text-[13px] font-medium rounded-lg transition-all cursor-pointer select-none',
                 activeTab === t.id
                   ? 'bg-bd text-tp shadow-sm font-semibold'
                   : 'text-ts hover:text-tp hover:bg-white/[0.02]'
@@ -313,7 +313,7 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
               <table className="w-full border-collapse text-[12px]">
                 <thead>
                   <tr>
-                    {['Event','Period','Brent','USD/ZAR','JSE Top 40','Gold','SA Miners','Regime'].map(h => (
+                    {['Event','Period','Brent','USD/ZAR','Watchlist avg','Gold','SA Miners','Regime'].map(h => (
                       <th key={h} className="text-left text-[10px] font-medium text-tm tracking-[0.06em] uppercase pb-3 px-3 border-b border-bd whitespace-nowrap">
                         {h}
                       </th>

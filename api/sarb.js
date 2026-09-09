@@ -242,7 +242,7 @@ async function fromFred() {
     return {
       bond: {
         symbol:    'IRLTLT01ZAM156N',
-        name:      'SA Long-Term Govt Bond Rate (FRED, monthly)',
+        name:      'SA 10Y Yield Proxy (FRED, monthly)',
         price,
         change,
         changePct,

@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import { Card } from './Card.jsx';
 
 const SECTOR_ROWS = [
-  { key: 'top40',        label: 'JSE Top 40',    isMkt: true  },
+  { key: 'top40',        label: 'Watchlist avg', isMkt: true  },
   { key: 'Gold Miners',  label: 'Gold Miners',   isMkt: false },
   { key: 'PGMs',         label: 'PGMs',          isMkt: false },
   { key: 'Energy',       label: 'Energy',        isMkt: false },

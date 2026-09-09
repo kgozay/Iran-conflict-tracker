@@ -18,8 +18,8 @@
   /* Text */
   --color-tp:    #f4f4f5;
   --color-ts:    #a1a1aa;
-  --color-tm:    #71717a;
-  --color-tx:    #52525b;
+  --color-tm:    #8b8b95;
+  --color-tx:    #797983;
 
   /* Brand / accent RGB values */
   --color-warn-rgb: 232, 176, 74;
@@ -74,8 +74,8 @@ html[data-theme="light"] {
   /* Text */
   --color-tp:    #1c1917; /* stone-900 */
   --color-ts:    #57534e; /* stone-600 */
-  --color-tm:    #878681; /* stone-400 */
-  --color-tx:    #a8a29e; /* stone-300 */
+  --color-tm:    #625f5b;
+  --color-tx:    #716d68;
 
   /* Brand / accent RGB values */
   --color-warn-rgb: 180, 122, 24;
@@ -124,6 +124,13 @@ html[data-theme="light"] {
   }
   * { box-sizing: border-box; }
 
+  :where(button, a, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--color-warn);
+    outline-offset: 3px;
+  }
+
+  button, a { touch-action: manipulation; }
+
   @keyframes aura-float {
     0% {
       background-position: 18% 8%, 92% 22%, 50% 110%;
@@ -158,6 +165,22 @@ html[data-theme="light"] {
   ::-webkit-scrollbar-track { background: var(--color-bg); }
   ::-webkit-scrollbar-thumb { background: var(--color-bd); border-radius: 3px; }
 }
+
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 500;
+  transform: translateY(-160%);
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-weight: 700;
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.skip-link:focus { transform: translateY(0); }
 
 @layer utilities {
   .text-bull  { color: var(--color-bull); }
@@ -204,7 +227,7 @@ html[data-theme="light"] {
   box-shadow:
     inset 0  1px 0 var(--color-glass-inset, rgba(255,255,255,0.12)),
     inset 0  0   0 1px rgba(255,255,255,0.02),
-    0 12px 30px -15px var(--color-spotlight),
+    0 12px 30px -15px rgba(0,0,0,0.28),
     0 24px 48px -28px var(--color-shadow);
 }
 
@@ -350,29 +373,17 @@ html[data-theme="light"] {
 /* DecryptedText — colour of the unresolved cipher chars */
 .rb-decrypt-enc { color: var(--color-warn); opacity: 0.82; }
 
-/* SpotlightCard — radial halo following the cursor */
+/* Card hover overlay is intentionally disabled to keep surfaces color-neutral. */
 .rb-spot { position: relative; }
 .rb-spot::before {
-  content: '';
-  position: absolute; inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  z-index: 2;
-  background: radial-gradient(
-    circle var(--rb-spot-size, 240px) at var(--rb-sx, 50%) var(--rb-sy, 50%),
-    var(--rb-spot, var(--color-spotlight)),
-    transparent 65%
-  );
+  content: none;
 }
-.rb-spot:hover::before { opacity: 1; }
 
 /* StarBorder — rotating gradient ring around a button */
 .rb-star {
   position: relative; display: inline-block; overflow: hidden;
   border-radius: 10px; background: transparent; border: none;
-  padding: 1px 0; cursor: pointer;
+  padding: 1px 0; min-height: 44px; cursor: pointer;
 }
 .rb-star[disabled] { opacity: 0.6; cursor: not-allowed; }
 .rb-star-grad {
@@ -390,6 +401,7 @@ html[data-theme="light"] {
   background: var(--color-paper); color: var(--color-ink);
   padding: 9px 18px; border-radius: 9px;
   font-size: 12.5px; font-weight: 500;
+  min-height: 42px;
   transition: opacity 0.2s ease;
 }
 .rb-star:hover .rb-star-inner { opacity: 0.92; }
@@ -443,3 +455,24 @@ html[data-theme="light"] {
   animation: 210ms cubic-bezier(0, 0, 0.2, 1) 90ms both fade-in;
 }
 
+@media (hover: none) {
+  .glass:hover {
+    transform: none;
+    background: var(--color-bg-c);
+    border-color: var(--color-bd);
+    box-shadow:
+      inset 0 1px 0 var(--color-glass-inset, rgba(255,255,255,0.08)),
+      inset 0 0 0 1px rgba(255,255,255,0.012),
+      0 1px 0 rgba(0,0,0,0.2),
+      0 24px 48px -28px var(--color-shadow);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

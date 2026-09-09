@@ -75,7 +75,7 @@ function detectPatterns({ assets, sectors, stocks }) {
   if (banks > 0.5 && r2035 > 0.15)                      p.push('BANKS vs BONDS DIVERGENCE: yields up but banks outperforming — market pricing NIM expansion > volume concern.');
   if (energy > 2 && brent < 1)                           p.push('ENERGY WITHOUT OIL: JSE energy basket up while Brent quiet — likely Sasol-specific or coal-tracking move.');
   if (retail > 0 && zar > 0.5)                           p.push('RETAIL RESILIENCE: ZAR weak but retailers flat/up — offshore-revenue names (TFG, Mr Price) leading cohort.');
-  if (top40 > 0.5 && brent > 2 && zar > 0.5)            p.push('RISK-OFF RALLY PARADOX: conflict macro (oil up, ZAR weak) but JSE Top 40 higher — commodity heavyweights masking domestic weakness.');
+  if (top40 > 0.5 && brent > 2 && zar > 0.5)            p.push('RISK-OFF RALLY PARADOX: conflict macro (oil up, ZAR weak) but the equal-weight watchlist average is higher, with commodity shares masking domestic weakness.');
 
   const live = (stocks || []).filter(s => s.isLive && s.changePct != null);
   for (const sec of ['Gold Miners','PGMs','Energy','Banks','Retailers']) {
@@ -133,7 +133,7 @@ OUTPUT — write in this exact markdown structure:
 **Date:** ${date} | **CIS Regime:** [label + score]
 
 ### Market Dashboard
-[Markdown table: Indicator | Spot | Change | Conflict Risk Premium (High/Moderate/Low + one-line rationale). Rows: Brent, Gold, USD/ZAR, SA 10Y, JSE Top 40.]
+[Markdown table: Indicator | Spot | Change | Conflict Risk Premium (High/Moderate/Low + one-line rationale). Rows: Brent, Gold, USD/ZAR, SA 10Y proxy, equal-weight watchlist average.]
 
 ### The Lead: [sharp one-line thesis headline]
 [2–3 paragraphs. Name the dominant conflict transmission channel. Reference specific % moves and at least two named stocks. No filler phrases.]

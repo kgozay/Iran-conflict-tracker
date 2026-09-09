@@ -81,11 +81,6 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
 - `tailwind.config.js` color tokens now use `var(--color-*)` — bull/bear/warn remain hardcoded hex
 - Toggle button (sun/moon icon) in `TopBar.jsx`; preference stored in localStorage as `jse_theme`
 
-### Geopolitical news feed
-- `api/news.js` — Vercel serverless function; fetches Reuters, BBC Middle East, Al Jazeera RSS feeds, filters by conflict keywords, deduplicates, returns top 20 articles. No API key required.
-- `src/hooks/useNews.js` — 15-min localStorage cache (`jse_cw_news_v1`); auto-fetches stale/empty cache on mount
-- `src/widgets/NewsFeed.jsx` — horizontal scrollable card row on the Overview page, between AlertsFeed/MorningNote and the Watchlist
-
 ## Known fixes applied (2026-05)
 
 - `useSparklines` now exports `sparkLoading` (was `loading`) to match App.jsx destructuring — skeleton loader was always hidden.
@@ -149,72 +144,7 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
 
 ---
 
-### 3. Browser push notifications on CIS threshold crossings
-
-**File:** `src/hooks/useAutoRefresh.js` or `App.jsx`
-
-1. On app mount (inside a `useEffect` with `[]` deps), request notification permission:
-   ```js
-   if ('Notification' in window && Notification.permission === 'default') {
-     Notification.requestPermission();
-   }
-   ```
-2. Add a `useRef` (e.g. `prevCisRef`) initialized to `null` to track the CIS value from the previous refresh.
-3. Define a helper `getCISRegime(cis)` that returns the regime string (`'BEARISH_SHOCK'`, `'MILD_BEARISH'`, `'NEUTRAL'`, `'MILD_BULLISH'`, `'BULLISH_RELIEF'`) using the thresholds from `scoring.js`.
-4. After each successful data refresh (wherever `cis` is updated in state), run:
-   ```js
-   const prevRegime = localStorage.getItem('jse_cw_last_notif_regime');
-   const newRegime = getCISRegime(cis);
-   if (newRegime !== prevRegime && Notification.permission === 'granted') {
-     new Notification('Iran Conflict Tracker', {
-       body: `Market regime changed to ${newRegime.replace('_', ' ')} (CIS: ${cis.toFixed(1)})`,
-       icon: '/favicon.ico',
-     });
-     localStorage.setItem('jse_cw_last_notif_regime', newRegime);
-   }
-   prevCisRef.current = cis;
-   ```
-5. **Verify:** Open app in browser, grant notification permission when prompted, trigger a refresh and confirm a browser notification fires when the regime changes.
-
----
-
-### 4. AI news sentiment via Gemini
-
-**File:** `api/news.js`
-**File:** `src/widgets/NewsFeed.jsx`
-
-1. In `api/news.js`, after the articles array is built and deduplicated, add a Gemini sentiment step:
-   ```js
-   const { GoogleGenerativeAI } = require('@google/generative-ai');
-   // Reuse the same pattern as api/morning-note.js
-   async function scoreHeadlines(articles) {
-     if (!process.env.GEMINI_API_KEY) return articles; // fallback: return as-is
-     try {
-       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-       const headlines = articles.map(a => a.title);
-       const prompt = `You are a financial sentiment analyst. For each headline below, return ONLY a JSON array (same order) of objects with keys "sentiment" ("bearish"|"neutral"|"bullish") and "score" (0.0–1.0 confidence). No explanation.\n\nHeadlines:\n${JSON.stringify(headlines)}`;
-       const result = await model.generateContent(prompt);
-       const text = result.response.text().trim();
-       const scores = JSON.parse(text.replace(/```json|```/g, '').trim());
-       return articles.map((a, i) => ({ ...a, sentiment: scores[i]?.sentiment ?? a.sentiment, aiScore: scores[i]?.score ?? null }));
-     } catch {
-       return articles; // fallback to keyword-based sentiment on any error
-     }
-   }
-   ```
-2. Call `articles = await scoreHeadlines(articles)` before `res.json({ articles })`.
-3. In `src/widgets/NewsFeed.jsx`, update the sentiment badge to read `article.sentiment` (already the field name — no change needed if the existing code uses it). Add an optional score chip next to the badge:
-   ```jsx
-   {article.aiScore != null && (
-     <span className="text-xs opacity-60 ml-1">{(article.aiScore * 100).toFixed(0)}%</span>
-   )}
-   ```
-4. **Verify:** `vercel dev` → Overview news cards show AI-scored sentiment labels with confidence percentages.
-
----
-
-### 5. Correlation heatmap
+### 3. Correlation heatmap
 
 **New file:** `src/widgets/CorrelationHeatmap.jsx`
 **File:** `src/pages/MacroTransmission.jsx`
@@ -247,7 +177,7 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
 
 ---
 
-### 6. Historical crisis comparison overlay
+### 4. Historical crisis comparison overlay
 
 **New file:** `src/data/crisisReferences.js`
 **New file:** `src/widgets/CrisisComparison.jsx`
@@ -279,7 +209,7 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
 
 ---
 
-### 7. Multi-asset scenario simulator
+### 5. Multi-asset scenario simulator
 
 **File:** `src/pages/MacroTransmission.jsx`
 
@@ -317,7 +247,7 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
 
 ---
 
-### 8. Daily email digest via Vercel cron
+### 6. Daily email digest via Vercel cron
 
 **New file:** `api/daily-digest.js`
 **File:** `vercel.json`

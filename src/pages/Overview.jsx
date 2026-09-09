@@ -5,7 +5,6 @@ import HeatStrip      from '../widgets/HeatStrip.jsx';
 import AlertsFeed     from '../widgets/AlertsFeed.jsx';
 import MorningNote    from '../widgets/MorningNote.jsx';
 import Watchlist      from '../widgets/Watchlist.jsx';
-import NewsFeed       from '../widgets/NewsFeed.jsx';
 
 function FetchPrompt({ onFetch }) {
   return (
@@ -34,20 +33,19 @@ export default function Overview({
   assets, stocks, sectors, cis, alerts, timeframe, returnMode,
   status, hasData, onFetch, cisChartData,
   sparklines, sparkLoading, dataHealth,
-  news, newsLoading, newsError, newsLastFetched, refetchNews,
 }) {
   const isLoading = status === 'loading';
 
   if (!hasData && !isLoading) {
     return (
-      <div className="p-[32px_36px] animate-fadeUp">
+      <div className="p-4 sm:p-6 lg:p-[32px_36px] animate-fadeUp">
         <FetchPrompt onFetch={onFetch} />
       </div>
     );
   }
 
   return (
-    <div className="p-[32px_36px] flex flex-col gap-6 animate-fadeUp">
+    <div className="p-4 sm:p-6 lg:p-[32px_36px] flex flex-col gap-5 sm:gap-6 animate-fadeUp">
 
       {/* Secondary KPI strip: Platinum · Palladium · Coal */}
       <SecondaryKpiStrip assets={assets} timeframe={timeframe} />
@@ -91,15 +89,6 @@ export default function Overview({
         alerts={alerts}
         dataHealth={dataHealth}
         hasData={hasData}
-      />
-
-      {/* News feed */}
-      <NewsFeed
-        news={news}
-        loading={newsLoading}
-        newsError={newsError}
-        lastFetched={newsLastFetched}
-        onRefresh={refetchNews}
       />
     </div>
   );

@@ -7,8 +7,14 @@ export default function LoadingOverlay({ status, progress, error, onDismiss }) {
   if (!isLoading && !isError) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-bg/90 backdrop-blur-sm">
-      <div className="bg-bg-s border border-bd rounded-lg p-8 flex flex-col items-center gap-5 max-w-sm w-full mx-4 shadow-2xl">
+    <div
+      role={isError ? 'alertdialog' : 'status'}
+      aria-modal={isError ? 'true' : undefined}
+      aria-live={isError ? 'assertive' : 'polite'}
+      aria-label={isError ? 'Market data update failed' : 'Updating market data'}
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-bg/90 backdrop-blur-sm"
+    >
+      <div className="bg-bg-s border border-bd rounded-lg p-6 sm:p-8 flex flex-col items-center gap-5 max-w-sm w-full mx-4 shadow-2xl">
 
         {isLoading && (
           <>
@@ -17,8 +23,8 @@ export default function LoadingOverlay({ status, progress, error, onDismiss }) {
               <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-warn animate-spin" />
             </div>
             <div className="text-center">
-              <div className="font-display text-[22px] tracking-[3px] text-warn mb-1">FETCHING LIVE DATA</div>
-              <div className="font-mono text-[10px] text-ts">{progress || 'Connecting to Yahoo Finance…'}</div>
+              <div className="font-serif text-[24px] text-warn mb-1">Updating market data</div>
+              <div className="font-mono text-[11px] text-ts">{progress || 'Connecting to market data providers…'}</div>
             </div>
             <div className="flex gap-1.5">
               {[0,1,2].map(i => (
@@ -39,21 +45,20 @@ export default function LoadingOverlay({ status, progress, error, onDismiss }) {
               <ErrorIcon className="w-6 h-6" />
             </div>
             <div className="text-center">
-              <div className="font-display text-[22px] tracking-[3px] text-bear mb-2">FETCH FAILED</div>
-              <div className="font-mono text-[10px] text-ts text-center leading-relaxed max-w-[260px]">
+              <div className="font-serif text-[24px] text-bear mb-2">Market data unavailable</div>
+              <div className="font-mono text-[11px] text-ts text-center leading-relaxed max-w-[280px]">
                 {error || 'Yahoo Finance could not be reached'}
               </div>
             </div>
-            <div className="font-mono text-[9px] text-tm text-center leading-relaxed">
-              Common causes: Vercel function not deployed,<br />
-              or Yahoo Finance temporarily unavailable.
+            <div className="font-mono text-[10px] text-tm text-center leading-relaxed">
+              Your saved data remains available. Close this message and try refreshing again.
             </div>
             <button
               type="button"
               onClick={onDismiss}
-              className="px-6 py-2 font-mono text-[10px] font-semibold bg-warn text-bg rounded hover:bg-warn/80 transition-colors cursor-pointer"
+              className="min-h-11 px-6 py-2 font-mono text-[11px] font-semibold bg-warn text-bg rounded hover:bg-warn/80 transition-colors cursor-pointer"
             >
-              DISMISS
+              Return to dashboard
             </button>
           </>
         )}

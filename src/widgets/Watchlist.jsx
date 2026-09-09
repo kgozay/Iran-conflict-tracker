@@ -101,8 +101,9 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
         <div className="flex items-center gap-1.5 flex-wrap">
           {SECTOR_FILTERS.map(f => (
             <button key={f} type="button" onClick={() => setFilter(f)}
+              aria-pressed={f === filter}
               className={clsx(
-                'px-3 py-[5px] text-[11.5px] font-medium rounded-full cursor-pointer transition-colors',
+                'min-h-11 sm:min-h-0 px-3 py-[5px] text-[11.5px] font-medium rounded-full cursor-pointer transition-colors',
                 f === filter ? 'text-ink bg-paper' : 'text-ts hover:text-tp',
               )}
               style={f === filter ? { color: 'var(--color-ink)' } : {}}>
@@ -110,7 +111,7 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
             </button>
           ))}
           <button type="button" onClick={handleCsv}
-            className="inline-flex items-center gap-1.5 px-3 py-[5px] text-[11.5px] text-ts border border-bd rounded-full hover:text-tp hover:border-ts transition-colors cursor-pointer ml-1">
+            className="min-h-11 sm:min-h-0 inline-flex items-center gap-1.5 px-3 py-[5px] text-[11.5px] text-ts border border-bd rounded-full hover:text-tp hover:border-ts transition-colors cursor-pointer ml-1">
             {csvDone ? <><CheckIcon className="w-3 h-3" />Saved</> : <><DownloadIcon className="w-3 h-3" />CSV</>}
           </button>
         </div>
@@ -119,6 +120,7 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
+          <caption className="sr-only">JSE watchlist prices, returns, sectors and market signals</caption>
           <thead>
             <tr className="border-b border-bd">
               {[
@@ -130,18 +132,26 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
                 { key: 'signal',    label: 'Signal',  align: 'right', hideMobile: true },
                 { key: 'spark',     label: '',        align: 'right', hideMobile: true },
               ].map(col => (
-                <th key={col.key}
-                  onClick={() => col.key !== 'spark' && toggleSort(col.key)}
-                  onKeyDown={col.key !== 'spark' ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort(col.key); } } : undefined}
-                  tabIndex={col.key !== 'spark' ? 0 : undefined}
+                <th key={col.key} scope="col"
+                  aria-sort={sort.key === col.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
                   className={clsx(
-                    'text-[10.5px] font-medium text-tm tracking-[0.05em] uppercase pb-3 px-1',
+                    'text-[10.5px] font-medium text-tm tracking-[0.05em] uppercase pb-2 px-1',
                     col.align === 'right' ? 'text-right' : 'text-left',
-                    col.key !== 'spark' && 'cursor-pointer select-none hover:text-ts focus-visible:outline-none focus-visible:text-warn',
                     col.hideMobile && 'hidden sm:table-cell',
                   )}>
-                  {col.label}
-                  {col.key !== 'spark' && <SortArrow active={sort.key === col.key} dir={sort.dir} />}
+                  {col.key === 'spark' ? col.label : (
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(col.key)}
+                      className={clsx(
+                        'min-h-11 sm:min-h-0 inline-flex items-center py-1 select-none hover:text-ts focus-visible:text-warn',
+                        col.align === 'right' && 'justify-end',
+                      )}
+                    >
+                      {col.label}
+                      <SortArrow active={sort.key === col.key} dir={sort.dir} />
+                    </button>
+                  )}
                 </th>
               ))}
             </tr>

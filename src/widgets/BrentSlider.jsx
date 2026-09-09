@@ -12,7 +12,7 @@ const SECTORS = [
   { name: 'Coal Exporters',   brentSlope: +0.058, zarSlope: +0.20, goldSlope: 0.00 },
   { name: 'Gold Miners',      brentSlope: +0.018, zarSlope: +0.35, goldSlope: +0.80 },
   { name: 'PGM Miners',       brentSlope: +0.012, zarSlope: +0.30, goldSlope: +0.30 },
-  { name: 'JSE Top 40',       brentSlope: -0.041, zarSlope: +0.12, goldSlope: +0.05 },
+  { name: 'Watchlist average', brentSlope: -0.041, zarSlope: +0.12, goldSlope: +0.05 },
   { name: 'Banks',            brentSlope: -0.056, zarSlope: -0.35, goldSlope: -0.05 },
   { name: 'Retailers',        brentSlope: -0.068, zarSlope: -0.40, goldSlope: -0.05 },
   { name: 'Industrials',      brentSlope: -0.032, zarSlope: -0.15, goldSlope: 0.00 },

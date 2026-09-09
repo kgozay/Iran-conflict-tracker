@@ -87,7 +87,7 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
 
   if (!hasData) {
     return (
-      <div className="p-[32px_36px] animate-fadeUp flex flex-col items-center justify-center py-20 text-center">
+      <div className="p-4 sm:p-6 lg:p-[32px_36px] animate-fadeUp flex flex-col items-center justify-center py-20 text-center">
         <div className="font-serif text-[32px] text-ts mb-3">No live data yet</div>
         <div className="text-[14px] text-tm mb-6 max-w-sm leading-relaxed">
           Fetch live data to see individual stock prices, sector performance charts, and constituent analysis.
@@ -133,7 +133,7 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
   ];
 
   return (
-    <div className="p-[32px_36px] flex flex-col gap-5 animate-fadeUp">
+    <div className="p-4 sm:p-6 lg:p-[32px_36px] flex flex-col gap-5 animate-fadeUp">
 
       {/* Sector tab pills */}
       <div className="flex flex-wrap gap-1.5">

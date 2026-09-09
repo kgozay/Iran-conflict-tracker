@@ -58,8 +58,6 @@ export const MenuIcon  = (p) => <Svg {...p}><line x1="3" y1="7" x2="21" y2="7"/>
 export const XIcon     = (p) => <Svg {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></Svg>;
 export const SunIcon   = (p) => <Svg {...p}><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></Svg>;
 export const MoonIcon  = (p) => <Svg {...p}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></Svg>;
-export const NewsIcon  = (p) => <Svg {...p}><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M2 15h8M2 19h8M2 11h4"/></Svg>;
-
 /* ── Map commodity keys → icons for KpiGrid + MacroStrip ─────────── */
 export const ASSET_ICONS = {
   brent:     BrentIcon,

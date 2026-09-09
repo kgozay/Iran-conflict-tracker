@@ -8,7 +8,6 @@ import { useMarketData }  from './hooks/useMarketData.js';
 import { useAutoRefresh } from './hooks/useAutoRefresh.js';
 import { useToast }       from './hooks/useToast.js';
 import { useSparklines }  from './hooks/useSparklines.js';
-import { useNews }        from './hooks/useNews.js';
 import { useCISHistory }  from './hooks/useCISHistory.js';
 import Sidebar            from './components/Sidebar.jsx';
 import TopBar             from './components/TopBar.jsx';
@@ -17,21 +16,6 @@ import Toast              from './components/Toast.jsx';
 import Overview           from './pages/Overview.jsx';
 import MacroTransmission  from './pages/MacroTransmission.jsx';
 import SectorDrilldown    from './pages/SectorDrilldown.jsx';
-
-/* ── PATCH SUMMARY ─────────────────────────────────────────────────────
- * Adds the auto-hide sidebar:
- *   - `sidebarPinned` state (persisted to localStorage `jse_sidebar_pinned`,
- *      defaults to UNPINNED for max reading real estate).
- *   - `sidebarHovered` state — controlled by an invisible 14px-wide edge
- *      trigger on the left of the viewport (desktop only) and by the
- *      sidebar's own onMouseLeave.
- *   - Sidebar is shown when: mobile drawer open, OR pinned, OR hovered.
- *   - Main content's left margin transitions between 0 and 240px based on
- *      `sidebarPinned` (the floating-overlay state doesn't shift content).
- *   - `Sidebar` now receives `visible`, `pinned`, `onPinToggle`,
- *      `onMouseEnter`, `onMouseLeave` and handles its own translate.
- * Everything else is byte-identical with the original file.
- * ──────────────────────────────────────────────────────────────────── */
 
 function deriveSectors(stocks) {
   const live = stocks.filter(s => s.isLive && s.changePct != null);
@@ -46,14 +30,14 @@ function deriveSectors(stocks) {
 
   if (live.length > 0) {
     const mktAvg = live.reduce((a, s) => a + s.changePct, 0) / live.length;
-    sectors.top40 = { name: 'JSE Market Avg', chg: +mktAvg.toFixed(2), rel: 0 };
+    sectors.top40 = { name: 'Watchlist average', chg: +mktAvg.toFixed(2), rel: 0 };
     for (const key of Object.keys(sectors)) {
       if (key !== 'top40') {
         sectors[key].rel = +(sectors[key].chg - mktAvg).toFixed(2);
       }
     }
   } else {
-    sectors.top40 = { name: 'JSE Market Avg', chg: null, rel: 0 };
+    sectors.top40 = { name: 'Watchlist average', chg: null, rel: 0 };
   }
 
   return sectors;
@@ -83,6 +67,7 @@ export default function App() {
   const [returnMode,  setReturnMode] = useState('ABS');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme,       setTheme]      = useState(() => localStorage.getItem('jse_theme') ?? 'dark');
+  const menuButtonRef = useRef(null);
 
   const { chartData: cisChartData, addReading: addCisReading } = useCISHistory();
 
@@ -97,20 +82,11 @@ export default function App() {
     }
   }, []);
 
-  /* ── PATCH: sidebar auto-hide state ────────────────────────────── */
-  const [sidebarPinned, setSidebarPinned] = useState(
-    () => localStorage.getItem('jse_sidebar_pinned') === 'true'
-  );
-  const [sidebarHovered, setSidebarHovered] = useState(false);
-
-  useEffect(() => {
-    localStorage.setItem('jse_sidebar_pinned', String(sidebarPinned));
-  }, [sidebarPinned]);
-
-  // Desktop hover-reveal closes itself when pointer leaves the sidebar.
-  // Mobile drawer is independent (sidebarOpen).
-  const sidebarVisible = sidebarOpen || sidebarPinned || sidebarHovered;
-  /* ────────────────────────────────────────────────────────────────── */
+  const openSidebar = useCallback(() => setSidebarOpen(true), []);
+  const closeSidebar = useCallback(() => {
+    setSidebarOpen(false);
+    requestAnimationFrame(() => menuButtonRef.current?.focus());
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -125,8 +101,6 @@ export default function App() {
   } = useMarketData();
 
   const { sparklines, sparkLoading, fetchSparklines } = useSparklines();
-  const { news, newsLoading, newsError, lastFetched: newsLastFetched, refetchNews } = useNews();
-
   const { toasts, addToast, removeToast } = useToast();
 
   const prevStatusRef = useRef(status);
@@ -168,33 +142,6 @@ export default function App() {
     [hasData, assets, sectors, stocks]
   );
 
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  const prevRegimeRef = useRef(localStorage.getItem('jse_cw_last_notif_regime'));
-
-  useEffect(() => {
-    if (status === 'live' && hasData && cis.regime && cis.regime !== 'NO DATA') {
-      const newRegime = cis.regime;
-      const prevRegime = prevRegimeRef.current;
-
-      if (prevRegime && newRegime !== prevRegime && Notification.permission === 'granted') {
-        new Notification('Iran Conflict Tracker', {
-          body: `Market regime changed to ${newRegime} (CIS: ${cis.total.toFixed(1)})`,
-          icon: '/favicon.ico',
-        });
-      }
-
-      if (newRegime !== prevRegime) {
-        localStorage.setItem('jse_cw_last_notif_regime', newRegime);
-        prevRegimeRef.current = newRegime;
-      }
-    }
-  }, [cis.regime, cis.total, status, hasData]);
-
   // Log CIS reading to history on successful live fetch
   useEffect(() => {
     if (status === 'live' && hasData && lastFetch && cis.regime && cis.regime !== 'NO DATA') {
@@ -229,7 +176,6 @@ export default function App() {
     timeframe, returnMode, status, hasData, dataHealth, lastFetch,
     onFetch: handleFetch,
     sparklines, sparkLoading,
-    news, newsLoading, newsError, newsLastFetched, refetchNews,
     cisChartData,
   };
 
@@ -241,39 +187,19 @@ export default function App() {
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/60 z-40 lg:hidden"
-             onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* PATCH: Desktop edge trigger — invisible 14px strip on the left
-          edge that reveals the sidebar on hover. Hidden when pinned and
-          hidden on mobile (mobile uses the hamburger). */}
-      {!sidebarPinned && (
-        <div
-          onMouseEnter={() => setSidebarHovered(true)}
-          aria-hidden="true"
-          className="hidden lg:block fixed top-0 left-0 bottom-0 w-[14px] z-40"
-        />
+             aria-hidden="true" onClick={closeSidebar} />
       )}
 
       <Sidebar
         page={page} setPage={navigateTo}
         cis={cis} status={status} lastFetch={lastFetch}
-        isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}
-        visible={sidebarVisible}
-        pinned={sidebarPinned}
-        onPinToggle={() => setSidebarPinned(p => !p)}
-        onMouseEnter={() => setSidebarHovered(true)}
-        onMouseLeave={() => setSidebarHovered(false)}
+        isOpen={sidebarOpen} onClose={closeSidebar}
         theme={theme} setTheme={setTheme}
       />
 
-      {/* PATCH: content margin animates between 0 and 240px based on
-          `sidebarPinned`. Hover-reveals overlay the content instead of
-          shifting it. Mobile is unchanged. */}
-      <div className={
-        'flex flex-col flex-1 overflow-hidden transition-[margin] duration-300 ease-out ml-0 ' +
-        (sidebarPinned ? 'lg:ml-[240px]' : 'lg:ml-0')
-      }>
+      <a className="skip-link" href="#main-content">Skip to market dashboard</a>
+
+      <div className="flex flex-col flex-1 overflow-hidden ml-0 lg:ml-[240px]">
         <TopBar
           page={page}
           status={status} error={error} lastFetch={lastFetch} progress={progress}
@@ -283,10 +209,12 @@ export default function App() {
           autoRefresh={autoRefresh}
           onExport={handleExport}
           dataHealth={dataHealth}
-          onMenuClick={() => setSidebarOpen(true)}
+          onMenuClick={openSidebar}
+          menuOpen={sidebarOpen}
+          menuButtonRef={menuButtonRef}
           theme={theme} setTheme={setTheme}
         />
-        <main className="flex-1 overflow-y-auto">
+        <main id="main-content" tabIndex="-1" className="flex-1 overflow-y-auto">
           {page === 'overview'  && <Overview          {...shared} />}
           {page === 'macro'     && <MacroTransmission {...shared} />}
           {page === 'drilldown' && <SectorDrilldown   {...shared} />}

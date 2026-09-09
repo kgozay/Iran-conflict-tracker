@@ -43,6 +43,11 @@ function sourceBadge(asset) {
   return null;
 }
 
+function changeContext(assetKey, timeframe, unit) {
+  if (assetKey === 'r2035') return timeframe === '1D' ? 'vs previous monthly observation' : `${timeframe} proxy change`;
+  return timeframe === '1D' ? unit : timeframe;
+}
+
 function KpiSparkline({ assetKey, points, chg }) {
   const path = useMemo(() => {
     if (!points || points.length < 3) return null;
@@ -118,13 +123,13 @@ function KpiCard({ assetKey, asset, timeframe, sparklineData, sparkLoading }) {
   return (
     <SpotlightCard
       spotlightColor={spotColor}
-      className="glass rounded-[16px] p-[22px_26px_20px] flex flex-col min-h-[260px]"
+      className="glass rounded-[16px] p-5 sm:p-[22px_26px_20px] flex flex-col min-h-[240px] sm:min-h-[260px]"
     >
       {/* Header — KPI name now uses italic serif (magazine touch) */}
       <div className="flex items-center justify-between">
         <span className="mag-kpi-name">{name}</span>
         {badge && (
-          <span className={clsx(
+          <span aria-label={`Data source: ${badge.label}`} className={clsx(
             'font-mono text-[9.5px] px-[7px] py-[2px] rounded border tracking-[0.04em]',
             badge.cls,
           )} title={badge.title}>
@@ -135,14 +140,14 @@ function KpiCard({ assetKey, asset, timeframe, sparklineData, sparkLoading }) {
 
       {/* Price + change — CountUp on the price */}
       <div className="mt-[18px]">
-        <div className="font-serif text-[56px] text-tp leading-[0.95] tracking-[-0.025em]">
+        <div className="font-serif text-[46px] sm:text-[56px] text-tp leading-[0.95] tracking-[-0.025em]">
           {price == null
             ? '—'
             : <CountUp to={price} decimals={decimals} suffix={suffix} />}
         </div>
         <div className="flex items-baseline gap-2 mt-2.5">
           <span className={clsx('font-mono text-[14px] font-semibold', chgCl)}>{chgStr}</span>
-          <span className="text-[11.5px] text-tm">{timeframe === '1D' ? unit : timeframe}</span>
+          <span className="text-[11.5px] text-tm">{changeContext(assetKey, timeframe, unit)}</span>
         </div>
       </div>
 
@@ -173,7 +178,7 @@ export function SecondaryKpiStrip({ assets, timeframe = '1D' }) {
   if (!present.length) return null;
 
   return (
-    <div className="flex glass rounded-xl overflow-hidden mb-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 glass rounded-xl overflow-hidden mb-4">
       {present.map((k, i) => {
         const asset = assets[k];
         const changePct = timeframe === '5D' ? asset.changePct5D
@@ -189,8 +194,8 @@ export function SecondaryKpiStrip({ assets, timeframe = '1D' }) {
         return (
           <div key={k}
             className={clsx(
-              'flex-1 flex items-center justify-between px-[22px] py-[14px] gap-6',
-              i < present.length - 1 && 'border-r border-bd',
+              'min-w-0 flex items-center justify-between px-5 sm:px-[22px] py-[14px] gap-4',
+              i < present.length - 1 && 'border-b sm:border-b-0 sm:border-r border-bd',
             )}>
             <div>
               <div className="text-[11.5px] font-medium text-ts">{asset.name}</div>
