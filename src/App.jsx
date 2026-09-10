@@ -74,6 +74,7 @@ export default function App() {
   const [theme,       setTheme]      = useState(() => localStorage.getItem('jse_theme') ?? 'dark');
   const menuButtonRef = useRef(null);
   const contentRef = useRef(null);
+  const startupRef = useRef(false);
 
   const { chartData: cisChartData, addReading: addCisReading } = useCISHistory();
 
@@ -116,12 +117,13 @@ export default function App() {
   const prevStatusRef = useRef(status);
 
   useEffect(() => {
+    if (startupRef.current) return;
+    startupRef.current = true;
+
     const cacheState = initFromCache();
-    if (cacheState === 'empty') {
-      fetchLive(false);
-    } else if (cacheState === 'stale') {
-      setTimeout(() => fetchLive(true), 600);
-    }
+    // Always refresh on entry. Cached data remains visible while the update
+    // runs, and an empty cache gets the foreground loading treatment.
+    fetchLive(cacheState !== 'empty');
     fetchSparklines(ALL_SPARK_SYMBOLS);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
