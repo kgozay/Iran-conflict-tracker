@@ -147,7 +147,7 @@ function KpiCard({ assetKey, asset, timeframe, sparklineData, sparkLoading }) {
         </div>
         <div className="flex items-baseline gap-2 mt-2.5">
           <span className={clsx('font-mono text-[14px] font-semibold', chgCl)}>{chgStr}</span>
-          <span className="text-[11.5px] text-tm">{changeContext(assetKey, timeframe, unit)}</span>
+          <span className="text-[12px] text-tm">{changeContext(assetKey, timeframe, unit)}</span>
         </div>
       </div>
 
@@ -164,7 +164,7 @@ function KpiCard({ assetKey, asset, timeframe, sparklineData, sparkLoading }) {
       </div>
 
       {/* Impact line */}
-      <div className="mt-auto pt-3.5 border-t border-bd text-[11.5px] text-ts leading-[1.5]">
+      <div className="mt-auto pt-3.5 border-t border-bd text-[12px] text-ts leading-[1.5]">
         {getImpactLine(assetKey, changePct)}
       </div>
     </SpotlightCard>
@@ -198,7 +198,7 @@ export function SecondaryKpiStrip({ assets, timeframe = '1D' }) {
               i < present.length - 1 && 'border-b sm:border-b-0 sm:border-r border-bd',
             )}>
             <div>
-              <div className="text-[11.5px] font-medium text-ts">{asset.name}</div>
+              <div className="text-[12px] font-medium text-ts">{asset.name}</div>
               <div className="font-serif text-[26px] text-tp leading-none tracking-[-0.01em] mt-1">
                 {asset.price == null
                   ? '—'

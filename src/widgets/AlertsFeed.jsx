@@ -22,7 +22,7 @@ export default function AlertsFeed({ alerts, hasData }) {
           Alerts <span className="italic text-warn">today</span>
         </div>
         {rightLabel && (
-          <span className="text-[11px] text-tm">{rightLabel}</span>
+          <span className="text-[12px] text-tm">{rightLabel}</span>
         )}
       </div>
 
@@ -44,7 +44,7 @@ export default function AlertsFeed({ alerts, hasData }) {
               )}
               style={{ gridTemplateColumns: '16px 56px 1fr' }}>
               <span className={clsx('w-2 h-2 rounded-full flex-shrink-0 mt-[6px]', DOT_CLS[al.lvl] ?? 'bg-ts')} />
-              <span className="font-mono text-[11.5px] text-tm pt-[2px]">{al.time}</span>
+              <span className="font-mono text-[12px] text-tm pt-[2px]">{al.time}</span>
               <div className="text-[13px] text-tp leading-[1.5]">{al.text}</div>
             </div>
           ))}

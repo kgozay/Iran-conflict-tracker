@@ -73,6 +73,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme,       setTheme]      = useState(() => localStorage.getItem('jse_theme') ?? 'dark');
   const menuButtonRef = useRef(null);
+  const contentRef = useRef(null);
 
   const { chartData: cisChartData, addReading: addCisReading } = useCISHistory();
 
@@ -97,6 +98,10 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('jse_theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (contentRef.current) contentRef.current.inert = sidebarOpen;
+  }, [sidebarOpen]);
 
 
   const {
@@ -199,7 +204,7 @@ export default function App() {
 
       <a className="skip-link" href="#main-content">Skip to market dashboard</a>
 
-      <div className="flex flex-col flex-1 overflow-hidden ml-0 lg:ml-[240px]">
+      <div ref={contentRef} aria-hidden={sidebarOpen || undefined} className="flex flex-col flex-1 overflow-hidden ml-0 lg:ml-[240px]">
         <TopBar
           page={page}
           status={status} progress={progress}

@@ -44,6 +44,7 @@ export const LineChartIcon= (p) => <Svg {...p}><path d="M3 3v18h18"/><path d="M7
 export const TableIcon    = (p) => <Svg {...p}><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 10h18M9 5v14"/></Svg>;
 export const FileIcon     = (p) => <Svg {...p}><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></Svg>;
 export const DownloadIcon = (p) => <Svg {...p}><path d="M12 3v14M6 11l6 6 6-6M4 21h16"/></Svg>;
+export const SlidersIcon  = (p) => <Svg {...p}><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h7M15 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></Svg>;
 export const CopyIcon     = (p) => <Svg {...p}><rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M16 8V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v9.5A1.5 1.5 0 0 0 5 16h3"/></Svg>;
 export const CheckIcon    = (p) => <Svg {...p}><path d="M4 12l5 5L20 6"/></Svg>;
 export const RefreshIcon  = (p) => <Svg {...p}><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></Svg>;

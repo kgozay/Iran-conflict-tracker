@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useState, useMemo } from 'react';
 import clsx from 'clsx';
-import { CountUp, DecryptedText } from './Effects.jsx';
+import { CountUp } from './Effects.jsx';
 import { CONFLICT_EVENTS } from '../data/conflictEvents.js';
 
 const RegimeHistoryChart = lazy(() => import('./RegimeHistoryChart.jsx'));
@@ -73,7 +73,7 @@ function computeTrend(data) {
   return { dir: delta > 0 ? 'up' : 'down', delta };
 }
 
-export default function RegimeBanner({ cis, hasData, cisChartData }) {
+export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const rc       = cis.regimeClass ?? 'neutral';
@@ -90,6 +90,14 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
 
   const playbookData = PLAYBOOK[rc] ?? PLAYBOOK.neutral;
   const topDrivers = (cis.drivers || []).slice(0, 5);
+  const visibleDrivers = topDrivers.slice(0, 3);
+  const coverage = dataHealth?.quoteCoverage ?? 0;
+  const confidence = coverage >= 90 ? 'High' : coverage >= 70 ? 'Moderate' : 'Low';
+  const changeSummary = trend
+    ? trend.dir === 'flat'
+      ? 'Broadly unchanged across the latest readings'
+      : `${Math.abs(trend.delta)} points ${trend.dir === 'down' ? 'lower' : 'higher'} across the latest readings`
+    : 'First reading in the current history window';
 
   // Determine Recharts color variable dynamically based on regime
   const toneVar = rc === 'bear' ? 'var(--color-bear)' : rc === 'warn' ? 'var(--color-warn)' : rc === 'bull' ? 'var(--color-bull)' : 'var(--color-ts)';
@@ -129,7 +137,7 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
   if (!hasData) {
     return (
       <div className="glass rounded-[16px] p-[26px_30px]">
-        <div className="text-[11px] font-medium text-tm tracking-[0.08em] uppercase">Conflict Impact Score</div>
+        <div className="text-[12px] font-medium text-tm tracking-[0.08em] uppercase">Conflict Impact Score</div>
         <div className="font-serif text-[92px] text-tx leading-[0.9] tracking-[-0.04em] mt-4">—</div>
         <div className="text-[13.5px] text-tm leading-[1.6] mt-4">
           Fetch live data to compute the Conflict Impact Score.
@@ -148,8 +156,14 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
     <div className="glass rounded-[16px] p-[26px_30px]">
 
       {/* Kicker */}
-      <div className="text-[11px] font-medium text-tm tracking-[0.08em] uppercase">
-        Conflict Impact Score
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[12px] font-medium text-tm tracking-[0.08em] uppercase">
+          Conflict Impact Score
+        </div>
+        <div className="inline-flex items-center gap-2 text-[12px] text-ts">
+          <span className={clsx('w-1.5 h-1.5 rounded-full', coverage >= 90 ? 'bg-bull' : coverage >= 70 ? 'bg-warn' : 'bg-bear')} />
+          {confidence} confidence{coverage ? ` · ${coverage}% coverage` : ''}
+        </div>
       </div>
 
       {/* Hero score + regime label */}
@@ -162,9 +176,8 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
           <CountUp to={cis.total} decimals={0} />
         </div>
         <div className="pb-2">
-          {/* FX3 DecryptedText — scramble → reveal */}
           <div className={clsx('font-serif italic text-[24px] leading-none', toneText)}>
-            <DecryptedText text={cis.regime.toLowerCase()} />
+            {cis.regime.toLowerCase()}
           </div>
           {trend && trend.dir !== 'flat' && (
             <div className="text-[12px] font-semibold text-bear mt-2 font-mono">
@@ -178,6 +191,30 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
       {/* Interpretation — magazine drop-cap on first letter */}
       <div className="text-[13.5px] text-ts leading-[1.6] mt-[18px] mag-dropcap">{interp}</div>
 
+      <div className="mt-5 grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-3">
+        <div className="rounded-xl border border-bd bg-bg-e px-4 py-3">
+          <div className="text-[12px] font-medium text-tm">What changed</div>
+          <div className="text-[13px] text-tp mt-1 leading-relaxed">{changeSummary}</div>
+        </div>
+        <div className="rounded-xl border border-bd bg-bg-e px-4 py-3">
+          <div className="text-[12px] font-medium text-tm">Top drivers</div>
+          {visibleDrivers.length ? (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {visibleDrivers.map(driver => (
+                <span key={`${driver.bucket}-${driver.label}`} className="inline-flex items-center gap-2 rounded-full border border-bd bg-bg-c px-3 py-1.5 text-[12px] text-ts">
+                  <span className="text-tp">{driver.label}</span>
+                  <span className={clsx('font-mono', driver.weightedImpact >= 0 ? 'text-bull' : 'text-bear')}>
+                    {driver.weightedImpact > 0 ? '+' : ''}{driver.weightedImpact}
+                  </span>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div className="text-[13px] text-tm mt-1">No material drivers in this reading.</div>
+          )}
+        </div>
+      </div>
+
       {/* Slider with thumb */}
       <div className="mt-[22px]">
         <div className="relative h-[5px] bg-bg-h rounded-full">
@@ -187,7 +224,7 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
           <div className="absolute top-[-5px] w-[14px] h-[14px] rounded-full bg-bg-c"
             style={{ left: `calc(${pct}% - 7px)`, border: `3px solid ${toneHex}` }} />
         </div>
-        <div className="flex justify-between font-mono text-[10px] text-tm mt-[7px]">
+        <div className="flex justify-between font-mono text-[11px] text-tm mt-[7px]">
           <span>-100</span><span>0</span><span>+100</span>
         </div>
       </div>
@@ -197,13 +234,13 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
         {CELLS.map(({ label, wt, score }) => (
           <div key={label}>
             <div className="flex justify-between items-baseline">
-              <span className="text-[11.5px] font-medium text-ts">{label}</span>
-              <span className="text-[10px] text-tm">{wt}</span>
+              <span className="text-[12px] font-medium text-ts">{label}</span>
+              <span className="text-[11px] text-tm">{wt}</span>
             </div>
             <div className={clsx('font-mono text-[24px] font-semibold mt-1 tracking-[-0.01em]', componentColor(score))}>
               {score > 0 ? '+' : ''}<CountUp to={score} decimals={0} />
             </div>
-            <div className="text-[11px] text-ts mt-0.5">{componentLabel(score)}</div>
+            <div className="text-[12px] text-ts mt-0.5">{componentLabel(score)}</div>
           </div>
         ))}
       </div>
@@ -227,11 +264,11 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
         <div className="mt-5 pt-5 border-t border-bd grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-5 animate-fadeUp">
           <div className="lg:col-span-2 bg-bg-e border border-bd rounded-xl p-4 sm:p-5">
             <div className="font-medium text-[13px] text-tp">How the score is calculated</div>
-            <p className="mt-1.5 text-[11.5px] leading-relaxed text-ts max-w-[72ch]">{cis.methodology}</p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-ts max-w-[72ch]">{cis.methodology}</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-4">
               {Object.entries(cis.components || {}).map(([key, component]) => (
                 <div key={key} className="rounded-lg border border-bd bg-bg-c px-3 py-2.5">
-                  <div className="flex justify-between text-[10.5px] text-tm">
+                  <div className="flex justify-between text-[12px] text-tm">
                     <span className="capitalize">{key === 'jse' ? 'JSE watchlist' : key === 'conf' ? 'Confirmations' : key}</span>
                     <span>{Math.round(component.weight * 100)}% weight</span>
                   </div>
@@ -242,11 +279,11 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
               ))}
             </div>
             <div className="mt-4">
-              <div className="text-[10.5px] font-medium text-tm">Largest current drivers</div>
+              <div className="text-[12px] font-medium text-tm">Largest current drivers</div>
               {topDrivers.length ? (
                 <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {topDrivers.map(driver => (
-                    <li key={`${driver.bucket}-${driver.label}`} className="flex items-start justify-between gap-3 text-[11.5px] border-b border-bd pb-2">
+                    <li key={`${driver.bucket}-${driver.label}`} className="flex items-start justify-between gap-3 text-[12px] border-b border-bd pb-2">
                       <span><span className="text-tp font-medium">{driver.label}</span><span className="text-tm">: {driver.reason}</span></span>
                       <span className={clsx('font-mono flex-shrink-0', driver.weightedImpact >= 0 ? 'text-bull' : 'text-bear')}>
                         {driver.weightedImpact > 0 ? '+' : ''}{driver.weightedImpact}
@@ -254,15 +291,15 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
                     </li>
                   ))}
                 </ul>
-              ) : <div className="mt-2 text-[11.5px] text-tm">No non-zero drivers in the current reading.</div>}
+              ) : <div className="mt-2 text-[12px] text-tm">No non-zero drivers in the current reading.</div>}
             </div>
           </div>
           
           {/* Left: Historical CIS Area Chart */}
           <div className="flex flex-col">
-            <div className="text-[10px] font-semibold text-ts mb-2.5 tracking-[0.05em] uppercase">CIS History Trajectory</div>
+            <div className="text-[12px] font-semibold text-ts mb-2.5 tracking-[0.05em] uppercase">CIS History Trajectory</div>
             {(!cisChartData || cisChartData.length === 0) ? (
-              <div className="h-[180px] flex items-center justify-center bg-bg-e rounded-xl border border-bd text-tm text-[11px] font-mono">
+              <div className="h-[180px] flex items-center justify-center bg-bg-e rounded-xl border border-bd text-tm text-[12px] font-mono">
                 No history points logged yet. Trigger active refreshes.
               </div>
             ) : (
@@ -275,20 +312,20 @@ export default function RegimeBanner({ cis, hasData, cisChartData }) {
           {/* Right: Portfolio Hedging Playbook */}
           <div className="flex flex-col bg-bg-e rounded-xl border border-bd p-[16px_18px] justify-between">
             <div>
-              <div className="text-[10px] font-semibold text-ts mb-2 tracking-[0.05em] uppercase">Hedging Playbook</div>
+              <div className="text-[12px] font-semibold text-ts mb-2 tracking-[0.05em] uppercase">Hedging Playbook</div>
               <div className={clsx("font-serif text-[16px] italic leading-tight mb-2.5", toneText)}>
                 {playbookData.title}
               </div>
               <ul className="flex flex-col gap-2">
                 {playbookData.points.map((pt, idx) => (
-                  <li key={idx} className="flex gap-2 items-start text-[11.5px] text-ts leading-normal font-sans">
+                  <li key={idx} className="flex gap-2 items-start text-[12px] text-ts leading-normal font-sans">
                     <span className={clsx("w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5", toneBg)} />
                     <span>{pt}</span>
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="font-mono text-[8px] text-tm mt-4 pt-2 border-t border-bd">
+            <div className="font-mono text-[11px] text-tm mt-4 pt-2 border-t border-bd">
               Allocations shift with the live Conflict Impact Score regime.
             </div>
           </div>

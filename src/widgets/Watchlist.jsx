@@ -104,7 +104,7 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
             <button key={f} type="button" onClick={() => setFilter(f)}
               aria-pressed={f === filter}
               className={clsx(
-                'min-h-11 sm:min-h-0 px-3 py-[5px] text-[11.5px] font-medium rounded-full cursor-pointer transition-colors',
+                'min-h-11 sm:min-h-0 px-3 py-[5px] text-[12px] font-medium rounded-full cursor-pointer transition-colors',
                 f === filter ? 'text-ink bg-paper' : 'text-ts hover:text-tp',
               )}
               style={f === filter ? { color: 'var(--color-ink)' } : {}}>
@@ -112,10 +112,10 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
             </button>
           ))}
           <button type="button" onClick={handleCsv}
-            className="min-h-11 sm:min-h-0 inline-flex items-center gap-1.5 px-3 py-[5px] text-[11.5px] text-ts border border-bd rounded-full hover:text-tp hover:border-ts transition-colors cursor-pointer ml-1">
+            className="min-h-11 sm:min-h-0 inline-flex items-center gap-1.5 px-3 py-[5px] text-[12px] text-ts border border-bd rounded-full hover:text-tp hover:border-ts transition-colors cursor-pointer ml-1">
             {csvDone ? <><CheckIcon className="w-3 h-3" />Saved</> : <><DownloadIcon className="w-3 h-3" />CSV</>}
           </button>
-          <label className="sm:hidden flex items-center gap-2 min-h-11 px-3 text-[11.5px] text-ts border border-bd rounded-full">
+          <label className="sm:hidden flex items-center gap-2 min-h-11 px-3 text-[12px] text-ts border border-bd rounded-full">
             Detail
             <select
               value={mobileDetail}
@@ -128,7 +128,7 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
               <option value="trend">Trend</option>
             </select>
           </label>
-          <label className="sm:hidden flex items-center gap-2 min-h-11 px-3 text-[11.5px] text-ts border border-bd rounded-full">
+          <label className="sm:hidden flex items-center gap-2 min-h-11 px-3 text-[12px] text-ts border border-bd rounded-full">
             Sort
             <select
               value={sort.key}
@@ -160,10 +160,10 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
                   <span className="font-mono text-[12px] font-semibold text-tp">{s.display || s.ticker}</span>
                   <span className="truncate text-[12px] text-ts">{s.name}</span>
                 </div>
-                <div className="mt-1 text-[10.5px] text-tm min-h-[18px] flex items-center">
+                <div className="mt-1 text-[12px] text-tm min-h-[18px] flex items-center">
                   {mobileDetail === 'sector' && s.sector}
                   {mobileDetail === 'signal' && (signal
-                    ? <span className={clsx('font-mono text-[9px] px-2 py-0.5 rounded-full border', sigCls)}>{signal}</span>
+                    ? <span className={clsx('font-mono text-[10px] px-2 py-0.5 rounded-full border', sigCls)}>{signal}</span>
                     : 'No signal')}
                   {mobileDetail === 'trend' && <MiniSparkline points={sparklines?.[s.ticker]?.points} />}
                 </div>
@@ -200,7 +200,7 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
                 <th key={col.key} scope="col"
                   aria-sort={sort.key === col.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
                   className={clsx(
-                    'text-[10.5px] font-medium text-tm tracking-[0.05em] uppercase pb-2 px-1',
+                    'text-[11px] font-medium text-tm tracking-[0.05em] uppercase pb-2 px-1',
                     col.align === 'right' ? 'text-right' : 'text-left',
                     col.hideMobile && 'hidden sm:table-cell',
                   )}>
@@ -241,11 +241,11 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
                   <td className={clsx('py-3 px-1 text-right font-mono text-[13px] font-semibold', chg == null ? 'text-tm' : isUp ? 'text-bull' : 'text-bear')}>
                     {chg == null ? '—' : `${isUp ? '+' : ''}${chg.toFixed(2)}%`}
                   </td>
-                  <td className="py-3 px-1 text-right text-[11.5px] text-ts">{s.sector}</td>
+                  <td className="py-3 px-1 text-right text-[12px] text-ts">{s.sector}</td>
                   <td className="py-3 px-1 text-right hidden sm:table-cell">
                     {signal
-                      ? <span className={clsx('font-mono text-[9px] px-[7px] py-[2px] rounded-full border', sigCls)}>{signal}</span>
-                      : <span className="text-tm text-[11px]">—</span>}
+                      ? <span className={clsx('font-mono text-[10px] px-[7px] py-[2px] rounded-full border', sigCls)}>{signal}</span>
+                      : <span className="text-tm text-[12px]">—</span>}
                   </td>
                   <td className="py-3 px-1 text-right hidden sm:table-cell">
                     <MiniSparkline points={sparklines?.[s.ticker]?.points} />

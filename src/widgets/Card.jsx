@@ -39,7 +39,7 @@ export function CardHeader({ title, italic, kicker, right, badge, badgeVariant =
     <div className="flex items-baseline justify-between mb-[18px]">
       <div>
         {kicker && (
-          <div className="text-[11px] font-medium text-tm tracking-[0.08em] uppercase mb-1.5">{kicker}</div>
+          <div className="text-[12px] font-medium text-tm tracking-[0.08em] uppercase mb-1.5">{kicker}</div>
         )}
         {title && (
           <div className="font-serif text-[22px] text-tp leading-[1.1]">

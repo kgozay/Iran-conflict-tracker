@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import clsx from 'clsx';
-import { DownloadIcon, TableIcon, LineChartIcon, FileIcon, MenuIcon } from './Icons.jsx';
-import { StarBorder } from '../widgets/Effects.jsx';
+import { DownloadIcon, TableIcon, LineChartIcon, FileIcon, MenuIcon, RefreshIcon, SlidersIcon } from './Icons.jsx';
 
 const PAGE_META = {
   overview:  { kicker: 'Today',   pre: "Today's",      italic: 'transmission' },
@@ -28,13 +27,38 @@ function SegBtn({ label, active, onClick }) {
   );
 }
 
+function RefreshButton({ isLoading, progress, onFetch }) {
+  return (
+    <button
+      type="button"
+      disabled={isLoading}
+      onClick={() => onFetch()}
+      className={clsx(
+        'min-h-11 inline-flex items-center justify-center gap-2 px-4 py-[9px] text-[13px] font-semibold rounded-lg transition-colors',
+        isLoading
+          ? 'bg-bg-e text-tm cursor-not-allowed'
+          : 'bg-paper text-[var(--color-ink)] hover:opacity-90 cursor-pointer',
+      )}
+    >
+      {isLoading ? (
+        <span className="w-3.5 h-3.5 border-2 border-tm/30 border-t-tm rounded-full animate-spin" />
+      ) : (
+        <RefreshIcon className="w-3.5 h-3.5" />
+      )}
+      <span>{isLoading ? (progress || 'Refreshing data') : 'Refresh data'}</span>
+    </button>
+  );
+}
+
 export default function TopBar({
   page, status, progress,
   onFetch, timeframe, setTimeframe, returnMode, setReturnMode,
   onExport, onMenuClick, menuOpen, menuButtonRef,
 }) {
   const [exportOpen, setExportOpen] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const exportRef = useRef(null);
+  const optionsRef = useRef(null);
 
   useEffect(() => {
     if (!exportOpen) return;
@@ -44,6 +68,15 @@ export default function TopBar({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [exportOpen]);
+
+  useEffect(() => {
+    if (!optionsOpen) return undefined;
+    function handler(event) {
+      if (event.key === 'Escape') setOptionsOpen(false);
+    }
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [optionsOpen]);
 
   const meta      = PAGE_META[page] ?? PAGE_META.overview;
   const isLoading = status === 'loading';
@@ -80,20 +113,65 @@ export default function TopBar({
       </div>
 
       {/* ── Right: controls ──────────────────────────────────── */}
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] sm:flex sm:items-center gap-2 lg:gap-2.5 w-full lg:w-auto flex-shrink-0">
-        <SegGroup>
-          {['1D', '5D', '20D'].map(tf => (
-            <SegBtn key={tf} label={tf} active={timeframe === tf} onClick={() => setTimeframe(tf)} />
-          ))}
-        </SegGroup>
+      <div className="w-full lg:w-auto flex-shrink-0">
+        <div className="sm:hidden grid grid-cols-[minmax(0,1fr)_auto] gap-2" ref={optionsRef}>
+          <button
+            type="button"
+            onClick={() => setOptionsOpen(open => !open)}
+            aria-expanded={optionsOpen}
+            aria-controls="mobile-view-options"
+            className="min-h-11 min-w-0 inline-flex items-center justify-between gap-3 px-3.5 border border-bd rounded-lg text-left text-[13px] text-ts hover:text-tp hover:border-ts transition-colors"
+          >
+            <span className="inline-flex items-center gap-2 min-w-0">
+              <SlidersIcon className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate">View options</span>
+            </span>
+            <span className="font-mono text-[12px] text-tm whitespace-nowrap">{timeframe} · {returnMode}</span>
+          </button>
+          <RefreshButton isLoading={isLoading} progress={progress} onFetch={onFetch} />
 
-        <SegGroup>
-          {['ABS', 'REL'].map(rm => (
-            <SegBtn key={rm} label={rm} active={returnMode === rm} onClick={() => setReturnMode(rm)} />
-          ))}
-        </SegGroup>
+          {optionsOpen && (
+            <div id="mobile-view-options" className="col-span-2 glass rounded-xl p-3 grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-[12px] text-tm mb-1.5">Timeframe</div>
+                <SegGroup>
+                  {['1D', '5D', '20D'].map(tf => (
+                    <SegBtn key={tf} label={tf} active={timeframe === tf} onClick={() => setTimeframe(tf)} />
+                  ))}
+                </SegGroup>
+              </div>
+              <div>
+                <div className="text-[12px] text-tm mb-1.5">Returns</div>
+                <SegGroup>
+                  {['ABS', 'REL'].map(rm => (
+                    <SegBtn key={rm} label={rm} active={returnMode === rm} onClick={() => setReturnMode(rm)} />
+                  ))}
+                </SegGroup>
+              </div>
+              {onExport && (
+                <button type="button" onClick={() => { onExport('snapshot-json'); setOptionsOpen(false); }}
+                  className="col-span-2 min-h-11 inline-flex items-center justify-center gap-2 px-4 text-[13px] font-medium text-ts border border-bd rounded-lg hover:text-tp hover:border-ts transition-colors">
+                  <DownloadIcon className="w-4 h-4" /> Export snapshot
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
-        <div className="hidden lg:block w-px h-[22px] bg-bd mx-1" />
+        <div className="hidden sm:flex sm:flex-wrap sm:items-center gap-2 lg:gap-2.5">
+          <SegGroup>
+            {['1D', '5D', '20D'].map(tf => (
+              <SegBtn key={tf} label={tf} active={timeframe === tf} onClick={() => setTimeframe(tf)} />
+            ))}
+          </SegGroup>
+
+          <SegGroup>
+            {['ABS', 'REL'].map(rm => (
+              <SegBtn key={rm} label={rm} active={returnMode === rm} onClick={() => setReturnMode(rm)} />
+            ))}
+          </SegGroup>
+
+          <div className="hidden lg:block w-px h-[22px] bg-bd mx-1" />
 
         {/* Export dropdown */}
         {onExport && (
@@ -126,18 +204,8 @@ export default function TopBar({
           </div>
         )}
 
-        {/* Refresh data — wrapped in StarBorder when idle, plain when loading */}
-        {isLoading ? (
-          <button type="button" disabled
-            className="min-h-11 w-full flex items-center justify-center gap-2 px-[18px] py-[9px] text-[12.5px] font-medium rounded-lg bg-bg-e text-tm cursor-not-allowed">
-            <span className="w-3 h-3 border-2 border-tm/30 border-t-tm rounded-full animate-spin inline-block" />
-            Refreshing…
-          </button>
-        ) : (
-          <StarBorder color="var(--color-warn)" speed="5s" onClick={() => onFetch()}>
-            Refresh data
-          </StarBorder>
-        )}
+          <RefreshButton isLoading={isLoading} progress={progress} onFetch={onFetch} />
+        </div>
       </div>
     </header>
   );

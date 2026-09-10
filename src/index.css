@@ -155,7 +155,7 @@ html[data-theme="light"] {
     pointer-events: none;
     background: var(--color-bg-ambient);
     background-size: 150% 150%;
-    animation: aura-float 30s ease-in-out infinite;
+    animation: none;
     transition: background 0.4s ease;
   }
 
@@ -221,7 +221,6 @@ html[data-theme="light"] {
 }
 
 .glass:hover {
-  transform: translateY(-2px) scale(1.006);
   background: var(--color-bg-h);
   border-color: var(--color-bd-x);
   box-shadow:
@@ -255,9 +254,9 @@ html[data-theme="light"] {
 }
 
 .sparkline-path {
-  stroke-dasharray: 200;
-  stroke-dashoffset: 200;
-  animation: draw-line 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  stroke-dasharray: none;
+  stroke-dashoffset: 0;
+  animation: none;
 }
 
 @keyframes feed-slide-in {
@@ -272,8 +271,8 @@ html[data-theme="light"] {
 }
 
 .feed-item-animate {
-  opacity: 0;
-  animation: feed-slide-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 1;
+  animation: none;
 }
 
 @keyframes pulse-glow {
@@ -288,7 +287,7 @@ html[data-theme="light"] {
 }
 
 .status-dot-critical {
-  animation: pulse-glow 2s infinite ease-in-out;
+  animation: none;
 }
 
 @keyframes arrow-flow {
@@ -308,7 +307,7 @@ html[data-theme="light"] {
 }
 
 .active-arrow {
-  animation: arrow-flow 1.4s infinite ease-in-out;
+  animation: none;
   display: inline-block;
 }
 
@@ -346,15 +345,15 @@ html[data-theme="light"] {
 }
 
 .active-node-red {
-  animation: node-pulse-red 2s infinite ease-in-out;
+  animation: none;
 }
 
 .active-node-warn {
-  animation: node-pulse-warn 2s infinite ease-in-out;
+  animation: none;
 }
 
 .active-node-green {
-  animation: node-pulse-green 2s infinite ease-in-out;
+  animation: none;
 }
 /* ─────────────────────────────────────────────────────────────────────
  * Append these blocks to the END of src/index.css.
@@ -475,4 +474,7 @@ html[data-theme="light"] {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+
+  .glass:hover { transform: none; }
+  .animate-fadeUp { animation: none !important; }
 }

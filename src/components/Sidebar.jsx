@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { XIcon } from './Icons.jsx';
 
@@ -18,11 +18,25 @@ export default function Sidebar({
 }) {
   const closeRef = useRef(null);
   const sidebarRef = useRef(null);
+  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
   const toneText = TONE_TEXT[cis.regimeClass] ?? TONE_TEXT.neutral;
   const toneBg   = TONE_BG[cis.regimeClass]   ?? TONE_BG.neutral;
   const pct      = Math.max(2, Math.min(98, ((cis.total + 100) / 200) * 100));
   const ts       = lastFetch?.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
   const hasData  = status === 'live' || status === 'cached';
+  const isAvailable = isDesktop || isOpen;
+
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 1024px)');
+    const update = event => setIsDesktop(event.matches);
+    setIsDesktop(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    if (sidebarRef.current) sidebarRef.current.inert = !isAvailable;
+  }, [isAvailable]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -56,6 +70,9 @@ export default function Sidebar({
       id="primary-sidebar"
       ref={sidebarRef}
       aria-label="Primary navigation"
+      aria-hidden={!isAvailable}
+      role={!isDesktop && isOpen ? 'dialog' : undefined}
+      aria-modal={!isDesktop && isOpen ? 'true' : undefined}
       className={clsx(
         'fixed top-0 left-0 bottom-0 w-[min(300px,86vw)] lg:w-[240px] bg-bg-s border-r border-bd flex flex-col z-50 backdrop-blur-[24px] backdrop-saturate-[160%]',
         'transition-transform duration-300 ease-in-out',
@@ -73,15 +90,15 @@ export default function Sidebar({
       {/* ── Brand block ─────────────────────────────────────────── */}
       <div className="px-[22px] py-[22px] pb-[18px] border-b border-bd">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-paper flex items-center justify-center flex-shrink-0
-                          font-serif italic text-[19px] leading-none" style={{ color: 'var(--color-ink)' }}>
-            jc
+          <div aria-label="JSE" className="w-10 h-10 rounded-[10px] bg-paper flex items-center justify-center flex-shrink-0
+                          font-sans font-black text-[11px] tracking-[-0.035em] leading-none" style={{ color: 'var(--color-ink)' }}>
+            JSE
           </div>
           <div className="min-w-0 flex-1">
             <div className="font-serif text-[20px] text-tp leading-none tracking-[-0.01em]">
               Conflict <span className="italic text-warn">Watch</span>
             </div>
-            <div className="font-mono text-[10.5px] text-tm mt-1 tracking-[0.04em]">JSE · v3.0</div>
+            <div className="font-mono text-[12px] text-tm mt-1 tracking-[0.04em]">JSE market intelligence</div>
           </div>
 
         </div>
@@ -89,7 +106,7 @@ export default function Sidebar({
 
       {/* ── CIS regime mini-panel ───────────────────────────────── */}
       <div className="px-[22px] py-5 border-b border-bd">
-        <div className="text-[10.5px] font-medium text-tm tracking-[0.08em] uppercase">
+        <div className="text-[12px] font-medium text-tm tracking-[0.08em] uppercase">
           Conflict regime
         </div>
         <div className={clsx('font-serif italic text-[18px] leading-[1.1] mt-1.5', toneText)}>
@@ -100,7 +117,7 @@ export default function Sidebar({
             {!hasData ? '—' : cis.total}
           </span>
           {hasData && cis.trendDelta != null && (
-            <span className="font-mono text-[11px] font-semibold text-bear">
+            <span className="font-mono text-[12px] font-semibold text-bear">
               ↓ {cis.trendDelta}
             </span>
           )}
@@ -112,7 +129,7 @@ export default function Sidebar({
             style={{ width: `${pct}%`, opacity: 0.85 }}
           />
         </div>
-        <div className="flex justify-between font-mono text-[9.5px] text-tx mt-[5px]">
+        <div className="flex justify-between font-mono text-[11px] text-tx mt-[5px]">
           <span>-100</span><span>0</span><span>+100</span>
         </div>
       </div>
@@ -130,7 +147,7 @@ export default function Sidebar({
             <div className={clsx('font-serif text-[17px] leading-[1.15]', page === id ? 'text-tp' : 'text-ts')}>
               {label}
             </div>
-            <div className={clsx('text-[11px] mt-[3px]', page === id ? 'text-ts' : 'text-tm')}>
+            <div className={clsx('text-[12px] mt-[3px]', page === id ? 'text-ts' : 'text-tm')}>
               {sub}
             </div>
           </button>
@@ -139,12 +156,12 @@ export default function Sidebar({
 
       {/* ── Theme Switcher ───────────────────────────────────────── */}
       <div className="px-[22px] py-3.5 border-t border-bd flex items-center justify-between">
-        <span className="text-[10.5px] font-medium text-tm tracking-[0.08em] uppercase select-none">Theme</span>
+        <span className="text-[12px] font-medium text-tm tracking-[0.08em] uppercase select-none">Theme</span>
         <button
           type="button"
           onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
           aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-          className="flex items-center gap-1.5 min-h-11 px-3 py-[6px] text-[11.5px] font-medium text-ts border border-bd rounded-lg hover:text-tp hover:border-ts transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 min-h-11 px-3 py-[6px] text-[12px] font-medium text-ts border border-bd rounded-lg hover:text-tp hover:border-ts transition-colors cursor-pointer"
         >
           {theme === 'light' ? (
             <>
@@ -176,18 +193,23 @@ export default function Sidebar({
 
       {/* ── Status footer ───────────────────────────────────────── */}
       <div className="px-[22px] py-4 border-t border-bd">
-        <div aria-live="polite" className="flex items-center gap-[7px] text-[11px] font-medium text-bull">
+        <div aria-live="polite" aria-atomic="true" className={clsx(
+          'flex items-center gap-[7px] text-[12px] font-medium',
+          status === 'error' ? 'text-bear' : status === 'loading' ? 'text-warn' : hasData ? 'text-bull' : 'text-tm',
+        )}>
           <span
-            className="w-[6px] h-[6px] rounded-full bg-bull animate-pulse2 flex-shrink-0"
-            style={{ boxShadow: '0 0 8px rgba(52,211,153,0.55)' }}
+            className={clsx(
+              'w-[6px] h-[6px] rounded-full flex-shrink-0',
+              status === 'error' ? 'bg-bear' : status === 'loading' ? 'bg-warn animate-pulse2' : hasData ? 'bg-bull' : 'bg-tm',
+            )}
           />
           {status === 'loading'
             ? 'Fetching…'
             : status === 'error'
-              ? <span className="text-bear">Error</span>
-              : ts ? `Live · ${ts} SAST` : 'Connecting…'}
+              ? 'Data unavailable'
+              : ts ? `${status === 'cached' ? 'Cached' : 'Live'} · ${ts} SAST` : 'Connecting…'}
         </div>
-        <div className="font-mono text-[10.5px] text-tm mt-[6px] leading-[1.5]">
+        <div className="font-mono text-[12px] text-tm mt-[6px] leading-[1.5]">
           Quotes refresh independently; cached values remain visible during outages
         </div>
       </div>

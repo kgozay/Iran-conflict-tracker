@@ -16,14 +16,30 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = event => setReduced(event.matches);
+    setReduced(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+
+  return reduced;
+}
+
 /* ── FX1 · CountUp ─────────────────────────────────────────────────────
  * Critically-damped spring; same feel as react-bits/CountUp without framer.
  * Usage: <CountUp to={88.42} decimals={2} suffix="%" />
  */
 export function CountUp({ to, from = 0, duration = 1.6, decimals = 0, suffix = '', className = '' }) {
   const [v, setV] = useState(from);
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
     if (to == null || Number.isNaN(to)) { setV(to); return; }
+    if (reducedMotion) { setV(to); return undefined; }
     let raf, start = null;
     // easeOutQuart — fast acceleration that settles cleanly inside `duration`s
     const ease = t => 1 - Math.pow(1 - t, 4);
@@ -36,7 +52,7 @@ export function CountUp({ to, from = 0, duration = 1.6, decimals = 0, suffix = '
     }
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [to, from, duration]);
+  }, [to, from, duration, reducedMotion]);
 
   if (v == null || Number.isNaN(v)) return <span className={className}>—</span>;
   const opts = { minimumFractionDigits: decimals, maximumFractionDigits: decimals };
@@ -85,8 +101,14 @@ export function DecryptedText({
 }) {
   const [revealed, setRevealed] = useState(0);
   const [display, setDisplay] = useState(text);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion) {
+      setRevealed(text.length);
+      setDisplay(text);
+      return undefined;
+    }
     let r = 0, dir = 1, holdT = null;
     setRevealed(0);
     const id = setInterval(() => {
@@ -119,7 +141,7 @@ export function DecryptedText({
       setDisplay(out);
     }, speed);
     return () => clearInterval(id);
-  }, [text, speed, holdMs, loop, chars]);
+  }, [text, speed, holdMs, loop, chars, reducedMotion]);
 
   return (
     <span className={className}>

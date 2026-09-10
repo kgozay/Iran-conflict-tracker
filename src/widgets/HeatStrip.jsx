@@ -29,7 +29,7 @@ export default function HeatStrip({ sectors, timeframe = '1D' }) {
         <div className="font-serif text-[22px] text-tp leading-[1.1]">
           Sector <span className="italic text-warn">breadth</span>
         </div>
-        <span className="text-[11px] text-tm">{timeframe} · equal-weight</span>
+        <span className="text-[12px] text-tm">{timeframe} · equal-weight</span>
       </div>
 
       {/* Rows */}
