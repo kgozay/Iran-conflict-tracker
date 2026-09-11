@@ -41,24 +41,17 @@ function SortArrow({ active, dir }) {
   return <span className={clsx('ml-1 text-[8px]', active ? 'text-warn' : 'text-tx')}>{active ? (dir === 'asc' ? '▲' : '▼') : '·'}</span>;
 }
 
-export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS', sparklines }) {
+export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
   const [filter, setFilter] = useState('ALL');
   const [sort, setSort] = useState({ key: 'sector', dir: 'asc' });
   const [csvDone, setCsvDone] = useState(false);
   const [mobileDetail, setMobileDetail] = useState('sector');
 
   const liveCount = stocks.filter(s => s.isLive).length;
-  const marketAvgTF = useMemo(() => {
-    const vals = stocks.filter(s => s.isLive).map(s => getTimeframeChange(s, timeframe)).filter(v => v != null);
-    if (!vals.length) return null;
-    return vals.reduce((a, v) => a + v, 0) / vals.length;
-  }, [stocks, timeframe]);
-
   const rows = useMemo(() => stocks.map(s => {
-    const raw = getTimeframeChange(s, timeframe);
-    const displayChg = raw == null ? null : returnMode === 'REL' && marketAvgTF != null ? +(raw - marketAvgTF).toFixed(2) : raw;
-    return { ...s, _chg: displayChg, _rawChg: raw };
-  }), [stocks, timeframe, returnMode, marketAvgTF]);
+    const change = getTimeframeChange(s, timeframe);
+    return { ...s, _chg: change };
+  }), [stocks, timeframe]);
 
   const filtered = useMemo(() => {
     const base = filter === 'ALL' ? rows : rows.filter(s => s.sector === filter);
@@ -77,12 +70,12 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
   }
 
   function handleCsv() {
-    exportWatchlistCSV(filtered, timeframe, returnMode);
+    exportWatchlistCSV(filtered, timeframe);
     setCsvDone(true);
     setTimeout(() => setCsvDone(false), 2500);
   }
 
-  const chgLabel = `${timeframe}${returnMode === 'REL' ? ' REL' : ''}`;
+  const chgLabel = timeframe;
 
   return (
     <Card>
@@ -94,7 +87,6 @@ export default function Watchlist({ stocks, timeframe = '1D', returnMode = 'ABS'
           </div>
           <div className="text-[12px] text-tm mt-1">
             {filtered.length} names · {liveCount} live
-            {returnMode === 'REL' && marketAvgTF != null && ` · vs mkt ${marketAvgTF >= 0 ? '+' : ''}${marketAvgTF.toFixed(2)}%`}
           </div>
         </div>
 

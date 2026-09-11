@@ -15,21 +15,19 @@ const ts    = () => new Date().toISOString();
 const q     = v => `"${v}"`;
 const pct   = v => v == null ? '' : v.toFixed(4);
 
-export function exportWatchlistCSV(stocks, timeframe = '1D', returnMode = 'ABS') {
-  const chgLabel = `${timeframe} Chg %${returnMode === 'REL' ? ' Relative' : ''}`;
-  const headers = ['Name','Ticker','Sector','Price',chgLabel,'Raw Chg %','Market Cap','P/E','Signal','Live','Source','Fetched'];
+export function exportWatchlistCSV(stocks, timeframe = '1D') {
+  const chgLabel = `${timeframe} Chg %`;
+  const headers = ['Name','Ticker','Sector','Price',chgLabel,'Market Cap','P/E','Signal','Live','Source','Fetched'];
   const rows = stocks.map(s => {
     const displayChg = s._chg ?? (
       timeframe === '5D' ? s.changePct5D :
       timeframe === '20D' ? s.changePct20D :
       s.changePct
     );
-    const rawChg = s._rawChg ?? displayChg;
     return [
       q(s.name), s.display, q(s.sector),
       s.price?.toFixed(2) ?? '',
       pct(displayChg),
-      pct(rawChg),
       q(s.mktcap), s.pe,
       q(getSignal(displayChg) ?? '—'),
       s.isLive ? 'YES' : 'NO',

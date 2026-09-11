@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import clsx from 'clsx';
 import { SECTOR_ORDER } from './data/stocks.js';
 import { computeCIS }    from './utils/scoring.js';
 import { computeAlerts } from './utils/alerts.js';
@@ -11,7 +12,6 @@ import { useCISHistory }  from './hooks/useCISHistory.js';
 import Sidebar            from './components/Sidebar.jsx';
 import TopBar             from './components/TopBar.jsx';
 import LoadingOverlay     from './components/LoadingOverlay.jsx';
-import DataStatusBanner   from './components/DataStatusBanner.jsx';
 import Toast              from './components/Toast.jsx';
 
 const Overview = lazy(() => import('./pages/Overview.jsx'));
@@ -69,8 +69,10 @@ const EMPTY_CIS = {
 export default function App() {
   const [page,        setPage]       = useState('overview');
   const [timeframe,   setTimeframe]  = useState('1D');
-  const [returnMode,  setReturnMode] = useState('ABS');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem('jse_sidebar_collapsed') === 'true'
+  );
   const [theme,       setTheme]      = useState(() => localStorage.getItem('jse_theme') ?? 'dark');
   const menuButtonRef = useRef(null);
   const contentRef = useRef(null);
@@ -90,6 +92,13 @@ export default function App() {
   }, []);
 
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
+  const toggleSidebar = useCallback(() => {
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+      setSidebarCollapsed(collapsed => !collapsed);
+      return;
+    }
+    openSidebar();
+  }, [openSidebar]);
   const closeSidebar = useCallback(() => {
     setSidebarOpen(false);
     requestAnimationFrame(() => menuButtonRef.current?.focus());
@@ -101,14 +110,18 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
+    localStorage.setItem('jse_sidebar_collapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
+  useEffect(() => {
     if (contentRef.current) contentRef.current.inert = sidebarOpen;
   }, [sidebarOpen]);
 
 
   const {
     assets, stocks, history, sourceHealth,
-    status, error, lastFetch, progress,
-    fetchLive, initFromCache, clearError,
+    status, lastFetch, progress,
+    fetchLive, initFromCache,
   } = useMarketData();
 
   const { sparklines, sparkLoading, fetchSparklines } = useSparklines();
@@ -172,15 +185,15 @@ export default function App() {
   }, [fetchLive, addToast, fetchSparklines]);
 
   const handleExport = useCallback((key) => {
-    if (key === 'watchlist-csv') exportWatchlistCSV(stocks, timeframe, returnMode);
+    if (key === 'watchlist-csv') exportWatchlistCSV(stocks, timeframe);
     if (key === 'macro-csv')     exportMacroCSV(assets);
     if (key === 'snapshot-json') exportSnapshotJSON(assets, stocks, sectors, cis, alerts);
     addToast('File downloaded', 'info', 2000);
-  }, [stocks, assets, sectors, cis, alerts, timeframe, returnMode, addToast]);
+  }, [stocks, assets, sectors, cis, alerts, timeframe, addToast]);
 
   const shared = {
     assets, stocks, sectors, cis, alerts, history,
-    timeframe, returnMode, status, hasData, dataHealth, lastFetch,
+    timeframe, status, hasData, dataHealth, lastFetch,
     onFetch: handleFetch,
     sparklines, sparkLoading,
     cisChartData,
@@ -201,29 +214,31 @@ export default function App() {
         page={page} setPage={navigateTo}
         cis={cis} status={status} lastFetch={lastFetch}
         isOpen={sidebarOpen} onClose={closeSidebar}
+        isCollapsed={sidebarCollapsed}
         theme={theme} setTheme={setTheme}
       />
 
       <a className="skip-link" href="#main-content">Skip to market dashboard</a>
 
-      <div ref={contentRef} aria-hidden={sidebarOpen || undefined} className="flex flex-col flex-1 overflow-hidden ml-0 lg:ml-[240px]">
+      <div
+        ref={contentRef}
+        aria-hidden={sidebarOpen || undefined}
+        className={clsx(
+          'flex flex-col flex-1 overflow-hidden ml-0 transition-[margin] duration-200 ease-out',
+          sidebarCollapsed ? 'lg:ml-0' : 'lg:ml-[240px]',
+        )}
+      >
         <TopBar
           page={page}
           status={status} progress={progress}
           onFetch={handleFetch}
           timeframe={timeframe}   setTimeframe={setTimeframe}
-          returnMode={returnMode} setReturnMode={setReturnMode}
           onExport={handleExport}
-          onMenuClick={openSidebar}
+          onMenuClick={toggleSidebar}
           menuOpen={sidebarOpen}
+          sidebarCollapsed={sidebarCollapsed}
           menuButtonRef={menuButtonRef}
           theme={theme} setTheme={setTheme}
-        />
-        <DataStatusBanner
-          dataHealth={dataHealth}
-          error={error}
-          onRetry={handleFetch}
-          onDismiss={clearError}
         />
         <main id="main-content" tabIndex="-1" className="flex-1 overflow-y-auto">
           <Suspense fallback={<PageFallback />}>

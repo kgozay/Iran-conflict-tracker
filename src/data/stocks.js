@@ -8,7 +8,7 @@ export const MACRO_SYMBOLS = {
   palladium: { symbol: 'PA=F',     name: 'Palladium',         unit: '$/oz',  invert: false },
   usdZar:    { symbol: 'USDZAR=X', name: 'USD/ZAR',           unit: 'ZAR',   invert: true  },
   coal:      { symbol: 'MTF=F',    name: 'Coal Futures',      unit: '$/t',   invert: false },
-  us10y:     { symbol: '^TNX',     name: 'US 10Y Yield',       unit: '%',     invert: true  },
+  us10y:     { symbol: '^TNX',     name: 'US 10-Year Bond Yield', unit: '%',   invert: true  },
 };
 
 // ─── JSE Stock Universe ───────────────────────────────────────────────────

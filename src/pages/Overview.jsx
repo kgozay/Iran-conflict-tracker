@@ -30,7 +30,7 @@ function FetchPrompt({ onFetch }) {
 }
 
 export default function Overview({
-  assets, stocks, sectors, cis, alerts, timeframe, returnMode,
+  assets, stocks, sectors, cis, alerts, timeframe,
   status, hasData, onFetch, cisChartData,
   sparklines, sparkLoading, dataHealth,
 }) {
@@ -66,7 +66,6 @@ export default function Overview({
           <Watchlist
             stocks={stocks}
             timeframe={timeframe}
-            returnMode={returnMode}
             sectors={sectors}
             sparklines={sparklines}
           />

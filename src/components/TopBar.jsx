@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import clsx from 'clsx';
-import { DownloadIcon, TableIcon, LineChartIcon, FileIcon, MenuIcon, RefreshIcon, SlidersIcon } from './Icons.jsx';
+import { DownloadIcon, TableIcon, LineChartIcon, FileIcon, MenuIcon, RefreshIcon } from './Icons.jsx';
 
 const PAGE_META = {
   overview:  { kicker: 'Today',   pre: "Today's",      italic: 'transmission' },
@@ -8,22 +8,21 @@ const PAGE_META = {
   drilldown: { kicker: 'Sectors', pre: 'The',          italic: 'drilldown'    },
 };
 
-function SegGroup({ children }) {
+function PeriodSelect({ value, onChange }) {
   return (
-    <div className="flex min-w-0 items-center bg-bg-h border border-bd rounded-lg p-[3px] gap-[2px]">
-      {children}
-    </div>
-  );
-}
-function SegBtn({ label, active, onClick }) {
-  return (
-    <button type="button" onClick={onClick} aria-pressed={active}
-      className={clsx(
-        'flex-1 min-w-11 min-h-11 lg:min-h-0 px-3 lg:px-[13px] py-[6px] text-[12px] font-medium rounded-md transition-colors cursor-pointer select-none',
-        active ? 'bg-bd text-tp' : 'text-ts hover:text-tp',
-      )}>
-      {label}
-    </button>
+    <label className="min-h-11 inline-flex items-center gap-2.5 px-3.5 border border-bd rounded-lg text-[12px] text-tm hover:border-ts transition-colors">
+      <span>Period</span>
+      <select
+        value={value}
+        onChange={event => onChange(event.target.value)}
+        aria-label="Performance period"
+        className="bg-transparent text-[12.5px] font-semibold text-tp outline-none cursor-pointer"
+      >
+        <option value="1D">1 day</option>
+        <option value="5D">5 days</option>
+        <option value="20D">20 days</option>
+      </select>
+    </label>
   );
 }
 
@@ -52,13 +51,11 @@ function RefreshButton({ isLoading, progress, onFetch }) {
 
 export default function TopBar({
   page, status, progress,
-  onFetch, timeframe, setTimeframe, returnMode, setReturnMode,
-  onExport, onMenuClick, menuOpen, menuButtonRef,
+  onFetch, timeframe, setTimeframe,
+  onExport, onMenuClick, menuOpen, sidebarCollapsed, menuButtonRef,
 }) {
   const [exportOpen, setExportOpen] = useState(false);
-  const [optionsOpen, setOptionsOpen] = useState(false);
   const exportRef = useRef(null);
-  const optionsRef = useRef(null);
 
   useEffect(() => {
     if (!exportOpen) return;
@@ -68,15 +65,6 @@ export default function TopBar({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [exportOpen]);
-
-  useEffect(() => {
-    if (!optionsOpen) return undefined;
-    function handler(event) {
-      if (event.key === 'Escape') setOptionsOpen(false);
-    }
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [optionsOpen]);
 
   const meta      = PAGE_META[page] ?? PAGE_META.overview;
   const isLoading = status === 'loading';
@@ -90,8 +78,25 @@ export default function TopBar({
 
       {/* ── Left: hamburger + eyebrow + title (magazine cover treatment) ── */}
       <div className="flex items-center gap-2.5 min-w-0 w-full lg:w-auto">
-        <button ref={menuButtonRef} onClick={onMenuClick} aria-label="Open menu" aria-expanded={menuOpen} aria-controls="primary-sidebar"
-          className="lg:hidden flex-shrink-0 w-11 h-11 inline-flex items-center justify-center text-ts hover:text-tp transition-colors cursor-pointer rounded-lg">
+        <button
+          ref={menuButtonRef}
+          type="button"
+          onClick={onMenuClick}
+          aria-label={menuOpen ? 'Hide navigation' : 'Show navigation'}
+          aria-expanded={menuOpen}
+          aria-controls="primary-sidebar"
+          className="lg:hidden flex-shrink-0 w-11 h-11 inline-flex items-center justify-center text-ts hover:text-tp hover:bg-bg-h transition-colors cursor-pointer rounded-lg"
+        >
+          <MenuIcon className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          onClick={onMenuClick}
+          aria-label={sidebarCollapsed ? 'Show navigation' : 'Hide navigation'}
+          aria-expanded={!sidebarCollapsed}
+          aria-controls="primary-sidebar"
+          className="hidden lg:inline-flex flex-shrink-0 w-11 h-11 items-center justify-center text-ts hover:text-tp hover:bg-bg-h transition-colors cursor-pointer rounded-lg"
+        >
           <MenuIcon className="w-5 h-5" />
         </button>
 
@@ -113,75 +118,19 @@ export default function TopBar({
       </div>
 
       {/* ── Right: controls ──────────────────────────────────── */}
-      <div className="w-full lg:w-auto flex-shrink-0">
-        <div className="sm:hidden grid grid-cols-[minmax(0,1fr)_auto] gap-2" ref={optionsRef}>
-          <button
-            type="button"
-            onClick={() => setOptionsOpen(open => !open)}
-            aria-expanded={optionsOpen}
-            aria-controls="mobile-view-options"
-            className="min-h-11 min-w-0 inline-flex items-center justify-between gap-3 px-3.5 border border-bd rounded-lg text-left text-[13px] text-ts hover:text-tp hover:border-ts transition-colors"
-          >
-            <span className="inline-flex items-center gap-2 min-w-0">
-              <SlidersIcon className="w-4 h-4 flex-shrink-0" />
-              <span className="truncate">View options</span>
-            </span>
-            <span className="font-mono text-[12px] text-tm whitespace-nowrap">{timeframe} · {returnMode}</span>
-          </button>
-          <RefreshButton isLoading={isLoading} progress={progress} onFetch={onFetch} />
-
-          {optionsOpen && (
-            <div id="mobile-view-options" className="col-span-2 glass rounded-xl p-3 grid grid-cols-2 gap-3">
-              <div>
-                <div className="text-[12px] text-tm mb-1.5">Timeframe</div>
-                <SegGroup>
-                  {['1D', '5D', '20D'].map(tf => (
-                    <SegBtn key={tf} label={tf} active={timeframe === tf} onClick={() => setTimeframe(tf)} />
-                  ))}
-                </SegGroup>
-              </div>
-              <div>
-                <div className="text-[12px] text-tm mb-1.5">Returns</div>
-                <SegGroup>
-                  {['ABS', 'REL'].map(rm => (
-                    <SegBtn key={rm} label={rm} active={returnMode === rm} onClick={() => setReturnMode(rm)} />
-                  ))}
-                </SegGroup>
-              </div>
-              {onExport && (
-                <button type="button" onClick={() => { onExport('snapshot-json'); setOptionsOpen(false); }}
-                  className="col-span-2 min-h-11 inline-flex items-center justify-center gap-2 px-4 text-[13px] font-medium text-ts border border-bd rounded-lg hover:text-tp hover:border-ts transition-colors">
-                  <DownloadIcon className="w-4 h-4" /> Export snapshot
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="hidden sm:flex sm:flex-wrap sm:items-center gap-2 lg:gap-2.5">
-          <SegGroup>
-            {['1D', '5D', '20D'].map(tf => (
-              <SegBtn key={tf} label={tf} active={timeframe === tf} onClick={() => setTimeframe(tf)} />
-            ))}
-          </SegGroup>
-
-          <SegGroup>
-            {['ABS', 'REL'].map(rm => (
-              <SegBtn key={rm} label={rm} active={returnMode === rm} onClick={() => setReturnMode(rm)} />
-            ))}
-          </SegGroup>
-
-          <div className="hidden lg:block w-px h-[22px] bg-bd mx-1" />
+      <div className="w-full lg:w-auto flex-shrink-0 flex flex-wrap items-center gap-2 lg:gap-2.5">
+        <PeriodSelect value={timeframe} onChange={setTimeframe} />
 
         {/* Export dropdown */}
         {onExport && (
           <div className="relative" ref={exportRef}>
             <button type="button" onClick={() => setExportOpen(v => !v)}
               aria-expanded={exportOpen} aria-haspopup="menu"
-              className="w-full min-h-11 lg:min-h-0 flex items-center justify-center gap-1.5 px-4 py-[9px] text-[12.5px] font-medium text-ts
+              aria-label="Export data"
+              className="w-11 sm:w-auto min-h-11 lg:min-h-0 flex items-center justify-center gap-1.5 px-0 sm:px-4 py-[9px] text-[12.5px] font-medium text-ts
                          border border-bd rounded-lg hover:text-tp hover:border-ts transition-colors cursor-pointer">
               <DownloadIcon className="w-3.5 h-3.5" />
-              Export
+              <span className="sr-only sm:not-sr-only">Export</span>
             </button>
             {exportOpen && (
               <div role="menu" className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1 glass rounded-xl z-[100] min-w-[190px] py-1">
@@ -204,8 +153,7 @@ export default function TopBar({
           </div>
         )}
 
-          <RefreshButton isLoading={isLoading} progress={progress} onFetch={onFetch} />
-        </div>
+        <RefreshButton isLoading={isLoading} progress={progress} onFetch={onFetch} />
       </div>
     </header>
   );

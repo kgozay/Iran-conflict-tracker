@@ -62,7 +62,9 @@ function applyQuotes(quotes, baseAssets, baseStocks) {
         prevClose: q.prevClose,
         marketState: q.marketState,
         timestamp: q.timestamp,
-        name:      q.name || assets[key].name,
+        // Keep the concise product label instead of Yahoo's often-truncated
+        // contract name (for example, "Brent Crude Oil Last Day Financ...").
+        name:      assets[key].name,
         isLive:    true,
         source:    q.source || 'Yahoo',
       };

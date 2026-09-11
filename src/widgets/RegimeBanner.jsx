@@ -250,7 +250,7 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
         <button
           type="button"
           onClick={() => setIsExpanded(e => !e)}
-          className="flex items-center gap-1.5 px-4.5 py-2 text-[12px] font-semibold text-ts border border-bd rounded-lg hover:text-tp hover:border-ts transition-colors cursor-pointer select-none"
+          className="flex items-center gap-1.5 min-h-10 px-3.5 py-2 text-[12px] font-semibold text-ts bg-bg-e rounded-md hover:text-tp hover:bg-bg-h transition-colors cursor-pointer select-none"
         >
           <svg className={clsx("w-3.5 h-3.5 transition-transform duration-300", isExpanded ? "rotate-180" : "")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9"></polyline>

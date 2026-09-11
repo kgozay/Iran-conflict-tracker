@@ -13,7 +13,7 @@ const TONE_BG   = { bear: 'bg-bear',  warn: 'bg-warn',   bull: 'bg-bull',   neut
 
 export default function Sidebar({
   page, setPage, cis, status, lastFetch,
-  isOpen, onClose,
+  isOpen, onClose, isCollapsed,
   theme, setTheme,
 }) {
   const closeRef = useRef(null);
@@ -24,7 +24,7 @@ export default function Sidebar({
   const pct      = Math.max(2, Math.min(98, ((cis.total + 100) / 200) * 100));
   const ts       = lastFetch?.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
   const hasData  = status === 'live' || status === 'cached';
-  const isAvailable = isDesktop || isOpen;
+  const isAvailable = isDesktop ? !isCollapsed : isOpen;
 
   useEffect(() => {
     const query = window.matchMedia('(min-width: 1024px)');
@@ -75,9 +75,9 @@ export default function Sidebar({
       aria-modal={!isDesktop && isOpen ? 'true' : undefined}
       className={clsx(
         'fixed top-0 left-0 bottom-0 w-[min(300px,86vw)] lg:w-[240px] bg-bg-s border-r border-bd flex flex-col z-50 backdrop-blur-[24px] backdrop-saturate-[160%]',
-        'transition-transform duration-300 ease-in-out',
+        'transition-transform duration-200 ease-out',
         isOpen ? 'translate-x-0' : '-translate-x-full',
-        'lg:translate-x-0',
+        isCollapsed ? 'lg:-translate-x-full' : 'lg:translate-x-0',
         isOpen && 'shadow-[12px_0_40px_-12px_rgba(0,0,0,0.6)] lg:shadow-none',
       )}>
 
