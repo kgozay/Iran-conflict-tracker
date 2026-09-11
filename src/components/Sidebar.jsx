@@ -88,19 +88,14 @@ export default function Sidebar({
       </button>
 
       {/* ── Brand block ─────────────────────────────────────────── */}
-      <div className="px-[22px] py-[22px] pb-[18px] border-b border-bd">
-        <div className="flex items-center gap-3">
-          <div aria-label="JSE" className="w-10 h-10 rounded-[10px] bg-paper flex items-center justify-center flex-shrink-0
-                          font-sans font-black text-[11px] tracking-[-0.035em] leading-none" style={{ color: 'var(--color-ink)' }}>
-            JSE
+      <div className="px-[22px] py-[19px] pr-14 lg:pr-[22px] border-b border-bd">
+        <div className="min-w-0">
+          <div className="font-serif text-[22px] text-tp leading-none tracking-[-0.015em] whitespace-nowrap">
+            Conflict <span className="italic text-warn">Watch</span>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="font-serif text-[20px] text-tp leading-none tracking-[-0.01em]">
-              Conflict <span className="italic text-warn">Watch</span>
-            </div>
-            <div className="font-mono text-[12px] text-tm mt-1 tracking-[0.04em]">JSE market intelligence</div>
+          <div className="text-[11px] text-tm mt-1.5 tracking-[0.015em] whitespace-nowrap">
+            JSE market intelligence
           </div>
-
         </div>
       </div>
 
