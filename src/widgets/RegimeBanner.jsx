@@ -65,6 +65,12 @@ function componentColor(score) {
   return 'text-ts';
 }
 
+function componentBg(score) {
+  if (score < -15) return 'bg-bear';
+  if (score > 15)  return 'bg-bull';
+  return 'bg-ts';
+}
+
 function computeTrend(data) {
   if (!data || data.length < 2) return null;
   const recent = data.slice(-5);
@@ -80,12 +86,12 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
   const toneText = TONE_TEXT[rc] ?? TONE_TEXT.neutral;
   const toneBg   = TONE_BG[rc]   ?? TONE_BG.neutral;
   const toneHex  = TONE_HEX[rc]  ?? TONE_HEX.neutral;
-  const pct          = Math.max(2, Math.min(98, ((cis.total + 100) / 200) * 100));
+  const pct          = Math.max(3, Math.min(97, ((cis.total + 100) / 200) * 100));
   const clampedTotal = Math.max(-100, Math.min(100, cis.total ?? 0));
   const fillLeft     = clampedTotal < 0 ? 50 + (clampedTotal / 2) : 50;
   const fillWidth    = Math.abs(clampedTotal) / 2;
   const trend        = computeTrend(cisChartData);
-  const interp   = INTERP[rc] ?? '';
+  const interp       = INTERP[rc] ?? '';
 
   const macro = cis.components?.macro?.score ?? 0;
   const jse   = cis.components?.jse?.score   ?? 0;
@@ -98,14 +104,12 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
   const confidence = coverage >= 90 ? 'High' : coverage >= 70 ? 'Moderate' : 'Low';
   const changeSummary = trend
     ? trend.dir === 'flat'
-      ? 'Broadly unchanged across the latest readings'
-      : `${Math.abs(trend.delta)} points ${trend.dir === 'down' ? 'lower' : 'higher'} across the latest readings`
-    : 'First reading in the current history window';
+      ? 'Broadly unchanged across latest readings'
+      : `${Math.abs(trend.delta)} pts ${trend.dir === 'down' ? 'deeper shock' : 'relief recovery'} in recent readings`
+    : 'Initial reading in current window';
 
-  // Determine Recharts color variable dynamically based on regime
   const toneVar = rc === 'bear' ? 'var(--color-bear)' : rc === 'warn' ? 'var(--color-warn)' : rc === 'bull' ? 'var(--color-bull)' : 'var(--color-ts)';
 
-  // Process visible event markers
   const visibleEvents = useMemo(() => {
     if (!cisChartData || cisChartData.length === 0) return [];
     const minTs = cisChartData[0].ts;
@@ -128,7 +132,6 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
       return null;
     }).filter(Boolean);
 
-    // Deduplicate by time string to prevent overlapping lines
     const seen = new Set();
     return mapped.filter(ev => {
       if (seen.has(ev.xValue)) return false;
@@ -139,177 +142,358 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
 
   if (!hasData) {
     return (
-      <div className="glass rounded-[16px] p-[26px_30px]">
-        <div className="text-[12px] font-medium text-tm tracking-[0.08em] uppercase">Conflict Impact Score</div>
-        <div className="font-serif text-[92px] text-tx leading-[0.9] tracking-[-0.04em] mt-4">—</div>
-        <div className="text-[13.5px] text-tm leading-[1.6] mt-4">
-          Fetch live data to compute the Conflict Impact Score.
+      <div className="glass rounded-[18px] p-6 sm:p-8 relative overflow-hidden border border-bd/70">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-ts" />
+          <div className="text-[11px] font-medium font-mono text-tm tracking-[0.1em] uppercase">Conflict Impact Score</div>
+        </div>
+        <div className="font-serif text-[72px] sm:text-[92px] text-tx leading-[0.9] tracking-[-0.04em] mt-3">—</div>
+        <div className="text-[13.5px] text-tm leading-relaxed mt-3 max-w-md">
+          Fetch live market telemetry to compute the Conflict Impact Score and quantify cross-asset transmission channels.
         </div>
       </div>
     );
   }
 
-  const CELLS = [
-    { label: 'Macro',   wt: '40%', score: macro },
-    { label: 'JSE',     wt: '35%', score: jse   },
-    { label: 'Signals', wt: '25%', score: conf  },
+  const COMPONENT_DETAILS = [
+    { key: 'macro', label: 'Macro Channel', wt: '40%', score: macro, contrib: cis.components?.macro?.contrib ?? 0 },
+    { key: 'jse',   label: 'JSE Watchlist', wt: '35%', score: jse,   contrib: cis.components?.jse?.contrib ?? 0 },
+    { key: 'conf',  label: 'Signals & FX',  wt: '25%', score: conf,  contrib: cis.components?.conf?.contrib ?? 0 },
   ];
 
   return (
-    <div className="glass rounded-[16px] p-[26px_30px]">
+    <div className="glass rounded-[20px] p-5 sm:p-7 relative overflow-hidden border border-bd/80 shadow-2xl backdrop-blur-xl">
 
-      {/* Kicker */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div className="text-[12px] font-medium text-tm tracking-[0.08em] uppercase">
-          Conflict Impact Score
+      {/* Top accent line with glowing aura */}
+      <div
+        className="absolute top-0 inset-x-0 h-[2px] transition-all duration-700"
+        style={{
+          background: `linear-gradient(90deg, transparent 0%, ${toneHex} 30%, ${toneHex} 70%, transparent 100%)`,
+          opacity: 0.85
+        }}
+      />
+
+      {/* Subtle ambient radial background glow */}
+      <div
+        className="absolute -top-20 -left-20 w-80 h-80 rounded-full pointer-events-none opacity-[0.14] transition-all duration-700 blur-3xl"
+        style={{
+          background: `radial-gradient(circle, ${toneHex} 0%, transparent 70%)`
+        }}
+      />
+
+      {/* Header Bar: Telemetry Beacon + Status Chips */}
+      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
+        <div className="flex items-center gap-2.5">
+          {/* Live pulsing radar dot */}
+          <span className="relative flex h-2.5 w-2.5">
+            <span
+              className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+              style={{ backgroundColor: toneHex }}
+            />
+            <span
+              className="relative inline-flex rounded-full h-2.5 w-2.5"
+              style={{ backgroundColor: toneHex }}
+            />
+          </span>
+          <div className="text-[11px] font-mono font-semibold tracking-[0.12em] text-tm uppercase">
+            Conflict Impact Score
+          </div>
+          <span className="hidden sm:inline-block font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-bg-h/80 border border-bd/60 text-tx uppercase tracking-wider">
+            Live Telemetry
+          </span>
         </div>
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-bg-e border border-bd text-[11.5px] text-ts self-start sm:self-auto font-mono">
+
+        {/* Confidence & Coverage Badge */}
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-bg-e/80 border border-bd/70 text-[11px] text-ts self-start sm:self-auto font-mono shadow-sm backdrop-blur-sm">
           <span className={clsx('w-1.5 h-1.5 rounded-full', coverage >= 90 ? 'bg-bull' : coverage >= 70 ? 'bg-warn' : 'bg-bear')} />
-          {confidence} confidence{coverage ? ` · ${coverage}% coverage` : ''}
+          <span className="text-tp font-medium">{confidence} confidence</span>
+          {coverage ? <span className="text-tm">· {coverage}% coverage</span> : null}
         </div>
       </div>
 
-      {/* Hero score + regime label */}
-      <div className="flex items-end gap-[18px] mt-[18px]">
+      {/* Hero Score + Regime Status */}
+      <div className="relative z-10 flex flex-wrap items-end gap-x-6 gap-y-3 mt-3">
         <div
-          className={clsx('font-serif leading-[0.9] tracking-[-0.04em]', toneText)}
-          style={{ fontSize: 92 }}
+          className={clsx('font-serif leading-[0.88] tracking-[-0.04em] select-none', toneText)}
+          style={{ fontSize: 'clamp(64px, 8vw, 96px)' }}
           key={`cis-${cis.total}`}
         >
           <CountUp to={cis.total} decimals={0} />
         </div>
-        <div className="pb-2">
-          <div className={clsx('font-serif italic text-[24px] leading-none', toneText)}>
+
+        <div className="flex flex-col justify-end pb-2">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-tm">Regime Assessment</span>
+            <span className={clsx('w-1 h-1 rounded-full', toneBg)} />
+          </div>
+          <div className={clsx('font-serif italic text-[26px] sm:text-[32px] leading-none tracking-[-0.01em]', toneText)}>
             {cis.regime.toLowerCase()}
           </div>
-          {trend && trend.dir !== 'flat' && (
-            <div className="text-[12px] font-semibold text-bear mt-2 font-mono">
-              {trend.dir === 'down' ? '↓' : '↑'} {Math.abs(trend.delta)}{' '}
-              <span className="text-tm font-normal">5-reading trend</span>
+          {trend && (
+            <div className="mt-2.5 flex items-center gap-2">
+              <div className={clsx(
+                'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-mono text-[11px] font-semibold border shadow-sm',
+                trend.dir === 'down' ? 'bg-bear/10 border-bear/30 text-bear' :
+                trend.dir === 'up' ? 'bg-bull/10 border-bull/30 text-bull' :
+                'bg-bg-h border-bd text-tm'
+              )}>
+                <span>{trend.dir === 'down' ? '↓' : trend.dir === 'up' ? '↑' : '→'}</span>
+                <span>{Math.abs(trend.delta)} pts</span>
+              </div>
+              <span className="text-tm text-[11px] font-mono">5-reading shift</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Interpretation — magazine drop-cap on first letter */}
-      <div className="text-[13.5px] text-ts leading-[1.6] mt-[18px] mag-dropcap">{interp}</div>
-
-      <div className="mt-5 grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-3">
-        <div className="rounded-xl border border-bd bg-bg-e px-4 py-3">
-          <div className="text-[12px] font-medium text-tm">What changed</div>
-          <div className="text-[13px] text-tp mt-1 leading-relaxed">{changeSummary}</div>
+      {/* Executive Briefing Callout (Clean editorial treatment, replacing broken drop cap) */}
+      <div
+        className="relative z-10 mt-4 p-3 sm:p-3.5 rounded-xl bg-bg-e/50 border border-bd/60 border-l-[3px] backdrop-blur-sm transition-all"
+        style={{ borderLeftColor: toneHex }}
+      >
+        <div className="flex items-start gap-2.5">
+          <div className="mt-0.5 flex-shrink-0 text-tm">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+          </div>
+          <div className="text-[13px] sm:text-[13.5px] text-tp/90 leading-relaxed font-sans">
+            {interp}
+          </div>
         </div>
-        <div className="rounded-xl border border-bd bg-bg-e px-4 py-3">
-          <div className="text-[12px] font-medium text-tm">Top drivers</div>
+      </div>
+
+      {/* Telemetry Briefing Cards: "What changed" + "Top drivers" */}
+      <div className="relative z-10 mt-4 grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-3">
+        {/* What changed card */}
+        <div className="rounded-xl border border-bd/70 bg-bg-e/40 hover:bg-bg-e/70 transition-all p-3 sm:p-3.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5 text-tm">
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+              <span className="text-[10.5px] font-mono font-semibold uppercase tracking-[0.08em]">What Changed</span>
+            </div>
+            <span className="text-[9.5px] font-mono text-tx">momentum</span>
+          </div>
+          <div className="text-[12.5px] sm:text-[13px] text-tp leading-relaxed">
+            {changeSummary}
+          </div>
+        </div>
+
+        {/* Top drivers card */}
+        <div className="rounded-xl border border-bd/70 bg-bg-e/40 hover:bg-bg-e/70 transition-all p-3 sm:p-3.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5 text-tm">
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+              <span className="text-[10.5px] font-mono font-semibold uppercase tracking-[0.08em]">Top Transmission Drivers</span>
+            </div>
+            <span className="text-[9.5px] font-mono text-tm bg-bg-h px-1.5 py-0.5 rounded border border-bd/40">
+              {visibleDrivers.length} assets
+            </span>
+          </div>
           {visibleDrivers.length ? (
-            <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
-              {visibleDrivers.map(driver => (
-                <span key={`${driver.bucket}-${driver.label}`} className="inline-flex items-center gap-1.5 rounded-full border border-bd bg-bg-c px-2.5 py-1 text-[11.5px] sm:text-[12px] text-ts">
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {visibleDrivers.map((driver, idx) => (
+                <span
+                  key={`${driver.bucket}-${driver.label}`}
+                  className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg border border-bd/80 bg-bg-c/90 hover:border-bd hover:bg-bg-h/80 px-2.5 py-1 text-[11.5px] sm:text-[12px] text-ts transition-all shadow-sm"
+                >
+                  <span className="text-tm font-mono text-[9.5px]">#{idx + 1}</span>
                   <span className="text-tp font-medium">{driver.label}</span>
-                  <span className={clsx('font-mono font-semibold', driver.weightedImpact >= 0 ? 'text-bull' : 'text-bear')}>
+                  <span className={clsx(
+                    'font-mono text-[11px] font-bold px-1.5 py-0.5 rounded',
+                    driver.weightedImpact >= 0 ? 'bg-bull/10 text-bull' : 'bg-bear/10 text-bear'
+                  )}>
                     {driver.weightedImpact > 0 ? '+' : ''}{driver.weightedImpact}
                   </span>
                 </span>
               ))}
             </div>
           ) : (
-            <div className="text-[13px] text-tm mt-1">No material drivers in this reading.</div>
+            <div className="text-[12.5px] text-tm mt-1 font-mono">No material drivers in this reading.</div>
           )}
         </div>
       </div>
 
-      {/* Bipolar Slider with center neutral anchor (0) and deflection fill */}
-      <div className="mt-[22px]">
-        <div className="relative h-[6px] bg-bg-h rounded-full">
-          {/* Neutral center tick at 0 */}
-          <div className="absolute left-1/2 top-[-3px] -translate-x-1/2 w-[2px] h-[12px] bg-tx/40 z-10" />
-          {/* Deflection fill bar from center (0) toward current score */}
-          <div
-            className={clsx('absolute top-0 h-full rounded-full transition-all duration-300', toneBg)}
-            style={{ left: `${fillLeft}%`, width: `${fillWidth}%`, opacity: 0.9 }}
-          />
-          {/* Score thumb indicator */}
-          <div
-            className="absolute top-[-4px] w-[14px] h-[14px] rounded-full bg-bg-c z-20 shadow-sm transition-all duration-300"
-            style={{ left: `calc(${pct}% - 7px)`, border: `3px solid ${toneHex}` }}
-          />
+      {/* Bipolar Spectrum Meter: Institutional Multi-Zone Dial */}
+      <div className="relative z-10 mt-5 p-4 rounded-xl bg-bg-e/30 border border-bd/60">
+        <div className="flex justify-between items-center text-[10.5px] font-mono text-tm uppercase tracking-[0.08em] mb-3">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-tx" />
+            Bipolar Risk Gauge
+          </span>
+          <span className="text-tp font-medium font-mono">
+            Index: <span className={toneText}>{cis.total > 0 ? `+${cis.total}` : cis.total}</span> / ±100
+          </span>
         </div>
-        <div className="flex justify-between font-mono text-[11px] text-tm mt-[7px]">
-          <span>-100 (Shock)</span><span>0 (Neutral)</span><span>+100 (Relief)</span>
-        </div>
-      </div>
 
-      {/* 3-up composition cells */}
-      <div className="grid grid-cols-3 gap-[14px] mt-[22px] pt-5 border-t border-bd">
-        {CELLS.map(({ label, wt, score }) => (
-          <div key={label}>
-            <div className="flex justify-between items-baseline">
-              <span className="text-[12px] font-medium text-ts">{label}</span>
-              <span className="text-[11px] text-tm">{wt}</span>
+        {/* Gauge Track */}
+        <div className="relative pt-6 pb-2">
+          <div
+            className="relative h-[8px] rounded-full overflow-visible border border-bd/60 shadow-inner"
+            style={{
+              background: 'linear-gradient(90deg, rgba(249,112,112,0.25) 0%, rgba(249,112,112,0.08) 38%, rgba(255,255,255,0.04) 50%, rgba(52,211,153,0.08) 62%, rgba(52,211,153,0.25) 100%)'
+            }}
+          >
+            {/* Center Neutral Anchor (0) */}
+            <div className="absolute left-1/2 top-[-4px] -translate-x-1/2 w-[2px] h-[16px] bg-tx/70 z-10 rounded-full" />
+
+            {/* Active Deflection Beam from Center */}
+            <div
+              className={clsx('absolute top-0 h-full rounded-full transition-all duration-300', toneBg)}
+              style={{
+                left: `${fillLeft}%`,
+                width: `${fillWidth}%`,
+                opacity: 0.85,
+                boxShadow: `0 0 8px ${toneHex}80`
+              }}
+            />
+
+            {/* Score Thumb Needle with Floating Badge */}
+            <div
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none"
+              style={{ left: `${pct}%` }}
+            >
+              {/* Floating pill badge */}
+              <div
+                className="absolute -top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold border shadow-md whitespace-nowrap bg-bg-c/95 backdrop-blur-md"
+                style={{
+                  borderColor: toneHex,
+                  color: toneHex,
+                  boxShadow: `0 0 10px ${toneHex}30`
+                }}
+              >
+                {cis.total > 0 ? `+${cis.total}` : cis.total}
+              </div>
+
+              {/* Glowing circular thumb bead */}
+              <div
+                className="w-[16px] h-[16px] rounded-full bg-bg flex items-center justify-center transition-transform hover:scale-110"
+                style={{
+                  border: `3px solid ${toneHex}`,
+                  boxShadow: `0 0 12px ${toneHex}`
+                }}
+              >
+                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: toneHex }} />
+              </div>
             </div>
-            <div className={clsx('font-mono text-[24px] font-semibold mt-1 tracking-[-0.01em]', componentColor(score))}>
-              {score > 0 ? '+' : ''}<CountUp to={score} decimals={0} />
-            </div>
-            <div className="text-[12px] text-ts mt-0.5">{componentLabel(score)}</div>
           </div>
-        ))}
+
+          {/* Scale Markers and Zone Legend */}
+          <div className="flex justify-between font-mono text-[10px] text-tm mt-3">
+            <span className="text-bear/90 font-medium">-100 (Shock)</span>
+            <span className="text-tm hidden sm:inline">-50</span>
+            <span className="text-ts font-semibold">0 (Neutral)</span>
+            <span className="text-tm hidden sm:inline">+50</span>
+            <span className="text-bull/90 font-medium">+100 (Relief)</span>
+          </div>
+        </div>
       </div>
 
-      {/* Expandable toggle button */}
-      <div className="mt-5 pt-4 border-t border-bd flex justify-center">
+      {/* Expandable Toggle Button */}
+      <div className="relative z-10 mt-5 pt-3 border-t border-bd/70 flex justify-center">
         <button
           type="button"
           onClick={() => setIsExpanded(e => !e)}
-          className="flex items-center gap-1.5 min-h-10 px-3.5 py-2 text-[12px] font-semibold text-ts bg-bg-e rounded-md hover:text-tp hover:bg-bg-h transition-colors cursor-pointer select-none"
+          className="flex items-center gap-2 min-h-10 px-4 py-2 text-[12px] font-semibold text-ts hover:text-tp bg-bg-e/80 hover:bg-bg-h border border-bd/80 hover:border-bd rounded-full transition-all cursor-pointer select-none shadow-sm"
         >
           <svg className={clsx("w-3.5 h-3.5 transition-transform duration-300", isExpanded ? "rotate-180" : "")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
-          {isExpanded ? 'Hide score details' : 'Explain this score'}
+          {isExpanded ? 'Hide analytical breakdown' : 'Explain this score & view playbook'}
         </button>
       </div>
 
-      {/* Expanded Trajectory Chart and Playbook Tray */}
+      {/* Expanded Trajectory Chart, Component Math, and Playbook Tray */}
       {isExpanded && (
-        <div className="mt-5 pt-5 border-t border-bd grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-5 animate-fadeUp">
-          <div className="lg:col-span-2 bg-bg-e border border-bd rounded-xl p-4 sm:p-5">
-            <div className="font-medium text-[13px] text-tp">How the score is calculated</div>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-ts max-w-[72ch]">{cis.methodology}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-4">
-              {Object.entries(cis.components || {}).map(([key, component]) => (
-                <div key={key} className="rounded-lg border border-bd bg-bg-c px-3 py-2.5">
-                  <div className="flex justify-between text-[12px] text-tm">
-                    <span className="capitalize">{key === 'jse' ? 'JSE watchlist' : key === 'conf' ? 'Confirmations' : key}</span>
-                    <span>{Math.round(component.weight * 100)}% weight</span>
-                  </div>
-                  <div className="mt-1 font-mono text-[13px] text-tp">
-                    Score {component.score > 0 ? '+' : ''}{component.score} · contribution {component.contrib > 0 ? '+' : ''}{component.contrib}
-                  </div>
-                </div>
-              ))}
+        <div className="relative z-10 mt-5 pt-5 border-t border-bd/80 grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-5 animate-fadeUp">
+          <div className="lg:col-span-2 bg-bg-e/50 border border-bd rounded-xl p-4 sm:p-5 backdrop-blur-sm">
+            <div className="font-semibold text-[13px] text-tp flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-warn" />
+              How the Conflict Impact Score is calculated
             </div>
-            <div className="mt-4">
-              <div className="text-[12px] font-medium text-tm">Largest current drivers</div>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ts max-w-[76ch]">{cis.methodology}</p>
+            
+            {/* Component Math Pillar Cards inside the Drawer */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+              {COMPONENT_DETAILS.map(({ key, label, wt, score, contrib }) => {
+                const sClamped = Math.max(-100, Math.min(100, score ?? 0));
+                const sLeft = sClamped < 0 ? 50 + (sClamped / 2) : 50;
+                const sWidth = Math.abs(sClamped) / 2;
+                const sColor = componentColor(score);
+                const sBg = componentBg(score);
+
+                return (
+                  <div key={key} className="rounded-xl border border-bd/80 bg-bg-c p-3.5 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-center text-[11.5px] font-mono text-tm mb-1">
+                        <span className="capitalize font-medium text-tp">{label}</span>
+                        <span className="bg-bg-h px-1.5 py-0.5 rounded border border-bd/50 text-[10px]">{wt} weight</span>
+                      </div>
+                      <div className="flex items-baseline justify-between mt-1.5">
+                        <div className={clsx('font-mono text-[22px] font-bold', sColor)}>
+                          {score > 0 ? '+' : ''}{score}
+                        </div>
+                        <div className="text-[11px] font-mono text-ts">
+                          contrib <span className={clsx('font-semibold', contrib >= 0 ? 'text-bull' : 'text-bear')}>{contrib > 0 ? '+' : ''}{contrib}</span>
+                        </div>
+                      </div>
+                      <div className="text-[11px] text-ts mt-0.5 flex items-center gap-1.5">
+                        <span className={clsx('w-1.5 h-1.5 rounded-full', sBg)} />
+                        <span>{componentLabel(score)}</span>
+                      </div>
+                    </div>
+
+                    {/* Mini Bipolar Deflection Bar */}
+                    <div className="mt-3 pt-2 border-t border-bd/40">
+                      <div className="relative h-[4px] bg-bg-h rounded-full overflow-hidden">
+                        <div className="absolute left-1/2 top-0 w-px h-full bg-bd-x z-10" />
+                        <div
+                          className={clsx('absolute top-0 h-full rounded-full transition-all duration-300', sBg)}
+                          style={{ left: `${sLeft}%`, width: `${sWidth}%`, opacity: 0.9 }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[9px] font-mono text-tx mt-1">
+                        <span>-100</span>
+                        <span>0</span>
+                        <span>+100</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-bd/40">
+              <div className="text-[11.5px] font-mono uppercase tracking-wider text-tm">All Current Transmission Drivers</div>
               {topDrivers.length ? (
                 <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {topDrivers.map(driver => (
-                    <li key={`${driver.bucket}-${driver.label}`} className="flex items-start justify-between gap-3 text-[12px] border-b border-bd pb-2">
+                    <li key={`${driver.bucket}-${driver.label}`} className="flex items-start justify-between gap-3 text-[12px] border-b border-bd/60 pb-2">
                       <span><span className="text-tp font-medium">{driver.label}</span><span className="text-tm">: {driver.reason}</span></span>
-                      <span className={clsx('font-mono flex-shrink-0', driver.weightedImpact >= 0 ? 'text-bull' : 'text-bear')}>
+                      <span className={clsx('font-mono flex-shrink-0 font-semibold', driver.weightedImpact >= 0 ? 'text-bull' : 'text-bear')}>
                         {driver.weightedImpact > 0 ? '+' : ''}{driver.weightedImpact}
                       </span>
                     </li>
                   ))}
                 </ul>
-              ) : <div className="mt-2 text-[12px] text-tm">No non-zero drivers in the current reading.</div>}
+              ) : <div className="mt-2 text-[12px] text-tm font-mono">No non-zero drivers in the current reading.</div>}
             </div>
           </div>
           
           {/* Left: Historical CIS Area Chart */}
           <div className="flex flex-col">
-            <div className="text-[12px] font-semibold text-ts mb-2.5 tracking-[0.05em] uppercase">CIS History Trajectory</div>
+            <div className="text-[11.5px] font-mono font-semibold text-ts mb-2.5 tracking-[0.08em] uppercase flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-ts" />
+              CIS Historical Trajectory
+            </div>
             {(!cisChartData || cisChartData.length === 0) ? (
-              <div className="h-[180px] flex items-center justify-center bg-bg-e rounded-xl border border-bd text-tm text-[12px] font-mono">
+              <div className="h-[180px] flex items-center justify-center bg-bg-e/60 rounded-xl border border-bd text-tm text-[12px] font-mono">
                 No history points logged yet. Trigger active refreshes.
               </div>
             ) : (
@@ -320,23 +504,26 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
           </div>
 
           {/* Right: Portfolio Hedging Playbook */}
-          <div className="flex flex-col bg-bg-e rounded-xl border border-bd p-[16px_18px] justify-between">
+          <div className="flex flex-col bg-bg-e/60 rounded-xl border border-bd p-4 sm:p-5 justify-between shadow-sm">
             <div>
-              <div className="text-[12px] font-semibold text-ts mb-2 tracking-[0.05em] uppercase">Hedging Playbook</div>
-              <div className={clsx("font-serif text-[16px] italic leading-tight mb-2.5", toneText)}>
+              <div className="text-[11.5px] font-mono font-semibold text-ts mb-2 tracking-[0.08em] uppercase flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: toneHex }} />
+                Tactical Playbook
+              </div>
+              <div className={clsx("font-serif text-[17px] italic leading-tight mb-3", toneText)}>
                 {playbookData.title}
               </div>
-              <ul className="flex flex-col gap-2">
+              <ul className="flex flex-col gap-2.5">
                 {playbookData.points.map((pt, idx) => (
-                  <li key={idx} className="flex gap-2 items-start text-[12px] text-ts leading-normal font-sans">
+                  <li key={idx} className="flex gap-2.5 items-start text-[12px] text-ts leading-normal font-sans">
                     <span className={clsx("w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5", toneBg)} />
                     <span>{pt}</span>
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="font-mono text-[11px] text-tm mt-4 pt-2 border-t border-bd">
-              Allocations shift with the live Conflict Impact Score regime.
+            <div className="font-mono text-[10.5px] text-tm mt-4 pt-2.5 border-t border-bd/70">
+              Allocations dynamically calibrate with live CIS shifts.
             </div>
           </div>
 
