@@ -37,6 +37,13 @@ function MiniSparkline({ points }) {
   );
 }
 
+const SENSITIVITY_CLS = {
+  bull:    'bg-bull/10 text-bull border-bull/30',
+  bear:    'bg-bear/10 text-bear border-bear/30',
+  warn:    'bg-warn/10 text-warn border-warn/30',
+  neutral: 'bg-bg-e text-ts border-bd',
+};
+
 function SortArrow({ active, dir }) {
   return <span className={clsx('ml-1 text-[8px]', active ? 'text-warn' : 'text-tx')}>{active ? (dir === 'asc' ? '▲' : '▼') : '·'}</span>;
 }
@@ -56,8 +63,8 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
   const filtered = useMemo(() => {
     const base = filter === 'ALL' ? rows : rows.filter(s => s.sector === filter);
     return [...base].sort((a, b) => {
-      const av = sort.key === 'signal' ? (getSignal(a._chg) ?? '') : sort.key === 'changePct' ? (a._chg ?? -Infinity) : sort.key === 'price' ? (a.price ?? -Infinity) : (a[sort.key] ?? '');
-      const bv = sort.key === 'signal' ? (getSignal(b._chg) ?? '') : sort.key === 'changePct' ? (b._chg ?? -Infinity) : sort.key === 'price' ? (b.price ?? -Infinity) : (b[sort.key] ?? '');
+      const av = sort.key === 'signal' ? (getSignal(a._chg) ?? '') : sort.key === 'sensitivity' ? (a.sensitivity ?? '') : sort.key === 'changePct' ? (a._chg ?? -Infinity) : sort.key === 'price' ? (a.price ?? -Infinity) : (a[sort.key] ?? '');
+      const bv = sort.key === 'signal' ? (getSignal(b._chg) ?? '') : sort.key === 'sensitivity' ? (b.sensitivity ?? '') : sort.key === 'changePct' ? (b._chg ?? -Infinity) : sort.key === 'price' ? (b.price ?? -Infinity) : (b[sort.key] ?? '');
       const as = typeof av === 'string' ? av.toLowerCase() : av;
       const bs = typeof bv === 'string' ? bv.toLowerCase() : bv;
       if (as === bs) return 0;
@@ -116,6 +123,7 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
               aria-label="Choose mobile watchlist detail"
             >
               <option value="sector">Sector</option>
+              <option value="sensitivity">Sensitivity</option>
               <option value="signal">Signal</option>
               <option value="trend">Trend</option>
             </select>
@@ -124,11 +132,12 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
             Sort
             <select
               value={sort.key}
-              onChange={event => setSort({ key: event.target.value, dir: event.target.value === 'name' ? 'asc' : 'desc' })}
+              onChange={event => setSort({ key: event.target.value, dir: event.target.value === 'name' || event.target.value === 'sensitivity' ? 'asc' : 'desc' })}
               className="bg-transparent text-tp outline-none"
               aria-label="Sort mobile watchlist"
             >
               <option value="changePct">Return</option>
+              <option value="sensitivity">Sensitivity</option>
               <option value="price">Price</option>
               <option value="name">Name</option>
               <option value="sector">Sector</option>
@@ -154,6 +163,9 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
                 </div>
                 <div className="mt-1 text-[12px] text-tm min-h-[18px] flex items-center">
                   {mobileDetail === 'sector' && s.sector}
+                  {mobileDetail === 'sensitivity' && (s.sensitivity
+                    ? <span className={clsx('font-mono text-[10px] px-2 py-0.5 rounded-md border', SENSITIVITY_CLS[s.sensType] ?? SENSITIVITY_CLS.neutral)}>{s.sensitivity}</span>
+                    : '—')}
                   {mobileDetail === 'signal' && (signal
                     ? <span className={clsx('font-mono text-[10px] px-2 py-0.5 rounded-full border', sigCls)}>{signal}</span>
                     : 'No signal')}
@@ -181,13 +193,14 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
           <thead>
             <tr className="border-b border-bd">
               {[
-                { key: 'display',   label: 'Ticker',  align: 'left'  },
-                { key: 'name',      label: 'Name',    align: 'left'  },
-                { key: 'price',     label: 'Price',   align: 'right' },
-                { key: 'changePct', label: chgLabel,  align: 'right' },
-                { key: 'sector',    label: 'Sector',  align: 'right' },
-                { key: 'signal',    label: 'Signal',  align: 'right', hideMobile: true },
-                { key: 'spark',     label: '',        align: 'right', hideMobile: true },
+                { key: 'display',     label: 'Ticker',      align: 'left'  },
+                { key: 'name',        label: 'Name',        align: 'left'  },
+                { key: 'sensitivity', label: 'Sensitivity', align: 'left',  hideTablet: true },
+                { key: 'price',       label: 'Price',       align: 'right' },
+                { key: 'changePct',   label: chgLabel,      align: 'right' },
+                { key: 'sector',      label: 'Sector',      align: 'right' },
+                { key: 'signal',      label: 'Signal',      align: 'right', hideMobile: true },
+                { key: 'spark',       label: '',            align: 'right', hideMobile: true },
               ].map(col => (
                 <th key={col.key} scope="col"
                   aria-sort={sort.key === col.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
@@ -195,6 +208,7 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
                     'text-[11px] font-medium text-tm tracking-[0.05em] uppercase pb-2 px-1',
                     col.align === 'right' ? 'text-right' : 'text-left',
                     col.hideMobile && 'hidden sm:table-cell',
+                    col.hideTablet && 'hidden md:table-cell',
                   )}>
                   {col.key === 'spark' ? col.label : (
                     <button
@@ -229,6 +243,13 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
                     <span className="font-mono text-[12px] font-semibold text-tp tracking-[0.04em]">{s.display || s.ticker}</span>
                   </td>
                   <td className="py-3 px-1 text-[13.5px] text-tp">{s.name}</td>
+                  <td className="py-3 px-1 text-left hidden md:table-cell">
+                    {s.sensitivity ? (
+                      <span className={clsx('font-mono text-[10.5px] px-2 py-0.5 rounded-md border whitespace-nowrap', SENSITIVITY_CLS[s.sensType] ?? SENSITIVITY_CLS.neutral)}>
+                        {s.sensitivity}
+                      </span>
+                    ) : <span className="text-tm text-[12px]">—</span>}
+                  </td>
                   <td className="py-3 px-1 text-right font-mono text-[13px] font-semibold text-tp">{fmtP(s.price)}</td>
                   <td className={clsx('py-3 px-1 text-right font-mono text-[13px] font-semibold', chg == null ? 'text-tm' : isUp ? 'text-bull' : 'text-bear')}>
                     {chg == null ? '—' : `${isUp ? '+' : ''}${chg.toFixed(2)}%`}

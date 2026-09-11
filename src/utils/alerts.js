@@ -16,62 +16,62 @@ export function computeAlerts({ assets, sectors, stocks }) {
 
   // Thematic composites
   if (brent > 3 && usdZar > 0.8)
-    alerts.push({ id:'oil-shock', lvl:'red', tag:'os', label:'OIL SHOCK ALERT',
+    alerts.push({ id:'oil-shock', lvl:'red', tag:'os', category:'MACRO SHOCK', label:'OIL SHOCK ALERT',
       text:`COMPOSITE: Brent +${brent.toFixed(1)}% AND ZAR +${usdZar.toFixed(1)}% simultaneously. Double CPI transmission engaged.`, time:now });
 
   if (usdZar > 1 && banks < -1.5 && retail < -1.5)
-    alerts.push({ id:'domestic-stress', lvl:'red', tag:'ds', label:'DOMESTIC STRESS',
+    alerts.push({ id:'domestic-stress', lvl:'red', tag:'ds', category:'DOMESTIC STRESS', label:'DOMESTIC STRESS',
       text:`COMPOSITE: ZAR +${usdZar.toFixed(1)}% + Banks ${banks.toFixed(1)}% + Retailers ${retail.toFixed(1)}%. SA consumer stress regime.`, time:now });
 
   if (gold > 1.5 && usdZar > 0.5 && miners > top40 + 1)
-    alerts.push({ id:'miner-support', lvl:'green', tag:'ms', label:'MINER SUPPORT',
+    alerts.push({ id:'miner-support', lvl:'green', tag:'ms', category:'HAVEN HEDGE', label:'MINER SUPPORT',
       text:`COMPOSITE: Gold +${gold.toFixed(1)}% + ZAR hedge. Miners +${miners.toFixed(1)}% outperforming market by ${(miners-top40).toFixed(1)}%.`, time:now });
 
   if (brent < -2 && usdZar < 0.3 && top40 > 1)
-    alerts.push({ id:'deescalation', lvl:'green', tag:'ms', label:'DE-ESCALATION RELIEF',
+    alerts.push({ id:'deescalation', lvl:'green', tag:'ms', category:'RELIEF RALLY', label:'DE-ESCALATION RELIEF',
       text:`COMPOSITE: Brent ${brent.toFixed(1)}%, ZAR stable, market +${top40.toFixed(1)}%. Conflict relief rally.`, time:now });
 
   if (us10y != null && us10y > 5)
-    alerts.push({ id:'us10y-red', lvl:'red', tag:'ds', label:'US 10Y SURGE',
+    alerts.push({ id:'us10y-red', lvl:'red', tag:'ds', category:'DISCOUNT RATE', label:'US 10Y SURGE',
       text:`US 10Y yield +${us10y.toFixed(2)}% versus the previous close. Global discount-rate pressure is elevated.`, time:now });
   else if (us10y != null && us10y > 2)
-    alerts.push({ id:'us10y-amber', lvl:'amber', tag:'in', label:'US 10Y RISING',
+    alerts.push({ id:'us10y-amber', lvl:'amber', tag:'in', category:'DISCOUNT RATE', label:'US 10Y RISING',
       text:`US 10Y yield +${us10y.toFixed(2)}%. Watch emerging-market funding conditions and equity multiples.`, time:now });
 
   // Individual thresholds
   if (brent > 4)
-    alerts.push({ id:'brent-red', lvl:'red', tag:'in', label:'BRENT CRITICAL',
+    alerts.push({ id:'brent-red', lvl:'red', tag:'in', category:'OIL SHOCK', label:'BRENT CRITICAL',
       text:`Brent +${brent.toFixed(1)}% — red threshold (>+4%) breached. Fuel levy pass-through imminent.`, time:now });
   else if (brent > 2)
-    alerts.push({ id:'brent-amber', lvl:'amber', tag:'in', label:'BRENT AMBER',
+    alerts.push({ id:'brent-amber', lvl:'amber', tag:'in', category:'OIL SHOCK', label:'BRENT AMBER',
       text:`Brent +${brent.toFixed(1)}% — amber threshold (>+2%) triggered.`, time:now });
 
   if (usdZar > 1.5)
-    alerts.push({ id:'zar-red', lvl:'red', tag:'ds', label:'ZAR CRITICAL',
+    alerts.push({ id:'zar-red', lvl:'red', tag:'ds', category:'CURRENCY', label:'ZAR CRITICAL',
       text:`USD/ZAR +${usdZar.toFixed(1)}% — critical (>+1.5%) breached. SARB intervention risk.`, time:now });
   else if (usdZar > 0.8)
-    alerts.push({ id:'zar-amber', lvl:'amber', tag:'ds', label:'ZAR AMBER',
+    alerts.push({ id:'zar-amber', lvl:'amber', tag:'ds', category:'CURRENCY', label:'ZAR AMBER',
       text:`USD/ZAR +${usdZar.toFixed(1)}% — amber (>+0.8%) triggered.`, time:now });
 
   if (gold > 2)
-    alerts.push({ id:'gold-red', lvl:'green', tag:'ms', label:'GOLD SURGE',
+    alerts.push({ id:'gold-red', lvl:'green', tag:'ms', category:'HAVEN HEDGE', label:'GOLD SURGE',
       text:`Gold +${gold.toFixed(1)}% — red threshold exceeded. Strong safe-haven demand.`, time:now });
   else if (gold > 1)
-    alerts.push({ id:'gold-amber', lvl:'amber', tag:'ms', label:'GOLD AMBER',
+    alerts.push({ id:'gold-amber', lvl:'amber', tag:'ms', category:'HAVEN HEDGE', label:'GOLD AMBER',
       text:`Gold +${gold.toFixed(1)}% — amber threshold triggered. Risk-off demand building.`, time:now });
 
   if (top40 < -2)
-    alerts.push({ id:'top40-red', lvl:'red', tag:'in', label:'MARKET SELLOFF',
+    alerts.push({ id:'top40-red', lvl:'red', tag:'in', category:'DOMESTIC EQUITY', label:'MARKET SELLOFF',
       text:`JSE market avg ${top40.toFixed(1)}% — red threshold (<-2%) breached.`, time:now });
   else if (top40 < -1)
-    alerts.push({ id:'top40-amber', lvl:'amber', tag:'in', label:'MARKET AMBER',
+    alerts.push({ id:'top40-amber', lvl:'amber', tag:'in', category:'DOMESTIC EQUITY', label:'MARKET AMBER',
       text:`JSE market avg ${top40.toFixed(1)}% — amber threshold (<-1%) triggered.`, time:now });
 
   if (energy > 4)
-    alerts.push({ id:'energy-hot', lvl:'green', tag:'ms', label:'ENERGY RED-HOT',
+    alerts.push({ id:'energy-hot', lvl:'green', tag:'ms', category:'ENERGY TAILWIND', label:'ENERGY RED-HOT',
       text:`Energy basket +${energy.toFixed(1)}% — RED-HOT threshold (>+4%) exceeded.`, time:now });
   else if (energy > 2)
-    alerts.push({ id:'energy-amber', lvl:'green', tag:'ms', label:'ENERGY BULLISH',
+    alerts.push({ id:'energy-amber', lvl:'green', tag:'ms', category:'ENERGY TAILWIND', label:'ENERGY BULLISH',
       text:`Energy basket +${energy.toFixed(1)}% — oil price tailwind active.`, time:now });
 
   return alerts.slice(0, 9);

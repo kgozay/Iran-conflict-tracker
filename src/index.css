@@ -436,7 +436,7 @@ html[data-theme="light"] {
 .mag-dropcap::first-letter {
   font-family: 'Instrument Serif', serif; font-style: italic;
   font-size: 52px; line-height: 0.85; float: left;
-  padding: 4px 10px 0 0; color: var(--color-warn);
+  padding: 2px 3px 0 0; margin-right: 1px; color: var(--color-warn);
 }
 
 /* ── View Transitions API ─────────────────────────────────────────── */
@@ -477,4 +477,18 @@ html[data-theme="light"] {
 
   .glass:hover { transform: none; }
   .animate-fadeUp { animation: none !important; }
+  .pipeline-active-flow { animation: none !important; stroke-dashoffset: 0 !important; }
 }
+
+/* ── Macro Pipeline Flow Animation ────────────────────────────────── */
+@keyframes pipeline-flow {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+
+.pipeline-active-flow {
+  stroke-dasharray: 6 6;
+  animation: pipeline-flow 1.2s linear infinite;
+  will-change: stroke-dashoffset;
+}
+

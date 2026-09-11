@@ -80,8 +80,11 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
   const toneText = TONE_TEXT[rc] ?? TONE_TEXT.neutral;
   const toneBg   = TONE_BG[rc]   ?? TONE_BG.neutral;
   const toneHex  = TONE_HEX[rc]  ?? TONE_HEX.neutral;
-  const pct      = Math.max(2, Math.min(98, ((cis.total + 100) / 200) * 100));
-  const trend    = computeTrend(cisChartData);
+  const pct          = Math.max(2, Math.min(98, ((cis.total + 100) / 200) * 100));
+  const clampedTotal = Math.max(-100, Math.min(100, cis.total ?? 0));
+  const fillLeft     = clampedTotal < 0 ? 50 + (clampedTotal / 2) : 50;
+  const fillWidth    = Math.abs(clampedTotal) / 2;
+  const trend        = computeTrend(cisChartData);
   const interp   = INTERP[rc] ?? '';
 
   const macro = cis.components?.macro?.score ?? 0;
@@ -156,11 +159,11 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
     <div className="glass rounded-[16px] p-[26px_30px]">
 
       {/* Kicker */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="text-[12px] font-medium text-tm tracking-[0.08em] uppercase">
           Conflict Impact Score
         </div>
-        <div className="inline-flex items-center gap-2 text-[12px] text-ts">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-bg-e border border-bd text-[11.5px] text-ts self-start sm:self-auto font-mono">
           <span className={clsx('w-1.5 h-1.5 rounded-full', coverage >= 90 ? 'bg-bull' : coverage >= 70 ? 'bg-warn' : 'bg-bear')} />
           {confidence} confidence{coverage ? ` · ${coverage}% coverage` : ''}
         </div>
@@ -199,11 +202,11 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
         <div className="rounded-xl border border-bd bg-bg-e px-4 py-3">
           <div className="text-[12px] font-medium text-tm">Top drivers</div>
           {visibleDrivers.length ? (
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
               {visibleDrivers.map(driver => (
-                <span key={`${driver.bucket}-${driver.label}`} className="inline-flex items-center gap-2 rounded-full border border-bd bg-bg-c px-3 py-1.5 text-[12px] text-ts">
-                  <span className="text-tp">{driver.label}</span>
-                  <span className={clsx('font-mono', driver.weightedImpact >= 0 ? 'text-bull' : 'text-bear')}>
+                <span key={`${driver.bucket}-${driver.label}`} className="inline-flex items-center gap-1.5 rounded-full border border-bd bg-bg-c px-2.5 py-1 text-[11.5px] sm:text-[12px] text-ts">
+                  <span className="text-tp font-medium">{driver.label}</span>
+                  <span className={clsx('font-mono font-semibold', driver.weightedImpact >= 0 ? 'text-bull' : 'text-bear')}>
                     {driver.weightedImpact > 0 ? '+' : ''}{driver.weightedImpact}
                   </span>
                 </span>
@@ -215,17 +218,24 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
         </div>
       </div>
 
-      {/* Slider with thumb */}
+      {/* Bipolar Slider with center neutral anchor (0) and deflection fill */}
       <div className="mt-[22px]">
-        <div className="relative h-[5px] bg-bg-h rounded-full">
-          <div className="absolute left-1/2 top-[-2px] w-px h-[9px] bg-bd" />
-          <div className={clsx('absolute top-0 left-0 h-full rounded-full', toneBg)}
-            style={{ width: `${pct}%`, opacity: 0.88 }} />
-          <div className="absolute top-[-5px] w-[14px] h-[14px] rounded-full bg-bg-c"
-            style={{ left: `calc(${pct}% - 7px)`, border: `3px solid ${toneHex}` }} />
+        <div className="relative h-[6px] bg-bg-h rounded-full">
+          {/* Neutral center tick at 0 */}
+          <div className="absolute left-1/2 top-[-3px] -translate-x-1/2 w-[2px] h-[12px] bg-tx/40 z-10" />
+          {/* Deflection fill bar from center (0) toward current score */}
+          <div
+            className={clsx('absolute top-0 h-full rounded-full transition-all duration-300', toneBg)}
+            style={{ left: `${fillLeft}%`, width: `${fillWidth}%`, opacity: 0.9 }}
+          />
+          {/* Score thumb indicator */}
+          <div
+            className="absolute top-[-4px] w-[14px] h-[14px] rounded-full bg-bg-c z-20 shadow-sm transition-all duration-300"
+            style={{ left: `calc(${pct}% - 7px)`, border: `3px solid ${toneHex}` }}
+          />
         </div>
         <div className="flex justify-between font-mono text-[11px] text-tm mt-[7px]">
-          <span>-100</span><span>0</span><span>+100</span>
+          <span>-100 (Shock)</span><span>0 (Neutral)</span><span>+100 (Relief)</span>
         </div>
       </div>
 
