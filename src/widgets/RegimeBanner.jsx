@@ -142,7 +142,7 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
 
   if (!hasData) {
     return (
-      <div className="glass rounded-[18px] p-6 sm:p-8 relative overflow-hidden border border-bd/70">
+      <div className="glass rounded-[16px] p-6 sm:p-8 relative overflow-hidden">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-ts" />
           <div className="text-[11px] font-medium font-mono text-tm tracking-[0.1em] uppercase">Conflict Impact Score</div>
@@ -162,26 +162,26 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
   ];
 
   return (
-    <div className="glass rounded-[20px] p-5 sm:p-7 relative overflow-hidden border border-bd/80 shadow-2xl backdrop-blur-xl">
+    <div className="glass rounded-[18px] p-5 sm:p-7 relative overflow-hidden">
 
-      {/* Top accent line with glowing aura */}
+      {/* Top accent line with soft glowing aura */}
       <div
-        className="absolute top-0 inset-x-0 h-[2px] transition-all duration-700"
+        className="absolute top-0 inset-x-0 h-[2px] transition-all duration-700 pointer-events-none"
         style={{
           background: `linear-gradient(90deg, transparent 0%, ${toneHex} 30%, ${toneHex} 70%, transparent 100%)`,
-          opacity: 0.85
+          opacity: 0.8
         }}
       />
 
       {/* Subtle ambient radial background glow */}
       <div
-        className="absolute -top-20 -left-20 w-80 h-80 rounded-full pointer-events-none opacity-[0.14] transition-all duration-700 blur-3xl"
+        className="absolute -top-20 -left-20 w-80 h-80 rounded-full pointer-events-none opacity-[0.12] transition-all duration-700 blur-3xl"
         style={{
           background: `radial-gradient(circle, ${toneHex} 0%, transparent 70%)`
         }}
       />
 
-      {/* Header Bar: Telemetry Beacon + Status Chips */}
+      {/* Header Bar: Telemetry Beacon + Status */}
       <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
         <div className="flex items-center gap-2.5">
           {/* Live pulsing radar dot */}
@@ -198,13 +198,13 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
           <div className="text-[11px] font-mono font-semibold tracking-[0.12em] text-tm uppercase">
             Conflict Impact Score
           </div>
-          <span className="hidden sm:inline-block font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-bg-h/80 border border-bd/60 text-tx uppercase tracking-wider">
-            Live Telemetry
+          <span className="hidden sm:inline-block font-mono text-[9.5px] text-tx tracking-wider uppercase">
+            · Live Telemetry
           </span>
         </div>
 
-        {/* Confidence & Coverage Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-bg-e/80 border border-bd/70 text-[11px] text-ts self-start sm:self-auto font-mono shadow-sm backdrop-blur-sm">
+        {/* Confidence & Coverage Badge (Subtle pill, no harsh white stroke) */}
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.07] text-[11px] text-ts self-start sm:self-auto font-mono">
           <span className={clsx('w-1.5 h-1.5 rounded-full', coverage >= 90 ? 'bg-bull' : coverage >= 70 ? 'bg-warn' : 'bg-bear')} />
           <span className="text-tp font-medium">{confidence} confidence</span>
           {coverage ? <span className="text-tm">· {coverage}% coverage</span> : null}
@@ -232,10 +232,10 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
           {trend && (
             <div className="mt-2.5 flex items-center gap-2">
               <div className={clsx(
-                'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-mono text-[11px] font-semibold border shadow-sm',
-                trend.dir === 'down' ? 'bg-bear/10 border-bear/30 text-bear' :
-                trend.dir === 'up' ? 'bg-bull/10 border-bull/30 text-bull' :
-                'bg-bg-h border-bd text-tm'
+                'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-mono text-[11px] font-semibold',
+                trend.dir === 'down' ? 'bg-bear/10 text-bear border border-bear/20' :
+                trend.dir === 'up' ? 'bg-bull/10 text-bull border border-bull/20' :
+                'bg-white/[0.03] text-tm border border-white/[0.06]'
               )}>
                 <span>{trend.dir === 'down' ? '↓' : trend.dir === 'up' ? '↑' : '→'}</span>
                 <span>{Math.abs(trend.delta)} pts</span>
@@ -246,36 +246,22 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
         </div>
       </div>
 
-      {/* Executive Briefing Callout (Clean editorial treatment, replacing broken drop cap) */}
+      {/* Executive Briefing: Editorial left-accent without harsh 4-sided wireframe box */}
       <div
-        className="relative z-10 mt-4 p-3 sm:p-3.5 rounded-xl bg-bg-e/50 border border-bd/60 border-l-[3px] backdrop-blur-sm transition-all"
+        className="relative z-10 mt-4 pl-3.5 border-l-2 transition-colors py-0.5"
         style={{ borderLeftColor: toneHex }}
       >
-        <div className="flex items-start gap-2.5">
-          <div className="mt-0.5 flex-shrink-0 text-tm">
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="16" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12.01" y2="8" />
-            </svg>
-          </div>
-          <div className="text-[13px] sm:text-[13.5px] text-tp/90 leading-relaxed font-sans">
-            {interp}
-          </div>
-        </div>
+        <p className="text-[13px] sm:text-[13.5px] text-tp/90 leading-relaxed font-sans">
+          {interp}
+        </p>
       </div>
 
-      {/* Telemetry Briefing Cards: "What changed" + "Top drivers" */}
-      <div className="relative z-10 mt-4 grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-3">
-        {/* What changed card */}
-        <div className="rounded-xl border border-bd/70 bg-bg-e/40 hover:bg-bg-e/70 transition-all p-3 sm:p-3.5 flex flex-col justify-between">
+      {/* Telemetry Briefing: Soft surface cards with whisper-level borders */}
+      <div className="relative z-10 mt-5 grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-3">
+        {/* What changed */}
+        <div className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-3.5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center gap-1.5 text-tm">
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-              </svg>
-              <span className="text-[10.5px] font-mono font-semibold uppercase tracking-[0.08em]">What Changed</span>
-            </div>
+            <span className="text-[10.5px] font-mono font-semibold uppercase tracking-[0.08em] text-tm">What Changed</span>
             <span className="text-[9.5px] font-mono text-tx">momentum</span>
           </div>
           <div className="text-[12.5px] sm:text-[13px] text-tp leading-relaxed">
@@ -283,31 +269,24 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
           </div>
         </div>
 
-        {/* Top drivers card */}
-        <div className="rounded-xl border border-bd/70 bg-bg-e/40 hover:bg-bg-e/70 transition-all p-3 sm:p-3.5 flex flex-col justify-between">
+        {/* Top drivers */}
+        <div className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-3.5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center gap-1.5 text-tm">
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-              </svg>
-              <span className="text-[10.5px] font-mono font-semibold uppercase tracking-[0.08em]">Top Transmission Drivers</span>
-            </div>
-            <span className="text-[9.5px] font-mono text-tm bg-bg-h px-1.5 py-0.5 rounded border border-bd/40">
-              {visibleDrivers.length} assets
-            </span>
+            <span className="text-[10.5px] font-mono font-semibold uppercase tracking-[0.08em] text-tm">Top Transmission Drivers</span>
+            <span className="text-[9.5px] font-mono text-tx">{visibleDrivers.length} assets</span>
           </div>
           {visibleDrivers.length ? (
             <div className="flex flex-wrap gap-1.5 mt-1">
               {visibleDrivers.map((driver, idx) => (
                 <span
                   key={`${driver.bucket}-${driver.label}`}
-                  className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg border border-bd/80 bg-bg-c/90 hover:border-bd hover:bg-bg-h/80 px-2.5 py-1 text-[11.5px] sm:text-[12px] text-ts transition-all shadow-sm"
+                  className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] px-2.5 py-1 text-[11.5px] sm:text-[12px] text-ts transition-colors"
                 >
                   <span className="text-tm font-mono text-[9.5px]">#{idx + 1}</span>
                   <span className="text-tp font-medium">{driver.label}</span>
                   <span className={clsx(
-                    'font-mono text-[11px] font-bold px-1.5 py-0.5 rounded',
-                    driver.weightedImpact >= 0 ? 'bg-bull/10 text-bull' : 'bg-bear/10 text-bear'
+                    'font-mono text-[11px] font-bold',
+                    driver.weightedImpact >= 0 ? 'text-bull' : 'text-bear'
                   )}>
                     {driver.weightedImpact > 0 ? '+' : ''}{driver.weightedImpact}
                   </span>
@@ -320,11 +299,11 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
         </div>
       </div>
 
-      {/* Bipolar Spectrum Meter: Institutional Multi-Zone Dial */}
-      <div className="relative z-10 mt-5 p-4 rounded-xl bg-bg-e/30 border border-bd/60">
-        <div className="flex justify-between items-center text-[10.5px] font-mono text-tm uppercase tracking-[0.08em] mb-3">
+      {/* Bipolar Spectrum Meter: Panoramic dial sitting directly on surface, NO heavy bounding box */}
+      <div className="relative z-10 mt-6 pt-4 border-t border-white/[0.06]">
+        <div className="flex justify-between items-center text-[10.5px] font-mono text-tm uppercase tracking-[0.08em] mb-2">
           <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-tx" />
+            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: toneHex }} />
             Bipolar Risk Gauge
           </span>
           <span className="text-tp font-medium font-mono">
@@ -333,15 +312,15 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
         </div>
 
         {/* Gauge Track */}
-        <div className="relative pt-6 pb-2">
+        <div className="relative pt-6 pb-1">
           <div
-            className="relative h-[8px] rounded-full overflow-visible border border-bd/60 shadow-inner"
+            className="relative h-[8px] rounded-full overflow-visible border border-white/[0.08] shadow-inner"
             style={{
-              background: 'linear-gradient(90deg, rgba(249,112,112,0.25) 0%, rgba(249,112,112,0.08) 38%, rgba(255,255,255,0.04) 50%, rgba(52,211,153,0.08) 62%, rgba(52,211,153,0.25) 100%)'
+              background: 'linear-gradient(90deg, rgba(249,112,112,0.22) 0%, rgba(249,112,112,0.06) 38%, rgba(255,255,255,0.04) 50%, rgba(52,211,153,0.06) 62%, rgba(52,211,153,0.22) 100%)'
             }}
           >
             {/* Center Neutral Anchor (0) */}
-            <div className="absolute left-1/2 top-[-4px] -translate-x-1/2 w-[2px] h-[16px] bg-tx/70 z-10 rounded-full" />
+            <div className="absolute left-1/2 top-[-4px] -translate-x-1/2 w-[2px] h-[16px] bg-white/40 z-10 rounded-full" />
 
             {/* Active Deflection Beam from Center */}
             <div
@@ -361,11 +340,11 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
             >
               {/* Floating pill badge */}
               <div
-                className="absolute -top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold border shadow-md whitespace-nowrap bg-bg-c/95 backdrop-blur-md"
+                className="absolute -top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold border shadow-md whitespace-nowrap bg-[#09090b]/90 backdrop-blur-md"
                 style={{
-                  borderColor: toneHex,
+                  borderColor: `${toneHex}60`,
                   color: toneHex,
-                  boxShadow: `0 0 10px ${toneHex}30`
+                  boxShadow: `0 0 8px ${toneHex}25`
                 }}
               >
                 {cis.total > 0 ? `+${cis.total}` : cis.total}
@@ -373,10 +352,10 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
 
               {/* Glowing circular thumb bead */}
               <div
-                className="w-[16px] h-[16px] rounded-full bg-bg flex items-center justify-center transition-transform hover:scale-110"
+                className="w-[16px] h-[16px] rounded-full bg-[#09090b] flex items-center justify-center transition-transform hover:scale-110"
                 style={{
                   border: `3px solid ${toneHex}`,
-                  boxShadow: `0 0 12px ${toneHex}`
+                  boxShadow: `0 0 10px ${toneHex}`
                 }}
               >
                 <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: toneHex }} />
@@ -385,7 +364,7 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
           </div>
 
           {/* Scale Markers and Zone Legend */}
-          <div className="flex justify-between font-mono text-[10px] text-tm mt-3">
+          <div className="flex justify-between font-mono text-[10px] text-tm mt-2.5">
             <span className="text-bear/90 font-medium">-100 (Shock)</span>
             <span className="text-tm hidden sm:inline">-50</span>
             <span className="text-ts font-semibold">0 (Neutral)</span>
@@ -396,11 +375,11 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
       </div>
 
       {/* Expandable Toggle Button */}
-      <div className="relative z-10 mt-5 pt-3 border-t border-bd/70 flex justify-center">
+      <div className="relative z-10 mt-5 pt-3 border-t border-white/[0.06] flex justify-center">
         <button
           type="button"
           onClick={() => setIsExpanded(e => !e)}
-          className="flex items-center gap-2 min-h-10 px-4 py-2 text-[12px] font-semibold text-ts hover:text-tp bg-bg-e/80 hover:bg-bg-h border border-bd/80 hover:border-bd rounded-full transition-all cursor-pointer select-none shadow-sm"
+          className="flex items-center gap-2 min-h-9 px-4 py-1.5 text-[12px] font-medium text-ts hover:text-tp bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] hover:border-white/[0.15] rounded-full transition-all cursor-pointer select-none"
         >
           <svg className={clsx("w-3.5 h-3.5 transition-transform duration-300", isExpanded ? "rotate-180" : "")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9"></polyline>
@@ -411,8 +390,8 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
 
       {/* Expanded Trajectory Chart, Component Math, and Playbook Tray */}
       {isExpanded && (
-        <div className="relative z-10 mt-5 pt-5 border-t border-bd/80 grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-5 animate-fadeUp">
-          <div className="lg:col-span-2 bg-bg-e/50 border border-bd rounded-xl p-4 sm:p-5 backdrop-blur-sm">
+        <div className="relative z-10 mt-5 pt-5 border-t border-white/[0.06] grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-5 animate-fadeUp">
+          <div className="lg:col-span-2 bg-white/[0.025] border border-white/[0.06] rounded-xl p-4 sm:p-5">
             <div className="font-semibold text-[13px] text-tp flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-warn" />
               How the Conflict Impact Score is calculated
@@ -429,11 +408,11 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
                 const sBg = componentBg(score);
 
                 return (
-                  <div key={key} className="rounded-xl border border-bd/80 bg-bg-c p-3.5 shadow-sm flex flex-col justify-between">
+                  <div key={key} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5 flex flex-col justify-between">
                     <div>
                       <div className="flex justify-between items-center text-[11.5px] font-mono text-tm mb-1">
                         <span className="capitalize font-medium text-tp">{label}</span>
-                        <span className="bg-bg-h px-1.5 py-0.5 rounded border border-bd/50 text-[10px]">{wt} weight</span>
+                        <span className="bg-white/[0.04] px-1.5 py-0.5 rounded text-[10px]">{wt} weight</span>
                       </div>
                       <div className="flex items-baseline justify-between mt-1.5">
                         <div className={clsx('font-mono text-[22px] font-bold', sColor)}>
@@ -450,9 +429,9 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
                     </div>
 
                     {/* Mini Bipolar Deflection Bar */}
-                    <div className="mt-3 pt-2 border-t border-bd/40">
-                      <div className="relative h-[4px] bg-bg-h rounded-full overflow-hidden">
-                        <div className="absolute left-1/2 top-0 w-px h-full bg-bd-x z-10" />
+                    <div className="mt-3 pt-2 border-t border-white/[0.06]">
+                      <div className="relative h-[4px] bg-white/[0.06] rounded-full overflow-hidden">
+                        <div className="absolute left-1/2 top-0 w-px h-full bg-white/20 z-10" />
                         <div
                           className={clsx('absolute top-0 h-full rounded-full transition-all duration-300', sBg)}
                           style={{ left: `${sLeft}%`, width: `${sWidth}%`, opacity: 0.9 }}
@@ -469,12 +448,12 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
               })}
             </div>
 
-            <div className="mt-4 pt-3 border-t border-bd/40">
+            <div className="mt-4 pt-3 border-t border-white/[0.06]">
               <div className="text-[11.5px] font-mono uppercase tracking-wider text-tm">All Current Transmission Drivers</div>
               {topDrivers.length ? (
                 <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {topDrivers.map(driver => (
-                    <li key={`${driver.bucket}-${driver.label}`} className="flex items-start justify-between gap-3 text-[12px] border-b border-bd/60 pb-2">
+                    <li key={`${driver.bucket}-${driver.label}`} className="flex items-start justify-between gap-3 text-[12px] border-b border-white/[0.04] pb-2">
                       <span><span className="text-tp font-medium">{driver.label}</span><span className="text-tm">: {driver.reason}</span></span>
                       <span className={clsx('font-mono flex-shrink-0 font-semibold', driver.weightedImpact >= 0 ? 'text-bull' : 'text-bear')}>
                         {driver.weightedImpact > 0 ? '+' : ''}{driver.weightedImpact}
@@ -493,18 +472,18 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
               CIS Historical Trajectory
             </div>
             {(!cisChartData || cisChartData.length === 0) ? (
-              <div className="h-[180px] flex items-center justify-center bg-bg-e/60 rounded-xl border border-bd text-tm text-[12px] font-mono">
+              <div className="h-[180px] flex items-center justify-center bg-white/[0.02] rounded-xl border border-white/[0.06] text-tm text-[12px] font-mono">
                 No history points logged yet. Trigger active refreshes.
               </div>
             ) : (
-              <Suspense fallback={<div className="h-[180px] rounded-xl bg-bg-e animate-pulse" />}>
+              <Suspense fallback={<div className="h-[180px] rounded-xl bg-white/[0.02] animate-pulse" />}>
                 <RegimeHistoryChart data={cisChartData} events={visibleEvents} toneVar={toneVar} toneHex={toneHex} />
               </Suspense>
             )}
           </div>
 
           {/* Right: Portfolio Hedging Playbook */}
-          <div className="flex flex-col bg-bg-e/60 rounded-xl border border-bd p-4 sm:p-5 justify-between shadow-sm">
+          <div className="flex flex-col bg-white/[0.025] rounded-xl border border-white/[0.06] p-4 sm:p-5 justify-between">
             <div>
               <div className="text-[11.5px] font-mono font-semibold text-ts mb-2 tracking-[0.08em] uppercase flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: toneHex }} />
@@ -522,7 +501,7 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
                 ))}
               </ul>
             </div>
-            <div className="font-mono text-[10.5px] text-tm mt-4 pt-2.5 border-t border-bd/70">
+            <div className="font-mono text-[10.5px] text-tm mt-4 pt-2.5 border-t border-white/[0.06]">
               Allocations dynamically calibrate with live CIS shifts.
             </div>
           </div>
