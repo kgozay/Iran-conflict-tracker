@@ -11,9 +11,29 @@ const SECTOR_ROWS = [
   { key: 'Retailers',    label: 'Retailers',     isMkt: false },
   { key: 'Industrials',  label: 'Industrials',   isMkt: false },
   { key: 'Mining',       label: 'Mining',        isMkt: false },
+  { key: 'Telecoms',     label: 'Telecoms',      isMkt: false },
 ];
 
-export default function HeatStrip({ sectors, timeframe = '1D' }) {
+const ROW_CLS = 'grid items-center gap-[14px] w-full text-left';
+const ROW_STYLE = { gridTemplateColumns: 'minmax(72px, 120px) 1fr 56px 14px' };
+
+function Row({ onClick, ariaLabel, children }) {
+  if (!onClick) return <div className={ROW_CLS} style={ROW_STYLE}>{children}<span /></div>;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className={clsx(ROW_CLS, 'group min-h-9 -mx-2 px-2 rounded-lg hover:bg-bg-h transition-colors cursor-pointer')}
+      style={{ ...ROW_STYLE, width: 'calc(100% + 1rem)' }}
+    >
+      {children}
+      <span aria-hidden="true" className="text-tx group-hover:text-tp transition-colors text-[14px]">›</span>
+    </button>
+  );
+}
+
+export default function HeatStrip({ sectors, onOpenSector }) {
   const rows = SECTOR_ROWS
     .map(r => ({ ...r, chg: sectors[r.key]?.chg ?? null }))
     .filter(r => r.chg != null);
@@ -29,11 +49,14 @@ export default function HeatStrip({ sectors, timeframe = '1D' }) {
         <div className="font-serif text-[22px] text-tp leading-[1.1]">
           Sector <span className="italic text-warn">breadth</span>
         </div>
-        <span className="text-[12px] text-tm">{timeframe} · equal-weight</span>
+        <span className="text-[12px] text-tm">1D · equal-weight</span>
       </div>
+      {onOpenSector && (
+        <p className="-mt-2.5 mb-3 text-[12px] text-tm">Select a sector to open its drilldown.</p>
+      )}
 
       {/* Rows */}
-      <div className="flex flex-col gap-[11px]">
+      <div className="flex flex-col gap-[3px]">
         {rows.map(({ key, label, chg, isMkt }) => {
           const up  = chg >= 0;
           const col = isMkt ? 'text-warn' : up ? 'text-bull' : 'text-bear';
@@ -45,9 +68,9 @@ export default function HeatStrip({ sectors, timeframe = '1D' }) {
           const barLeft = up ? '50%' : `calc(50% - ${w / 2}%)`;
 
           return (
-            <div key={key}
-              className="grid items-center gap-[14px]"
-              style={{ gridTemplateColumns: 'minmax(72px, 120px) 1fr 56px' }}>
+            <Row key={key}
+              onClick={onOpenSector ? () => onOpenSector(isMkt ? 'All' : key) : undefined}
+              ariaLabel={`${label} ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%. Open ${isMkt ? 'all sectors' : label} in sector drilldown`}>
 
               {/* Label */}
               <div className={clsx('text-[13px] text-tp', isMkt ? 'font-semibold' : 'font-medium')}>
@@ -69,7 +92,7 @@ export default function HeatStrip({ sectors, timeframe = '1D' }) {
               <div className={clsx('font-mono text-[13.5px] font-semibold text-right', col)}>
                 {chg >= 0 ? '+' : ''}{chg.toFixed(2)}%
               </div>
-            </div>
+            </Row>
           );
         })}
       </div>

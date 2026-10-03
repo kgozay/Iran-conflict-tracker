@@ -44,13 +44,30 @@ const SENSITIVITY_CLS = {
   neutral: 'bg-bg-e text-ts border-bd',
 };
 
+const COLLAPSED_ROWS = 10;
+
+const SORT_LABELS = {
+  move: 'biggest move', changePct: 'return', sensitivity: 'sensitivity', price: 'price',
+  name: 'name', display: 'ticker', sector: 'sector', signal: 'signal',
+};
+
+function sortValue(row, key) {
+  if (key === 'move')        return row._chg == null ? -Infinity : Math.abs(row._chg);
+  if (key === 'signal')      return getSignal(row._chg) ?? '';
+  if (key === 'sensitivity') return row.sensitivity ?? '';
+  if (key === 'changePct')   return row._chg ?? -Infinity;
+  if (key === 'price')       return row.price ?? -Infinity;
+  return row[key] ?? '';
+}
+
 function SortArrow({ active, dir }) {
   return <span className={clsx('ml-1 text-[8px]', active ? 'text-warn' : 'text-tx')}>{active ? (dir === 'asc' ? '▲' : '▼') : '·'}</span>;
 }
 
 export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
   const [filter, setFilter] = useState('ALL');
-  const [sort, setSort] = useState({ key: 'sector', dir: 'asc' });
+  const [sort, setSort] = useState({ key: 'move', dir: 'desc' });
+  const [showAll, setShowAll] = useState(false);
   const [csvDone, setCsvDone] = useState(false);
   const [mobileDetail, setMobileDetail] = useState('sector');
 
@@ -63,14 +80,18 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
   const filtered = useMemo(() => {
     const base = filter === 'ALL' ? rows : rows.filter(s => s.sector === filter);
     return [...base].sort((a, b) => {
-      const av = sort.key === 'signal' ? (getSignal(a._chg) ?? '') : sort.key === 'sensitivity' ? (a.sensitivity ?? '') : sort.key === 'changePct' ? (a._chg ?? -Infinity) : sort.key === 'price' ? (a.price ?? -Infinity) : (a[sort.key] ?? '');
-      const bv = sort.key === 'signal' ? (getSignal(b._chg) ?? '') : sort.key === 'sensitivity' ? (b.sensitivity ?? '') : sort.key === 'changePct' ? (b._chg ?? -Infinity) : sort.key === 'price' ? (b.price ?? -Infinity) : (b[sort.key] ?? '');
+      const av = sortValue(a, sort.key);
+      const bv = sortValue(b, sort.key);
       const as = typeof av === 'string' ? av.toLowerCase() : av;
       const bs = typeof bv === 'string' ? bv.toLowerCase() : bv;
       if (as === bs) return 0;
       return sort.dir === 'asc' ? (as > bs ? 1 : -1) : (as < bs ? 1 : -1);
     });
   }, [rows, filter, sort]);
+
+  // Long lists are collapsed to the biggest movers; sector filters are short enough to show in full.
+  const canCollapse = filter === 'ALL' && filtered.length > COLLAPSED_ROWS;
+  const visible = canCollapse && !showAll ? filtered.slice(0, COLLAPSED_ROWS) : filtered;
 
   function toggleSort(key) {
     setSort(p => p.key === key ? { key, dir: p.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' });
@@ -93,7 +114,7 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
             JSE <span className="italic text-warn">watchlist</span>
           </div>
           <div className="text-[12px] text-tm mt-1">
-            {filtered.length} names · {liveCount} live
+            {filtered.length} names · {liveCount} live · sorted by {SORT_LABELS[sort.key] ?? sort.key}
           </div>
         </div>
 
@@ -132,10 +153,11 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
             Sort
             <select
               value={sort.key}
-              onChange={event => setSort({ key: event.target.value, dir: event.target.value === 'name' || event.target.value === 'sensitivity' ? 'asc' : 'desc' })}
+              onChange={event => setSort({ key: event.target.value, dir: ['name', 'sensitivity', 'sector'].includes(event.target.value) ? 'asc' : 'desc' })}
               className="bg-transparent text-tp outline-none"
               aria-label="Sort mobile watchlist"
             >
+              <option value="move">Biggest move</option>
               <option value="changePct">Return</option>
               <option value="sensitivity">Sensitivity</option>
               <option value="price">Price</option>
@@ -149,7 +171,7 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
 
       {/* Compact mobile rows */}
       <div className="sm:hidden divide-y divide-bd border-y border-bd">
-        {filtered.map(s => {
+        {visible.map(s => {
           const chg = s._chg;
           const isUp = (chg ?? 0) >= 0;
           const signal = getSignal(chg);
@@ -228,7 +250,7 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((s, i, arr) => {
+            {visible.map((s, i, arr) => {
               const chg = s._chg;
               const isUp = (chg ?? 0) >= 0;
               const signal = getSignal(chg);
@@ -254,10 +276,10 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
                   <td className={clsx('py-3 px-1 text-right font-mono text-[13px] font-semibold', chg == null ? 'text-tm' : isUp ? 'text-bull' : 'text-bear')}>
                     {chg == null ? '—' : `${isUp ? '+' : ''}${chg.toFixed(2)}%`}
                   </td>
-                  <td className="py-3 px-1 text-right text-[12px] text-ts">{s.sector}</td>
+                  <td className="py-3 px-1 text-right text-[12px] text-ts whitespace-nowrap">{s.sector}</td>
                   <td className="py-3 px-1 text-right hidden sm:table-cell">
                     {signal
-                      ? <span className={clsx('font-mono text-[10px] px-[7px] py-[2px] rounded-full border', sigCls)}>{signal}</span>
+                      ? <span className={clsx('font-mono text-[10px] px-[7px] py-[2px] rounded-full border whitespace-nowrap', sigCls)}>{signal}</span>
                       : <span className="text-tm text-[12px]">—</span>}
                   </td>
                   <td className="py-3 px-1 text-right hidden sm:table-cell">
@@ -272,6 +294,19 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
           <div className="py-8 text-center text-[13px] text-tm">No stocks found for this filter</div>
         )}
       </div>
+
+      {canCollapse && (
+        <div className="mt-3 pt-3 border-t border-bd flex justify-center">
+          <button
+            type="button"
+            onClick={() => setShowAll(v => !v)}
+            aria-expanded={showAll}
+            className="min-h-11 px-4 text-[12.5px] font-medium text-ts hover:text-tp border border-bd hover:border-ts rounded-full transition-colors cursor-pointer"
+          >
+            {showAll ? `Show top ${COLLAPSED_ROWS} movers only` : `Show all ${filtered.length} names`}
+          </button>
+        </div>
+      )}
     </Card>
   );
 }

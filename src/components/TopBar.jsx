@@ -119,7 +119,16 @@ export default function TopBar({
 
       {/* ── Right: controls ──────────────────────────────────── */}
       <div className="w-full lg:w-auto flex-shrink-0 flex flex-wrap items-center gap-2 lg:gap-2.5">
-        <PeriodSelect value={timeframe} onChange={setTimeframe} />
+        {page === 'macro' ? (
+          <span
+            className="min-h-11 inline-flex items-center px-3.5 border border-bd rounded-lg text-[12px] text-tm"
+            title="Transmission thresholds are calibrated on one-day moves"
+          >
+            Showing <strong className="ml-1 font-semibold text-tp">1-day moves</strong>
+          </span>
+        ) : (
+          <PeriodSelect value={timeframe} onChange={setTimeframe} />
+        )}
 
         {/* Export dropdown */}
         {onExport && (

@@ -8,19 +8,6 @@ import { Card, CardHeader } from '../widgets/Card.jsx';
 import StockCard from '../widgets/StockCard.jsx';
 import { CountUp, SpotlightCard } from '../widgets/Effects.jsx';
 
-/* ── PATCH SUMMARY ─────────────────────────────────────────────────────
- * Two targeted FX additions to this page (everything else is unchanged):
- *   1. KPI strip (Avg / Total / Advancing / Declining) — each tile is
- *      wrapped in <SpotlightCard> (FX5, tone-tinted) and the numeric
- *      values render via <CountUp> (FX1).
- *   2. Sector read aggregate ("Avg 1D change" / "vs market avg") values
- *      use <CountUp> too.
- * The two large Cards (Constituent performance, Sector read) pick up the
- * spotlight halo automatically via the patched Card.jsx. We pass
- * `spotlight={false}` on the chart card to keep the hover halo from
- * fighting the bar-tooltip cursor.
- * ──────────────────────────────────────────────────────────────────── */
-
 const SECTOR_TABS = ['All','Gold Miners','PGMs','Energy','Banks','Retailers','Industrials','Mining','Telecoms'];
 
 const SECTOR_THESES = {
@@ -34,6 +21,24 @@ const SECTOR_THESES = {
   Mining: 'Commodity mix and USD revenue determine how much each diversified miner benefits from rand weakness.',
   Telecoms: 'Currency exposure, consumer demand and dividend expectations can produce different outcomes for MTN and Vodacom.',
 };
+
+const PERIOD_LABEL = { '1D': '1-day', '5D': '5-day', '20D': '20-day' };
+
+const SORTS = {
+  gain: { label: 'Biggest gain', fn: (a, b) => (b._chg ?? -Infinity) - (a._chg ?? -Infinity) },
+  loss: { label: 'Biggest loss', fn: (a, b) => (a._chg ?? Infinity) - (b._chg ?? Infinity) },
+  name: { label: 'Name A–Z',     fn: (a, b) => a.name.localeCompare(b.name) },
+};
+
+function changeFor(stock, timeframe) {
+  if (timeframe === '5D')  return stock.changePct5D ?? null;
+  if (timeframe === '20D') return stock.changePct20D ?? null;
+  return stock.changePct ?? null;
+}
+
+function average(list) {
+  return list.length ? list.reduce((a, s) => a + s._chg, 0) / list.length : null;
+}
 
 const signed = value => `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
 
@@ -59,31 +64,51 @@ const SPOT = {
   'text-tm':   'var(--color-bg-s)',
 };
 
-export default function SectorDrilldown({ stocks, sectors, hasData, onFetch, sparklines }) {
-  const [active, setActive] = useState('All');
+export default function SectorDrilldown({
+  stocks, hasData, onFetch, sparklines, timeframe = '1D',
+  drillSector, setDrillSector,
+}) {
+  const [localActive, setLocalActive] = useState('All');
+  const active = drillSector ?? localActive;
+  const setActive = setDrillSector ?? setLocalActive;
+  const [sortKey, setSortKey] = useState('gain');
+  const [isNarrow] = useState(() => window.matchMedia('(max-width: 639px)').matches);
+  const period = PERIOD_LABEL[timeframe] ?? timeframe;
+
+  // Every figure on this page follows the Period selector in the top bar.
+  const rows = useMemo(() => stocks.map(s => ({ ...s, _chg: changeFor(s, timeframe) })), [stocks, timeframe]);
+  const priced = useMemo(() => rows.filter(s => s.isLive && Number.isFinite(s._chg)), [rows]);
+
+  const tabStats = useMemo(() => Object.fromEntries(SECTOR_TABS.map(tab => {
+    const names = tab === 'All' ? priced : priced.filter(s => s.sector === tab);
+    const avg = average(names);
+    return [tab, { count: rows.filter(s => tab === 'All' || s.sector === tab).length, avg }];
+  })), [rows, priced]);
 
   const filtered     = useMemo(() =>
-    active === 'All' ? stocks : stocks.filter(s => s.sector === active),
-    [stocks, active]
+    active === 'All' ? rows : rows.filter(s => s.sector === active),
+    [rows, active]
   );
-  const liveFiltered = filtered.filter(s => s.isLive && Number.isFinite(s.changePct));
+  const liveFiltered = useMemo(() => filtered.filter(s => s.isLive && Number.isFinite(s._chg)), [filtered]);
+  const sortedCards  = useMemo(() => [...filtered].sort(SORTS[sortKey].fn), [filtered, sortKey]);
 
   const stats = useMemo(() => {
     if (!liveFiltered.length) return { avg: null, bulls: 0, bears: 0 };
-    const avg   = liveFiltered.reduce((a, s) => a + s.changePct, 0) / liveFiltered.length;
-    const bulls = liveFiltered.filter(s => s.changePct > 0).length;
-    const bears = liveFiltered.filter(s => s.changePct <= 0).length;
+    const avg   = average(liveFiltered);
+    const bulls = liveFiltered.filter(s => s._chg > 0).length;
+    const bears = liveFiltered.filter(s => s._chg <= 0).length;
     return { avg: +avg.toFixed(2), bulls, bears };
   }, [liveFiltered]);
 
   const chartData = useMemo(() =>
     [...liveFiltered]
-      .sort((a, b) => b.changePct - a.changePct)
-      .map(s => ({ name: s.display, val: +s.changePct.toFixed(2) })),
+      .sort((a, b) => b._chg - a._chg)
+      .map(s => ({ name: s.display, val: +s._chg.toFixed(2) })),
     [liveFiltered]
   );
 
-  const marketAvg = sectors.top40?.chg ?? null;
+  const marketAvgRaw = average(priced);
+  const marketAvg = marketAvgRaw == null ? null : +marketAvgRaw.toFixed(2);
   const best = chartData[0] ?? null;
   const worst = chartData[chartData.length - 1] ?? null;
   const relative = stats.avg != null && marketAvg != null ? +(stats.avg - marketAvg).toFixed(2) : null;
@@ -105,33 +130,43 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch, spa
     );
   }
 
-  /* KPI strip data — patched to carry a CountUp-friendly numeric value */
+  const relColor = relative == null ? 'text-tm' : relative >= 0 ? 'text-bull' : 'text-bear';
   const kpiCards = [
     {
-      kicker: 'Avg change',
-      numeric: stats.avg,
+      kicker: `Avg ${period} change`,
       display: stats.avg != null
         ? <><span>{stats.avg >= 0 ? '+' : ''}</span><CountUp to={stats.avg} decimals={2} suffix="%" /></>
         : '—',
-      sub:    `${liveFiltered.length} live names`,
+      sub:    `equal-weight · ${liveFiltered.length} priced names`,
       col:    avgColor,
     },
-    {
-      kicker: 'Names total',
-      display: <CountUp to={filtered.length} decimals={0} />,
-      sub:    `${liveFiltered.length} with live data`,
-      col:    'text-tp',
-    },
+    active === 'All'
+      ? {
+          kicker: 'Spread',
+          display: best && worst
+            ? <CountUp to={+(best.val - worst.val).toFixed(2)} decimals={2} suffix=" pts" />
+            : '—',
+          sub:    best && worst ? `${best.name} best · ${worst.name} worst` : 'no priced names',
+          col:    'text-tp',
+        }
+      : {
+          kicker: 'Vs watchlist',
+          display: relative != null
+            ? <><span>{relative >= 0 ? '+' : ''}</span><CountUp to={relative} decimals={2} suffix=" pts" /></>
+            : '—',
+          sub:    relative == null ? 'no comparison available' : relative >= 0 ? 'outperforming the watchlist' : 'underperforming the watchlist',
+          col:    relColor,
+        },
     {
       kicker: 'Advancing',
       display: <CountUp to={stats.bulls} decimals={0} />,
-      sub:    'live names up today',
+      sub:    `of ${liveFiltered.length} names up`,
       col:    'text-bull',
     },
     {
       kicker: 'Declining',
       display: <CountUp to={stats.bears} decimals={0} />,
-      sub:    'live names down today',
+      sub:    `of ${liveFiltered.length} names down or flat`,
       col:    'text-bear',
     },
   ];
@@ -139,20 +174,31 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch, spa
   return (
     <div className="p-4 sm:p-6 lg:p-[32px_36px] flex flex-col gap-5 animate-fadeUp">
 
-      {/* Sector tab pills */}
-      <div className="flex flex-wrap gap-1.5">
-        {SECTOR_TABS.map(s => (
-          <button key={s} onClick={() => setActive(s)}
-            className={clsx(
-              'px-4 py-[6px] text-[12px] font-medium rounded-full border transition-all cursor-pointer',
-              active === s
-                ? 'border-transparent'
-                : 'border-bd text-ts hover:text-tp hover:border-ts',
-            )}
-            style={active === s ? { background: 'var(--color-paper)', color: 'var(--color-ink)', border: 'none' } : {}}>
-            {s}
-          </button>
-        ))}
+      {/* Sector selector: each pill carries its own move so readers can pick where to look */}
+      <div role="group" aria-label="Choose a sector" className="flex flex-wrap gap-1.5">
+        {SECTOR_TABS.map(tab => {
+          const t = tabStats[tab];
+          const isActive = active === tab;
+          return (
+            <button key={tab} type="button" onClick={() => setActive(tab)}
+              aria-pressed={isActive}
+              className={clsx(
+                'min-h-11 sm:min-h-9 inline-flex items-center gap-2 px-3.5 py-[6px] text-[12.5px] font-medium rounded-full border transition-all cursor-pointer',
+                isActive ? 'border-transparent' : 'border-bd text-ts hover:text-tp hover:border-ts',
+              )}
+              style={isActive ? { background: 'var(--color-paper)', color: 'var(--color-ink)' } : {}}>
+              <span>{tab}</span>
+              {t?.avg != null && (
+                <span className={clsx(
+                  'font-mono text-[11px] font-semibold',
+                  isActive ? 'opacity-70' : t.avg >= 0 ? 'text-bull' : 'text-bear',
+                )}>
+                  {signed(t.avg)}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* KPI strip — each tile wrapped in SpotlightCard with tone tint */}
@@ -161,12 +207,12 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch, spa
           <SpotlightCard
             key={k.kicker}
             spotlightColor={SPOT[k.col] ?? SPOT['text-tp']}
-            className="glass rounded-[16px] p-[20px_24px]"
+            className="glass rounded-[16px] p-4 sm:p-[20px_24px]"
           >
-            <div className="font-sans text-[10px] font-medium tracking-[0.08em] uppercase text-tm mb-2">
+            <div className="font-sans text-[11px] font-medium tracking-[0.08em] uppercase text-tm mb-2">
               {k.kicker}
             </div>
-            <div className={clsx('font-serif text-[40px] leading-none', k.col)}>{k.display}</div>
+            <div className={clsx('font-serif text-[32px] sm:text-[40px] leading-none', k.col)}>{k.display}</div>
             <div className="font-sans text-[12px] text-ts mt-1.5">{k.sub}</div>
           </SpotlightCard>
         ))}
@@ -179,12 +225,12 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch, spa
           <CardHeader
             title="Constituent"
             italic="performance"
-            badge={`${liveFiltered.length} live`}
+            badge={`${period} · ${liveFiltered.length} priced`}
             badgeVariant="live"
           />
           {chartData.length === 0 ? (
             <div className="flex items-center justify-center flex-1 font-sans text-[13px] text-tm">
-              No live price data for this sector
+              No price data for this sector and period
             </div>
           ) : (
             <div className="flex-1 min-h-[260px]">
@@ -193,15 +239,16 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch, spa
                   <CartesianGrid vertical={false} stroke="var(--color-bd)" />
                   <XAxis
                     dataKey="name"
-                    tick={{ fontFamily: 'JetBrains Mono', fontSize: 9, fill: 'var(--color-ts)' }}
-                    axisLine={false} tickLine={false} interval={0}
+                    tick={{ fontFamily: 'JetBrains Mono', fontSize: 10, fill: 'var(--color-ts)' }}
+                    axisLine={false} tickLine={false}
+                    interval={isNarrow && chartData.length > 10 ? Math.ceil(chartData.length / 8) - 1 : 0}
                     angle={chartData.length > 12 ? -45 : 0}
                     textAnchor={chartData.length > 12 ? 'end' : 'middle'}
-                    height={chartData.length > 12 ? 36 : 20}
+                    height={chartData.length > 12 ? 40 : 22}
                   />
                   <YAxis
                     tickFormatter={v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`}
-                    tick={{ fontFamily: 'JetBrains Mono', fontSize: 9, fill: 'var(--color-ts)' }}
+                    tick={{ fontFamily: 'JetBrains Mono', fontSize: 10, fill: 'var(--color-ts)' }}
                     axisLine={false} tickLine={false}
                   />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
@@ -224,7 +271,7 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch, spa
         {/* Sector read card — uses Card default (spotlight on) */}
         <Card>
           <CardHeader title="Sector" italic="read" />
-          <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-tm mb-2">Observed 1D move</div>
+          <div className="text-[11px] font-medium tracking-[0.08em] uppercase text-tm mb-2">Observed {period} move</div>
           {stats.avg == null ? (
             <p className="font-sans text-[13.5px] leading-[1.7] text-ts">No current constituent returns are available for this selection.</p>
           ) : (
@@ -235,12 +282,12 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch, spa
             </div>
           )}
           <div className="mt-4 pt-4 border-t border-bd">
-            <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-tm mb-2">Expected sensitivity</div>
+            <div className="text-[11px] font-medium tracking-[0.08em] uppercase text-tm mb-2">Expected sensitivity</div>
             <p className="font-sans text-[12.5px] leading-[1.65] text-tm">{SECTOR_THESES[active] ?? SECTOR_THESES.All}</p>
           </div>
           {stats.avg != null && (
             <div className="mt-4 pt-4 border-t border-bd">
-              <div className="font-sans text-[10px] font-medium tracking-[0.08em] uppercase text-tm mb-2">
+              <div className="font-sans text-[11px] font-medium tracking-[0.08em] uppercase text-tm mb-2">
                 Data context
               </div>
               <div className="flex justify-between font-sans text-[13px] mb-1.5">
@@ -259,15 +306,35 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch, spa
       </div>
 
       {/* Stock grid */}
-      {filtered.length === 0 ? (
-        <div className="py-10 text-center font-sans text-[13px] text-tm">
-          No stocks in this sector
+      <section aria-labelledby="constituents-heading" className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="constituents-heading" className="font-serif text-[22px] text-tp leading-[1.1] font-normal m-0">
+            {active === 'All' ? 'All' : active} <span className="italic text-warn">constituents</span>
+            <span className="ml-2 font-sans text-[12px] text-tm">{filtered.length} names</span>
+          </h2>
+          <label className="min-h-11 sm:min-h-9 inline-flex items-center gap-2 px-3 border border-bd rounded-lg text-[12px] text-tm">
+            Sort
+            <select
+              value={sortKey}
+              onChange={e => setSortKey(e.target.value)}
+              className="bg-transparent text-[12.5px] font-semibold text-tp outline-none cursor-pointer"
+            >
+              {Object.entries(SORTS).map(([key, { label }]) => <option key={key} value={key}>{label}</option>)}
+            </select>
+          </label>
         </div>
-      ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {filtered.map(s => <StockCard key={s.ticker} stock={s} sparkline={sparklines?.[s.ticker]} />)}
-        </div>
-      )}
+        {filtered.length === 0 ? (
+          <div className="py-10 text-center font-sans text-[13px] text-tm">
+            No stocks in this sector
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
+            {sortedCards.map(s => (
+              <StockCard key={s.ticker} stock={s} change={s._chg} period={timeframe} sparkline={sparklines?.[s.ticker]} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

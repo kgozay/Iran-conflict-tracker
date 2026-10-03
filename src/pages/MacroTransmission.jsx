@@ -64,6 +64,12 @@ function getAssetStatus(key, pct) {
   return { text: 'STABLE', cls: 'bg-bg-h text-tm border-bd' };
 }
 
+/* Price-direction colour; `inv` flips it for assets where a rise is negative for SA (USD/ZAR, US 10Y). */
+function changeColor(pct, inv) {
+  if (pct == null) return 'text-tm';
+  return (pct >= 0) !== inv ? 'text-bull' : 'text-bear';
+}
+
 /* ── SVG Pipeline Connector ─────────────────────────────────────────── */
 function PipelineConnector({ active, label }) {
   return (
@@ -107,6 +113,10 @@ function PipelineConnector({ active, label }) {
 
 /* ── Transmission Channel Pipeline Card ─────────────────────────────── */
 function ChannelPipelineCard({
+  id,
+  expanded,
+  onToggle,
+  onOpenSector,
   title,
   subtitle,
   isActive,
@@ -136,27 +146,43 @@ function ChannelPipelineCard({
   return (
     <SpotlightCard
       spotlightColor={spotlightColor ?? (isActive ? 'var(--color-bear-spotlight)' : 'var(--color-spotlight)')}
-      className="glass rounded-[16px] p-4 sm:p-5 flex flex-col gap-3.5 transition-all duration-300"
+      className="glass rounded-[16px] p-4 sm:p-5 flex flex-col gap-3.5 transition-all duration-300 scroll-mt-4"
     >
-      {/* Header */}
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <div className="font-serif text-[20px] text-tp leading-[1.1]">
-            {title}
-          </div>
-          {subtitle && (
-            <div className="text-[11.5px] text-tm mt-0.5">{subtitle}</div>
-          )}
-        </div>
-        <span className={clsx(
-          'inline-flex items-center gap-1.5 text-[10px] font-mono font-semibold tracking-[0.06em] px-2.5 py-1 rounded-full border',
-          evidenceCls[evidence.state]
-        )}>
-          <span className={clsx('w-2 h-2 rounded-full', isActive ? 'bg-warn' : 'bg-tm')} />
-          {evidenceLabels[evidence.state]}
-        </span>
-      </div>
+      {/* Header doubles as the expand/collapse control */}
+      <h3 className="m-0">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          aria-controls={`${id}-detail`}
+          className="w-full flex flex-wrap items-center justify-between gap-2 text-left cursor-pointer group"
+        >
+          <span className="flex items-start gap-2.5 min-w-0">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              className={clsx('w-4 h-4 mt-1 flex-shrink-0 text-tm group-hover:text-tp transition-transform duration-200', expanded ? 'rotate-90' : '')}>
+              <polyline points="9 6 15 12 9 18" />
+            </svg>
+            <span className="min-w-0">
+              <span className="block font-serif font-normal text-[20px] text-tp leading-[1.1]">{title}</span>
+              {subtitle && <span className="block text-[11.5px] font-normal text-tm mt-0.5">{subtitle}</span>}
+            </span>
+          </span>
+          <span className="flex items-center gap-2 flex-wrap">
+            <span className={clsx('font-mono text-[13px] font-semibold', stage1.colorCls)}>
+              {stage1.shortLabel} {stage1.valueStr}
+            </span>
+            <span className={clsx(
+              'inline-flex items-center gap-1.5 text-[10px] font-mono font-semibold tracking-[0.06em] px-2.5 py-1 rounded-full border',
+              evidenceCls[evidence.state]
+            )}>
+              <span className={clsx('w-2 h-2 rounded-full', isActive ? 'bg-warn' : 'bg-tm')} />
+              {evidenceLabels[evidence.state]}
+            </span>
+          </span>
+        </button>
+      </h3>
 
+      {expanded && (<div id={`${id}-detail`} className="flex flex-col gap-3.5 animate-fadeUp">
       {/* 3-Stage Visual Pipeline */}
       <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1.15fr_auto_1.25fr] items-stretch gap-2 my-0.5">
         {/* Stage 1: Catalyst Shock */}
@@ -177,7 +203,7 @@ function ChannelPipelineCard({
               {stage1.title}
             </div>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className={clsx('font-mono text-[16px] font-bold', stage1.pct >= 0 ? (stage1.inv ? 'text-bear' : 'text-bull') : (stage1.inv ? 'text-bull' : 'text-bear'))}>
+              <span className={clsx('font-mono text-[16px] font-bold', stage1.colorCls)}>
                 {stage1.valueStr}
               </span>
               {stage1.priceStr && (
@@ -293,12 +319,22 @@ function ChannelPipelineCard({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ts" aria-label="Observed one-day sector moves">
         <span className="font-medium text-tm">Observed 1D:</span>
         {evidence.observations.map(item => (
-          <span key={item.sector} className="font-mono">
-            {item.sector} {item.changePct == null ? '—' : `${item.changePct >= 0 ? '+' : ''}${item.changePct.toFixed(2)}%`}
-          </span>
+          <button
+            key={item.sector}
+            type="button"
+            onClick={() => onOpenSector?.(item.sector)}
+            title={`Open ${item.sector} in sector drilldown`}
+            className="font-mono min-h-7 px-1.5 -mx-1.5 rounded hover:bg-bg-h hover:text-tp underline decoration-dotted decoration-tx underline-offset-4 cursor-pointer"
+          >
+            {item.sector}{' '}
+            <span className={item.changePct == null ? 'text-tm' : item.changePct >= 0 ? 'text-bull' : 'text-bear'}>
+              {item.changePct == null ? '—' : `${item.changePct >= 0 ? '+' : ''}${item.changePct.toFixed(2)}%`}
+            </span>
+          </button>
         ))}
         <span className="basis-full text-tm">Sector agreement describes co-movement, not proof of cause.</span>
       </div>
+      </div>)}
     </SpotlightCard>
   );
 }
@@ -378,11 +414,11 @@ function MacroStrip({ assets, hasData }) {
             className="glass-sub rounded-xl py-3 px-3.5 flex flex-col justify-between"
           >
             <div>
-              <div className="flex items-center justify-between gap-1 mb-1">
-                <span className="text-[11px] font-medium text-tm truncate" title={label}>
+              <div className="flex flex-wrap items-center justify-between gap-x-1 gap-y-1 mb-1">
+                <span className="text-[11.5px] font-medium text-ts leading-tight">
                   {label}
                 </span>
-                <span className={clsx('text-[8.5px] font-mono font-semibold px-1.5 py-0.5 rounded border leading-none shrink-0', status.cls)}>
+                <span className={clsx('text-[9.5px] font-mono font-semibold px-1.5 py-0.5 rounded border leading-none shrink-0 whitespace-nowrap', status.cls)}>
                   {status.text}
                 </span>
               </div>
@@ -395,7 +431,7 @@ function MacroStrip({ assets, hasData }) {
 
             <div className="text-[10.5px] font-mono text-ts flex items-center justify-between pt-1 border-t border-bd/60 mt-1">
               <span>{priceStr ?? '—'}</span>
-              {src && <span className="text-[9px] text-tx">({src})</span>}
+              {src && <span className="text-[10px] text-tx truncate ml-1">{src}</span>}
             </div>
           </SpotlightCard>
         );
@@ -405,8 +441,9 @@ function MacroStrip({ assets, hasData }) {
 }
 
 /* ── Page ───────────────────────────────────────────────────────────── */
-export default function MacroTransmission({ assets, alerts, hasData, history, stocks, sectors }) {
+export default function MacroTransmission({ assets, alerts, hasData, history, stocks, sectors, onOpenSector }) {
   const [activeTab, setActiveTab] = useState('channels');
+  const [userOpenChannels, setUserOpenChannels] = useState(null);
 
   const brentChg = assets.brent?.changePct;
   const brentPrc = assets.brent?.price;
@@ -431,16 +468,206 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
     { sector: 'Banks', direction: -1 }, { sector: 'Retailers', direction: -1 }, { sector: 'Industrials', direction: -1 },
   ]);
 
-  const fmt = (v, label) => v != null ? `${label ? label + ' ' : ''}${v>=0?'+':''}${v.toFixed(1)}%` : `${label ? label + ' ' : ''}(fetch data)`;
+  const fmt = v => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : '—';
 
   const triggeredIds = new Set(alerts.map(a => a.id));
   const triggeredCount = Object.keys(THEMATIC_META).filter(id => triggeredIds.has(id)).length;
 
-  const tabs = [
-    { id: 'channels',    label: 'Transmission Pipelines & Simulator' },
-    { id: 'analogues',   label: 'Alert Thresholds' },
-    { id: 'correlation', label: 'Correlation Heatmap' },
+  const channels = [
+    {
+      id: 'oil',
+      name: 'Oil price',
+      threshold: 2,
+      title: "Oil Price Shock Transmission",
+      evidence: oilEvidence,
+      subtitle: "Strait of Hormuz supply disruption & bunker fuel freight premia",
+      isActive: hasData && brentChg != null && brentChg > 2,
+      spotlightColor: hasData && brentChg != null && brentChg > 2 ? 'var(--color-bear-spotlight)' : undefined,
+      stage1: {
+        shortLabel: 'Brent',
+        colorCls: changeColor(brentChg, false),
+          title: 'Brent Crude Oil',
+          valueStr: fmt(brentChg),
+          priceStr: formatPrice(brentPrc, 'brent'),
+          pct: brentChg ?? 0,
+          inv: false,
+          statusStr: !hasData ? 'STANDBY' : brentChg > 2 ? 'SHOCK ACTIVE' : 'NORMAL RANGE',
+          statusCls: !hasData ? 'bg-bg-h text-tm border-bd' : brentChg > 2 ? 'bg-bear/15 text-bear border-bear/40' : 'bg-bg-h text-tm border-bd',
+          driver: 'Middle Eastern chokepoint threat, tanker insurance spike & inventory draw',
+      },
+      stage2: {
+          vectorName: 'Cost-Push Inflation & SARB Hawkish Pause',
+          mechanisms: [
+            'Domestic fuel levy & transport inflation (+50c to +R1.20/L per 10% oil surge)',
+            'Logistics CPI passes through to core consumer basket and food distribution',
+            'SARB halts interest rate cuts to defend medium-term inflation target',
+          ],
+      },
+      stage3: {
+          winners: ['Sasol (SOL) · Oil Parity', 'Thungela (TGA) · Energy Arbitrage'],
+          losers: ['Banks (SBK, FSR, NED, ABG) · NII Stress', 'Retailers (SHP, MRP, TRU) · Squeeze'],
+          neutral: ['Sasol Chemicals', 'Offshore Exporters'],
+      },
+      netImpact: {
+          verdict: 'Bearish Domestic Credit & Retail | Bullish Synthetic Energy',
+          note: 'Fuel cost inflation dampens consumer real disposable income',
+          cls: 'text-bear',
+      },
+    },
+    {
+      id: 'currency',
+      name: 'Rand',
+      threshold: 0.8,
+      title: "Currency Transmission & Risk-Off",
+      evidence: currencyEvidence,
+      subtitle: "Emerging Market portfolio liquidation & US Dollar haven flight",
+      isActive: hasData && zarChg != null && zarChg > 0.8,
+      spotlightColor: hasData && zarChg != null && zarChg > 0.8 ? 'var(--color-bear-spotlight)' : undefined,
+      stage1: {
+        shortLabel: 'USD/ZAR',
+        colorCls: changeColor(zarChg, true),
+          title: 'USD / ZAR Exchange Rate',
+          valueStr: fmt(zarChg),
+          priceStr: formatPrice(zarPrc, 'usdZar'),
+          pct: zarChg ?? 0,
+          inv: true,
+          statusStr: !hasData ? 'STANDBY' : zarChg > 0.8 ? 'PRESSURE ACTIVE' : 'STABLE',
+          statusCls: !hasData ? 'bg-bg-h text-tm border-bd' : zarChg > 0.8 ? 'bg-bear/15 text-bear border-bear/40' : 'bg-bg-h text-tm border-bd',
+          driver: 'Global haven flight into USD; portfolio outflows from high-beta EM debt',
+      },
+      stage2: {
+          vectorName: 'Import Inflation & Discretionary Margin Squeeze',
+          mechanisms: [
+            'Landed cost of imported capital equipment, electronics & textiles spikes',
+            'SAGB 10-year sovereign bond yields widen on sovereign risk premium',
+            'Offshore earnings translation creates windfall cash flow for multinationals',
+          ],
+      },
+      stage3: {
+          winners: ['Richemont (CFR) · Luxury Haven', 'BAT (BTI) · GBP Dividend', 'Naspers / Prosus (NPN/PRX)'],
+          losers: ['Mr Price (MRP) & Truworths (TRU)', 'Tiger Brands (TBS) & AVI'],
+          neutral: ['Telecoms (MTN, VOD) · Mixed FX'],
+      },
+      netImpact: {
+          verdict: 'Rand Hedges Outperform | SA Domestic Cyclicals Underperform',
+          note: 'Dual-listed heavyweights cushion Top40 index while local retail de-rates',
+          cls: 'text-warn',
+      },
+    },
+    {
+      id: 'haven',
+      name: 'Safe haven',
+      threshold: 1,
+      title: "Safe Haven & Precious Metals Transmission",
+      evidence: havenEvidence,
+      subtitle: "Global flight from fiat debasement & sovereign reserve asset bidding",
+      isActive: hasData && goldChg != null && goldChg > 1,
+      spotlightColor: hasData && goldChg != null && goldChg > 1 ? 'var(--color-bull-spotlight)' : undefined,
+      stage1: {
+        shortLabel: 'Gold',
+        colorCls: changeColor(goldChg, false),
+          title: 'Gold & PGM Metal Basket',
+          valueStr: fmt(goldChg),
+          priceStr: formatPrice(goldPrc, 'gold'),
+          pct: goldChg ?? 0,
+          inv: false,
+          statusStr: !hasData ? 'STANDBY' : goldChg > 1 ? 'HAVEN BID ACTIVE' : 'STEADY',
+          statusCls: !hasData ? 'bg-bg-h text-tm border-bd' : goldChg > 1 ? 'bg-bull/15 text-bull border-bull/40' : 'bg-bg-h text-tm border-bd',
+          driver: 'Central bank accumulation, sovereign wealth haven bid & geopolitical hedging',
+      },
+      stage2: {
+          vectorName: 'Mining Terms-of-Trade & Free Cash Flow Expansion',
+          mechanisms: [
+            'Rand gold price tests all-time highs (dual haven spot + weak ZAR effect)',
+            'Operating margins at deep-level mines surge above AISC breakeven points',
+            'Mining royalty & corporate tax receipts bolster SA National Treasury buffer',
+          ],
+      },
+      stage3: {
+          winners: ['Gold Fields (GFI) · Unhedged', 'AngloGold (ANG) · Tier-1', 'Harmony (HAR) · High Beta', 'Amplats (AMS) · PGM Bid'],
+          losers: [],
+          neutral: ['Impala Platinum (IMP)', 'Sibanye-Stillwater (SSW)'],
+      },
+      netImpact: {
+          verdict: 'Strongly Bullish Precious Metals & JSE Mining Complex',
+          note: 'Direct monetary hedge protecting South African portfolios during regional war',
+          cls: 'text-bull',
+      },
+    },
+    {
+      id: 'rates',
+      name: 'Global rates',
+      threshold: 1.5,
+      title: "Global Discount Rate & Duration Compression",
+      evidence: ratesEvidence,
+      subtitle: "US Treasury yield surge & international cost of equity expansion",
+      isActive: hasData && us10yChg != null && us10yChg > 1.5,
+      spotlightColor: hasData && us10yChg != null && us10yChg > 1.5 ? 'var(--color-bear-spotlight)' : undefined,
+      stage1: {
+        shortLabel: 'US 10Y',
+        colorCls: changeColor(us10yChg, true),
+          title: 'US 10-Year Bond Yield',
+          valueStr: fmt(us10yChg),
+          priceStr: formatPrice(us10yPrc, 'us10y'),
+          pct: us10yChg ?? 0,
+          inv: true,
+          statusStr: !hasData ? 'STANDBY' : us10yChg > 1.5 ? 'RATE SHOCK ACTIVE' : 'RANGE BOUND',
+          statusCls: !hasData ? 'bg-bg-h text-tm border-bd' : us10yChg > 1.5 ? 'bg-bear/15 text-bear border-bear/40' : 'bg-bg-h text-tm border-bd',
+          driver: `Global inflation term premium repricing · Source: ${us10ySrc}`,
+      },
+      stage2: {
+          vectorName: 'Equity Valuation Multiple Contraction',
+          mechanisms: [
+            'Global risk-free hurdle rate escalates, raising cost of capital across EMs',
+            'Foreign allocators de-risk long-duration tech, high-P/E equities & bonds',
+            'JSE Top40 trailing valuation multiples compress to match bond yields',
+          ],
+      },
+      stage3: {
+          winners: ['Cash-Rich High-Yield Defensives', 'Short-Duration Value Exporters'],
+          losers: ['Listed Property / REITs (GRT, RDF)', 'High-Multiple Growth (CPI, PRX)'],
+          neutral: ['JSE Resource Majors'],
+      },
+      netImpact: {
+          verdict: (us10yChg ?? 0) > 0 ? 'Multiple Contraction on Long-Duration SA Equities' : 'Discount Rate Easing: Valuation Tailwinds for EMs',
+          note: 'Higher global discount rates restrict equity multiples for capital importers',
+          cls: (us10yChg ?? 0) > 0 ? 'text-bear' : 'text-bull',
+      },
+    },
   ];
+
+  const tabs = [
+    { id: 'channels',    label: 'Transmission channels' },
+    { id: 'simulator',   label: 'Scenario simulator' },
+    { id: 'analogues',   label: 'Alert thresholds' },
+    { id: 'correlation', label: 'Correlations' },
+  ];
+
+  const activeCount = channels.filter(c => c.isActive).length;
+
+  // Until the reader toggles something, active channels are open and quiet ones are collapsed.
+  const defaultOpen = new Set(channels.filter(c => c.isActive).map(c => c.id));
+  const openChannels = userOpenChannels ?? defaultOpen;
+  const setOpenChannels = update => setUserOpenChannels(prev =>
+    typeof update === 'function' ? update(prev ?? defaultOpen) : update
+  );
+
+  function toggleChannel(id) {
+    setOpenChannels(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function jumpToChannel(id) {
+    setOpenChannels(prev => new Set(prev).add(id));
+    requestAnimationFrame(() => {
+      document.getElementById(`channel-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  const allOpen = openChannels.size === channels.length;
 
   return (
     <div className="p-4 sm:p-6 lg:p-[32px_36px] flex flex-col gap-5 sm:gap-6 animate-fadeUp">
@@ -450,17 +677,20 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
 
       {/* Tab Selector */}
       <div className="flex justify-start">
-        <div className="grid grid-cols-1 sm:flex sm:items-center w-full sm:w-auto bg-bg-c border border-bd rounded-xl p-[4px] gap-[4px] glass">
+        <div role="tablist" aria-label="Macro transmission views"
+          className="grid grid-cols-2 sm:flex sm:items-center w-full sm:w-auto bg-bg-c border border-bd rounded-xl p-[4px] gap-[4px] glass">
           {tabs.map(t => (
             <button
               key={t.id}
               type="button"
+              role="tab"
+              aria-selected={activeTab === t.id}
               onClick={() => setActiveTab(t.id)}
               className={clsx(
                 'min-h-11 px-[18px] py-[8px] text-[13px] font-medium rounded-lg transition-all cursor-pointer select-none',
                 activeTab === t.id
                   ? 'bg-bd text-tp shadow-sm font-semibold'
-                  : 'text-ts hover:text-tp hover:bg-white/[0.02]'
+                  : 'text-ts hover:text-tp hover:bg-bg-h'
               )}
             >
               {t.label}
@@ -469,160 +699,73 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
         </div>
       </div>
 
-      {/* Tab 1: Transmission Pipelines & Simulator */}
+      {/* Tab 1: Transmission channels */}
       {activeTab === 'channels' && (
-        <div className="flex flex-col gap-6 animate-fadeUp">
-          {/* 4 Interactive Transmission Pipeline Cards */}
-          <div className="flex flex-col gap-4">
-            <ChannelPipelineCard
-              title="Oil Price Shock Transmission"
-              evidence={oilEvidence}
-              subtitle="Strait of Hormuz supply disruption & bunker fuel freight premia"
-              isActive={hasData && brentChg != null && brentChg > 2}
-              spotlightColor={hasData && brentChg != null && brentChg > 2 ? 'var(--color-bear-spotlight)' : undefined}
-              stage1={{
-                title: 'Brent Crude Oil',
-                valueStr: fmt(brentChg),
-                priceStr: formatPrice(brentPrc, 'brent'),
-                pct: brentChg ?? 0,
-                inv: false,
-                statusStr: !hasData ? 'STANDBY' : brentChg > 2 ? 'SHOCK ACTIVE' : 'NORMAL RANGE',
-                statusCls: !hasData ? 'bg-bg-h text-tm border-bd' : brentChg > 2 ? 'bg-bear/15 text-bear border-bear/40' : 'bg-bg-h text-tm border-bd',
-                driver: 'Middle Eastern chokepoint threat, tanker insurance spike & inventory draw',
-              }}
-              stage2={{
-                vectorName: 'Cost-Push Inflation & SARB Hawkish Pause',
-                mechanisms: [
-                  'Domestic fuel levy & transport inflation (+50c to +R1.20/L per 10% oil surge)',
-                  'Logistics CPI passes through to core consumer basket and food distribution',
-                  'SARB halts interest rate cuts to defend medium-term inflation target',
-                ],
-              }}
-              stage3={{
-                winners: ['Sasol (SOL) · Oil Parity', 'Thungela (TGA) · Energy Arbitrage'],
-                losers: ['Banks (SBK, FSR, NED, ABG) · NII Stress', 'Retailers (SHP, MRP, TRU) · Squeeze'],
-                neutral: ['Sasol Chemicals', 'Offshore Exporters'],
-              }}
-              netImpact={{
-                verdict: 'Bearish Domestic Credit & Retail | Bullish Synthetic Energy',
-                note: 'Fuel cost inflation dampens consumer real disposable income',
-                cls: 'text-bear',
-              }}
-            />
+        <div className="flex flex-col gap-4 animate-fadeUp">
+          {/* At-a-glance: which channels are firing right now */}
+          <section aria-label="Channel summary" className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-[13.5px] text-ts m-0">
+                {!hasData
+                  ? 'Fetch live data to see which channels are active.'
+                  : activeCount === 0
+                    ? 'No channel has crossed its trigger today. Open any channel to see how it would transmit.'
+                    : <><strong className="text-tp">{activeCount} of {channels.length}</strong> channels have crossed their trigger today. Active channels are expanded below.</>}
+              </p>
+              <button
+                type="button"
+                onClick={() => setOpenChannels(allOpen ? new Set() : new Set(channels.map(c => c.id)))}
+                className="min-h-9 px-3 text-[12px] font-medium text-ts hover:text-tp border border-bd hover:border-ts rounded-full transition-colors cursor-pointer"
+              >
+                {allOpen ? 'Collapse all' : 'Expand all'}
+              </button>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {channels.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => jumpToChannel(c.id)}
+                  className={clsx(
+                    'glass-sub rounded-xl p-3.5 text-left flex flex-col gap-1.5 cursor-pointer transition-colors hover:border-bd-x',
+                    c.isActive && 'border-warn/40',
+                  )}
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="text-[12.5px] font-semibold text-tp">{c.name}</span>
+                    <span className={clsx(
+                      'font-mono text-[9.5px] font-semibold tracking-[0.06em] px-1.5 py-0.5 rounded border',
+                      c.isActive ? 'bg-warn/12 text-warn border-warn/40' : 'bg-bg-h text-tm border-bd',
+                    )}>
+                      {!hasData ? 'NO DATA' : c.isActive ? 'ACTIVE' : 'QUIET'}
+                    </span>
+                  </span>
+                  <span className={clsx('font-mono text-[15px] font-semibold', c.stage1.colorCls)}>
+                    {c.stage1.shortLabel} {c.stage1.valueStr}
+                  </span>
+                  <span className="text-[11px] text-tm">Triggers above +{c.threshold}% · view details ›</span>
+                </button>
+              ))}
+            </div>
+          </section>
 
+          {channels.map(({ id, name, threshold, ...props }) => (
             <ChannelPipelineCard
-              title="Currency Transmission & Risk-Off"
-              evidence={currencyEvidence}
-              subtitle="Emerging Market portfolio liquidation & US Dollar haven flight"
-              isActive={hasData && zarChg != null && zarChg > 0.8}
-              spotlightColor={hasData && zarChg != null && zarChg > 0.8 ? 'var(--color-bear-spotlight)' : undefined}
-              stage1={{
-                title: 'USD / ZAR Exchange Rate',
-                valueStr: fmt(zarChg),
-                priceStr: formatPrice(zarPrc, 'usdZar'),
-                pct: zarChg ?? 0,
-                inv: true,
-                statusStr: !hasData ? 'STANDBY' : zarChg > 0.8 ? 'PRESSURE ACTIVE' : 'STABLE',
-                statusCls: !hasData ? 'bg-bg-h text-tm border-bd' : zarChg > 0.8 ? 'bg-bear/15 text-bear border-bear/40' : 'bg-bg-h text-tm border-bd',
-                driver: 'Global haven flight into USD; portfolio outflows from high-beta EM debt',
-              }}
-              stage2={{
-                vectorName: 'Import Inflation & Discretionary Margin Squeeze',
-                mechanisms: [
-                  'Landed cost of imported capital equipment, electronics & textiles spikes',
-                  'SAGB 10-year sovereign bond yields widen on sovereign risk premium',
-                  'Offshore earnings translation creates windfall cash flow for multinationals',
-                ],
-              }}
-              stage3={{
-                winners: ['Richemont (CFR) · Luxury Haven', 'BAT (BTI) · GBP Dividend', 'Naspers / Prosus (NPN/PRX)'],
-                losers: ['Mr Price (MRP) & Truworths (TRU)', 'Tiger Brands (TBS) & AVI'],
-                neutral: ['Telecoms (MTN, VOD) · Mixed FX'],
-              }}
-              netImpact={{
-                verdict: 'Rand Hedges Outperform | SA Domestic Cyclicals Underperform',
-                note: 'Dual-listed heavyweights cushion Top40 index while local retail de-rates',
-                cls: 'text-warn',
-              }}
+              key={id}
+              id={id}
+              expanded={openChannels.has(id)}
+              onToggle={() => toggleChannel(id)}
+              onOpenSector={onOpenSector}
+              {...props}
             />
+          ))}
+        </div>
+      )}
 
-            <ChannelPipelineCard
-              title="Safe Haven & Precious Metals Transmission"
-              evidence={havenEvidence}
-              subtitle="Global flight from fiat debasement & sovereign reserve asset bidding"
-              isActive={hasData && goldChg != null && goldChg > 1}
-              spotlightColor={hasData && goldChg != null && goldChg > 1 ? 'var(--color-bull-spotlight)' : undefined}
-              stage1={{
-                title: 'Gold & PGM Metal Basket',
-                valueStr: fmt(goldChg),
-                priceStr: formatPrice(goldPrc, 'gold'),
-                pct: goldChg ?? 0,
-                inv: false,
-                statusStr: !hasData ? 'STANDBY' : goldChg > 1 ? 'HAVEN BID ACTIVE' : 'STEADY',
-                statusCls: !hasData ? 'bg-bg-h text-tm border-bd' : goldChg > 1 ? 'bg-bull/15 text-bull border-bull/40' : 'bg-bg-h text-tm border-bd',
-                driver: 'Central bank accumulation, sovereign wealth haven bid & geopolitical hedging',
-              }}
-              stage2={{
-                vectorName: 'Mining Terms-of-Trade & Free Cash Flow Expansion',
-                mechanisms: [
-                  'Rand gold price tests all-time highs (dual haven spot + weak ZAR effect)',
-                  'Operating margins at deep-level mines surge above AISC breakeven points',
-                  'Mining royalty & corporate tax receipts bolster SA National Treasury buffer',
-                ],
-              }}
-              stage3={{
-                winners: ['Gold Fields (GFI) · Unhedged', 'AngloGold (ANG) · Tier-1', 'Harmony (HAR) · High Beta', 'Amplats (AMS) · PGM Bid'],
-                losers: [],
-                neutral: ['Impala Platinum (IMP)', 'Sibanye-Stillwater (SSW)'],
-              }}
-              netImpact={{
-                verdict: 'Strongly Bullish Precious Metals & JSE Mining Complex',
-                note: 'Direct monetary hedge protecting South African portfolios during regional war',
-                cls: 'text-bull',
-              }}
-            />
-
-            <ChannelPipelineCard
-              title="Global Discount Rate & Duration Compression"
-              evidence={ratesEvidence}
-              subtitle="US Treasury yield surge & international cost of equity expansion"
-              isActive={hasData && us10yChg != null && us10yChg > 1.5}
-              spotlightColor={hasData && us10yChg != null && us10yChg > 1.5 ? 'var(--color-bear-spotlight)' : undefined}
-              stage1={{
-                title: 'US 10-Year Bond Yield',
-                valueStr: fmt(us10yChg),
-                priceStr: formatPrice(us10yPrc, 'us10y'),
-                pct: us10yChg ?? 0,
-                inv: true,
-                statusStr: !hasData ? 'STANDBY' : us10yChg > 1.5 ? 'RATE SHOCK ACTIVE' : 'RANGE BOUND',
-                statusCls: !hasData ? 'bg-bg-h text-tm border-bd' : us10yChg > 1.5 ? 'bg-bear/15 text-bear border-bear/40' : 'bg-bg-h text-tm border-bd',
-                driver: `Global inflation term premium repricing · Source: ${us10ySrc}`,
-              }}
-              stage2={{
-                vectorName: 'Equity Valuation Multiple Contraction',
-                mechanisms: [
-                  'Global risk-free hurdle rate escalates, raising cost of capital across EMs',
-                  'Foreign allocators de-risk long-duration tech, high-P/E equities & bonds',
-                  'JSE Top40 trailing valuation multiples compress to match bond yields',
-                ],
-              }}
-              stage3={{
-                winners: ['Cash-Rich High-Yield Defensives', 'Short-Duration Value Exporters'],
-                losers: ['Listed Property / REITs (GRT, RDF)', 'High-Multiple Growth (CPI, PRX)'],
-                neutral: ['JSE Resource Majors'],
-              }}
-              netImpact={{
-                verdict: (us10yChg ?? 0) > 0 ? 'Multiple Contraction on Long-Duration SA Equities' : 'Discount Rate Easing: Valuation Tailwinds for EMs',
-                note: 'Higher global discount rates restrict equity multiples for capital importers',
-                cls: (us10yChg ?? 0) > 0 ? 'text-bear' : 'text-bull',
-              }}
-            />
-          </div>
-
-          {/* Brent slider simulator taking full width */}
-          <div className="w-full">
-            <BrentSlider liveBrent={assets.brent} stocks={stocks} />
-          </div>
+      {/* Tab 2: Scenario simulator */}
+      {activeTab === 'simulator' && (
+        <div className="animate-fadeUp">
+          <BrentSlider liveBrent={assets.brent} stocks={stocks} />
         </div>
       )}
 

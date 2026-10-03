@@ -223,7 +223,7 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
 
         <div className="flex flex-col justify-end pb-2">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-tm">Regime Assessment</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-tm">Regime</span>
             <span className={clsx('w-1 h-1 rounded-full', toneBg)} />
           </div>
           <div className={clsx('font-serif italic text-[26px] sm:text-[32px] leading-none tracking-[-0.01em]', toneText)}>
@@ -272,8 +272,8 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
         {/* Top drivers */}
         <div className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-3.5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10.5px] font-mono font-semibold uppercase tracking-[0.08em] text-tm">Top Transmission Drivers</span>
-            <span className="text-[9.5px] font-mono text-tx">{visibleDrivers.length} assets</span>
+            <span className="text-[10.5px] font-mono font-semibold uppercase tracking-[0.08em] text-tm">What is moving the score</span>
+            <span className="text-[9.5px] font-mono text-tx">{visibleDrivers.length} largest</span>
           </div>
           {visibleDrivers.length ? (
             <div className="flex flex-wrap gap-1.5 mt-1">
@@ -304,10 +304,10 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
         <div className="flex justify-between items-center text-[10.5px] font-mono text-tm uppercase tracking-[0.08em] mb-2">
           <span className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: toneHex }} />
-            Bipolar Risk Gauge
+            Where the score sits
           </span>
           <span className="text-tp font-medium font-mono">
-            Index: <span className={toneText}>{cis.total > 0 ? `+${cis.total}` : cis.total}</span> / ±100
+            Score: <span className={toneText}>{cis.total > 0 ? `+${cis.total}` : cis.total}</span> / ±100
           </span>
         </div>
 
@@ -379,12 +379,13 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
         <button
           type="button"
           onClick={() => setIsExpanded(e => !e)}
+          aria-expanded={isExpanded}
           className="flex items-center gap-2 min-h-9 px-4 py-1.5 text-[12px] font-medium text-ts hover:text-tp bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] hover:border-white/[0.15] rounded-full transition-all cursor-pointer select-none"
         >
           <svg className={clsx("w-3.5 h-3.5 transition-transform duration-300", isExpanded ? "rotate-180" : "")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
-          {isExpanded ? 'Hide analytical breakdown' : 'Explain this score & view playbook'}
+          {isExpanded ? 'Hide breakdown' : 'How is this score calculated? View breakdown & playbook'}
         </button>
       </div>
 

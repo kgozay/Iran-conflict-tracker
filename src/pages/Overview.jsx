@@ -32,7 +32,7 @@ function FetchPrompt({ onFetch }) {
 export default function Overview({
   assets, stocks, sectors, cis, alerts, timeframe,
   status, hasData, onFetch, cisChartData,
-  sparklines, sparkLoading, dataHealth,
+  sparklines, sparkLoading, dataHealth, onOpenSector,
 }) {
   const isLoading = status === 'loading';
 
@@ -58,23 +58,17 @@ export default function Overview({
         timeframe={timeframe}
       />
 
-      {/* Two-column grid */}
+      {/* Where the shock lands: watchlist on the left, alerts + sector breadth on the right */}
       <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-[18px] items-start">
-
-        {/* Left: Watchlist + Sector breadth */}
-        <div className="flex flex-col gap-[18px]">
-          <Watchlist
-            stocks={stocks}
-            timeframe={timeframe}
-            sectors={sectors}
-            sparklines={sparklines}
-          />
-          <HeatStrip sectors={sectors} timeframe={timeframe} />
-        </div>
-
-        {/* Right: Alerts */}
+        <Watchlist
+          stocks={stocks}
+          timeframe={timeframe}
+          sectors={sectors}
+          sparklines={sparklines}
+        />
         <div className="flex flex-col gap-[18px]">
           <AlertsFeed alerts={alerts} hasData={hasData} />
+          <HeatStrip sectors={sectors} onOpenSector={onOpenSector} />
         </div>
       </div>
 

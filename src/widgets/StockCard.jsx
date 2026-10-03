@@ -13,7 +13,7 @@ function Sparkline({ ticker, points }) {
   const id = `s_${ticker.replace(/[^a-z0-9]/gi, '_')}`;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Intraday price trend"
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Intraday price trend (today)"
       className="w-full block mt-2.5" style={{ height: 32 }}>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
@@ -41,20 +41,20 @@ function fmtP(p) {
   return p.toFixed(2);
 }
 
-export default function StockCard({ stock, sparkline }) {
-  const chg    = stock.changePct ?? null;
+export default function StockCard({ stock, sparkline, change, period = '1D' }) {
+  const chg    = change !== undefined ? change : (stock.changePct ?? null);
   const isUp   = (chg ?? 0) >= 0;
   const signal = getSignal(chg);
   const sigCls = SIGNAL_CLS[signal] ?? SIGNAL_CLS.NEUTRAL;
   const points = sparkline?.points?.filter(value => Number.isFinite(value));
 
   return (
-    <div className="glass rounded-[14px] p-[16px_20px] transition-all hover:opacity-90 hover:-translate-y-px">
+    <div className="glass rounded-[14px] p-[16px_20px] transition-all hover:-translate-y-px">
       {/* Ticker + live dot */}
       <div className="flex items-center justify-between mb-1">
-        <span className="font-mono text-[11px] text-ts">{stock.display}</span>
+        <span className="font-mono text-[11.5px] font-semibold text-ts">{stock.display} <span className="font-sans font-normal text-tm">· {stock.sector}</span></span>
         {stock.isLive && (
-          <span className="flex items-center gap-[4px] font-mono text-[9px] text-bull">
+          <span className="flex items-center gap-[4px] font-mono text-[10px] text-bull">
             <span className="w-[5px] h-[5px] rounded-full bg-bull inline-block" />
             live
           </span>
@@ -70,8 +70,11 @@ export default function StockCard({ stock, sparkline }) {
       <div className="flex items-baseline justify-between">
         <div className="font-serif text-[28px] text-tp leading-none">{fmtP(stock.price)}</div>
         {chg != null && (
-          <div className={clsx('font-mono text-[12px] font-semibold', isUp ? 'text-bull' : 'text-bear')}>
-            {isUp ? '+' : ''}{chg.toFixed(2)}%
+          <div className="text-right">
+            <div className={clsx('font-mono text-[13px] font-semibold', isUp ? 'text-bull' : 'text-bear')}>
+              {isUp ? '+' : ''}{chg.toFixed(2)}%
+            </div>
+            <div className="font-mono text-[10px] text-tm">{period}</div>
           </div>
         )}
       </div>
@@ -80,8 +83,8 @@ export default function StockCard({ stock, sparkline }) {
       {points?.length >= 3
         ? <Sparkline ticker={stock.ticker} points={points} />
         : (
-          <div className="h-8 mt-2.5 flex items-center justify-center border border-dashed border-bd rounded-lg">
-            <span className="font-mono text-[9px] text-tm">Intraday chart unavailable</span>
+          <div className="h-8 mt-2.5 flex items-center">
+            <span className="text-[11px] text-tx">No intraday chart</span>
           </div>
         )
       }
@@ -89,18 +92,18 @@ export default function StockCard({ stock, sparkline }) {
       {/* Metadata strip */}
       <div className="grid grid-cols-3 gap-1 mt-3 pt-3 border-t border-bd">
         <div className="text-center">
-          <div className="font-mono text-[9px] text-tm uppercase tracking-[0.06em]">Mkt cap</div>
-          <div className="font-mono text-[10px] text-ts mt-0.5">{stock.mktcap ?? '—'}</div>
+          <div className="font-mono text-[10px] text-tm uppercase tracking-[0.06em]">Mkt cap</div>
+          <div className="font-mono text-[11px] text-ts mt-0.5">{stock.mktcap ?? '—'}</div>
         </div>
         <div className="text-center">
-          <div className="font-mono text-[9px] text-tm uppercase tracking-[0.06em]">P/E</div>
-          <div className="font-mono text-[10px] text-ts mt-0.5">{stock.pe != null ? `${stock.pe}x` : '—'}</div>
+          <div className="font-mono text-[10px] text-tm uppercase tracking-[0.06em]">P/E</div>
+          <div className="font-mono text-[11px] text-ts mt-0.5">{stock.pe != null ? `${stock.pe}x` : '—'}</div>
         </div>
         <div className="text-center">
-          <div className="font-mono text-[9px] text-tm uppercase tracking-[0.06em]">Signal</div>
+          <div className="font-mono text-[10px] text-tm uppercase tracking-[0.06em]">Signal</div>
           <div className="mt-0.5 flex justify-center">
             {signal
-              ? <span className={clsx('font-mono text-[8px] px-1.5 py-[2px] rounded-full border', sigCls)}>{signal}</span>
+              ? <span className={clsx('font-mono text-[9.5px] px-1.5 py-[2px] rounded-full border whitespace-nowrap', sigCls)}>{signal}</span>
               : <span className="font-mono text-[9px] text-tm">—</span>
             }
           </div>

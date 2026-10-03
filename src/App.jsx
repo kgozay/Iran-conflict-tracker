@@ -69,6 +69,7 @@ const EMPTY_CIS = {
 export default function App() {
   const [page,        setPage]       = useState('overview');
   const [timeframe,   setTimeframe]  = useState('1D');
+  const [drillSector, setDrillSector] = useState('All');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => localStorage.getItem('jse_sidebar_collapsed') === 'true'
@@ -90,6 +91,13 @@ export default function App() {
       setPage(newPage);
     }
   }, []);
+
+  /* Jump from any page straight into one sector on the drilldown page */
+  const openSector = useCallback((sector) => {
+    setDrillSector(sector);
+    navigateTo('drilldown');
+    requestAnimationFrame(() => document.getElementById('main-content')?.scrollTo({ top: 0 }));
+  }, [navigateTo]);
 
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const toggleSidebar = useCallback(() => {
@@ -197,6 +205,9 @@ export default function App() {
     onFetch: handleFetch,
     sparklines, sparkLoading,
     cisChartData,
+    onOpenSector: openSector,
+    onNavigate: navigateTo,
+    drillSector, setDrillSector,
   };
 
   return (

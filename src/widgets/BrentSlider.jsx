@@ -113,6 +113,9 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
   return (
     <Card>
       <CardHeader title="Multi-Asset Scenario Simulator" kicker="MACRO TRANSMISSION" badge="LIVE FACTOR MODEL" badgeVariant="warn" />
+      <p className="-mt-2 mb-5 text-[13px] text-ts max-w-[70ch]">
+        Drag the sliders or pick a preset to see how a move in oil, the rand or gold would be expected to flow through to JSE sectors and the watchlist.
+      </p>
 
       {/* Sliders Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-5">
@@ -122,19 +125,20 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
             <span className="text-[11.5px] font-semibold text-tp tracking-[0.02em]">Brent crude</span>
             <div className="text-right">
               <span className="font-mono text-[16px] leading-none text-warn font-bold">${brent}</span>
-              <span className="font-mono text-[9px] text-tm ml-0.5">/bbl</span>
+              <span className="font-mono text-[10.5px] text-tm ml-0.5">/bbl</span>
             </div>
           </div>
           <input
             type="range" min={55} max={145} step={1}
             value={brent}
+            aria-label="Brent crude price, US dollars per barrel"
             onChange={e => setBrent(+e.target.value)}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
             style={{
               background: `linear-gradient(to right, var(--color-warn) 0%, var(--color-warn) ${((brent-55)/90)*100}%, var(--color-bg-h) ${((brent-55)/90)*100}%, var(--color-bg-h) 100%)`,
             }}
           />
-          <div className="flex justify-between font-mono text-[8px] text-tm mt-1">
+          <div className="flex justify-between font-mono text-[10px] text-tm mt-1">
             <span>$55 FLOOR</span>
             <span>$75 BASE</span>
             <span>$145 CRISIS</span>
@@ -154,13 +158,14 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
           <input
             type="range" min={-15} max={15} step={0.5}
             value={zar}
+            aria-label="Rand depreciation shock, percent"
             onChange={e => setZar(+e.target.value)}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
             style={{
               background: `linear-gradient(to right, var(--color-bear) 0%, var(--color-bear) ${((zar-(-15))/30)*100}%, var(--color-bg-h) ${((zar-(-15))/30)*100}%, var(--color-bg-h) 100%)`,
             }}
           />
-          <div className="flex justify-between font-mono text-[8px] text-tm mt-1">
+          <div className="flex justify-between font-mono text-[10px] text-tm mt-1">
             <span className="text-bull">RAND STRENGTH (-15%)</span>
             <span>STABLE (0%)</span>
             <span className="text-bear">RAND WEAKNESS (+15%)</span>
@@ -180,13 +185,14 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
           <input
             type="range" min={-20} max={20} step={0.5}
             value={gold}
+            aria-label="Gold price shock, percent"
             onChange={e => setGold(+e.target.value)}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
             style={{
               background: `linear-gradient(to right, var(--color-bull) 0%, var(--color-bull) ${((gold-(-20))/40)*100}%, var(--color-bg-h) ${((gold-(-20))/40)*100}%, var(--color-bg-h) 100%)`,
             }}
           />
-          <div className="flex justify-between font-mono text-[8px] text-tm mt-1">
+          <div className="flex justify-between font-mono text-[10px] text-tm mt-1">
             <span className="text-bear">GOLD SELL-OFF (-20%)</span>
             <span>STABLE (0%)</span>
             <span className="text-bull">GOLD HAVEN (+20%)</span>
@@ -204,8 +210,8 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
           { label: 'Systemic Crisis (Black Swan)', b: 135, z: 15, g: 20, cls: 'border-bear text-bear bg-bear/15 hover:bg-bear/20' },
           livePrice && { label: 'Live Brent Reset', b: Math.round(livePrice), z: 0, g: 0, cls: 'border-ts text-ts hover:bg-bg-h' },
         ].filter(Boolean).map(s => (
-          <button key={s.label} onClick={() => applyPreset(s.b, s.z, s.g)}
-            className={clsx('px-3 py-1 font-mono text-[9px] rounded-lg border transition-all cursor-pointer font-medium hover:-translate-y-px', s.cls)}>
+          <button key={s.label} type="button" onClick={() => applyPreset(s.b, s.z, s.g)}
+            className={clsx('min-h-9 px-3 py-1 font-mono text-[11px] rounded-lg border transition-all cursor-pointer font-medium hover:-translate-y-px', s.cls)}>
             {s.label}
           </button>
         ))}
@@ -220,15 +226,15 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
             <table className="w-full border-collapse font-mono text-[10px]">
               <thead>
                 <tr className="border-b border-bd">
-                  <th className="text-left text-[8px] tracking-[1px] text-tm py-1.5 px-2">SECTOR</th>
-                  <th className="text-right text-[8px] tracking-[1px] text-tm py-1.5 px-2">EST. IMPACT</th>
-                  <th className="text-right text-[8px] tracking-[1px] text-tm py-1.5 px-2">DIRECTIONAL EXPOSURE</th>
+                  <th className="text-left text-[10px] tracking-[1px] text-tm py-1.5 px-2">SECTOR</th>
+                  <th className="text-right text-[10px] tracking-[1px] text-tm py-1.5 px-2">EST. IMPACT</th>
+                  <th className="text-right text-[10px] tracking-[1px] text-tm py-1.5 px-2">DIRECTIONAL EXPOSURE</th>
                 </tr>
               </thead>
               <tbody>
                 {scenarios.map(s => (
                   <tr key={s.name} className="hover:bg-bg-h transition-colors border-b border-bd">
-                    <td className="py-1.5 px-2 text-ts text-[9.5px]">{s.name}</td>
+                    <td className="py-1.5 px-2 text-ts text-[11px]">{s.name}</td>
                     <td className={clsx('py-1.5 px-2 text-right font-bold text-[10px]', getCellCls(s.pct))}>
                       {s.pct >= 0 ? '+' : ''}{s.pct}%
                     </td>
@@ -260,7 +266,7 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
                 {/* Average watchlist move */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-[9px] text-tm uppercase font-semibold">Average Watchlist Delta</div>
+                    <div className="text-[10.5px] text-tm uppercase font-semibold">Average Watchlist Delta</div>
                     <div className="text-[11px] text-ts mt-0.5">Average simulated shift across JSE universe</div>
                   </div>
                   <div className={clsx(
@@ -275,10 +281,10 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
                 <div className="grid grid-cols-2 gap-4 pt-3 border-t border-bd">
                   {/* Gainers */}
                   <div>
-                    <div className="text-[8px] text-bull font-semibold tracking-[0.05em] uppercase mb-2">Top Positive Movers</div>
+                    <div className="text-[10px] text-bull font-semibold tracking-[0.05em] uppercase mb-2">Top Positive Movers</div>
                     <div className="flex flex-col gap-1.5">
                       {topGainers.length === 0 ? (
-                        <div className="text-[9.5px] text-tm font-mono">None</div>
+                        <div className="text-[11px] text-tm font-mono">None</div>
                       ) : (
                         topGainers.map(s => (
                           <div key={s.ticker} className="flex justify-between items-center text-[10.5px] font-mono">
@@ -292,10 +298,10 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
 
                   {/* Losers */}
                   <div>
-                    <div className="text-[8px] text-bear font-semibold tracking-[0.05em] uppercase mb-2">Top Negative Movers</div>
+                    <div className="text-[10px] text-bear font-semibold tracking-[0.05em] uppercase mb-2">Top Negative Movers</div>
                     <div className="flex flex-col gap-1.5">
                       {topLosers.length === 0 ? (
-                        <div className="text-[9.5px] text-tm font-mono">None</div>
+                        <div className="text-[11px] text-tm font-mono">None</div>
                       ) : (
                         topLosers.map(s => (
                           <div key={s.ticker} className="flex justify-between items-center text-[10.5px] font-mono">
@@ -311,13 +317,13 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
             )}
           </div>
 
-          <div className="text-tm text-[8.5px] font-mono leading-relaxed mt-4">
+          <div className="text-tm text-[10.5px] font-mono leading-relaxed mt-4">
             *Linear multi-factor model scales JSE ticker moves to brent delta ({deltaBrent>=0?'+':''}${deltaBrent}) and ZAR ({zar>=0?'+':''}{zar}%) and Gold ({gold>=0?'+':''}{gold}%) shocks.
           </div>
         </div>
       </div>
 
-      <div className="font-mono text-[8px] text-tm mt-3.5 pt-2 border-t border-bd flex justify-between">
+      <div className="font-mono text-[10px] text-tm mt-3.5 pt-2 border-t border-bd flex justify-between">
         <span>Regression betas calculated across 6 major geopolitical shocks (1990–2024).</span>
         <span>Indicative only.</span>
       </div>
