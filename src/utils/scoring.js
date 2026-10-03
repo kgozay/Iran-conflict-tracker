@@ -30,7 +30,7 @@ export function computeJSEScore({ top40Chg, minersChg, energyChg, banksChg, reta
     ((valid(industrialsChg) ? industrialsChg : 0) * 10);
   const score = clamp(Math.round(weighted / 10));
   const parts = [
-    contribution('JSE market avg', top40Chg, (valid(top40Chg) ? top40Chg : 0) * 2.5, 'Broad equal-weight market direction.'),
+    contribution('JSE market', top40Chg, (valid(top40Chg) ? top40Chg : 0) * 2.5, 'JSE Top 40 direction (watchlist average if the Top 40 quote is unavailable).'),
     contribution('Gold miners', minersChg, (valid(minersChg) ? minersChg : 0) * 2.0, 'Haven/commodity beta channel.'),
     contribution('Energy', energyChg, (valid(energyChg) ? energyChg : 0) * 1.0, 'Oil/coal earnings channel.'),
     contribution('Banks', banksChg, (valid(banksChg) ? banksChg : 0) * 2.0, 'Domestic credit and rates channel.'),

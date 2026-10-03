@@ -50,7 +50,7 @@ function deriveSectors(stocks) {
 
 const ALL_SPARK_SYMBOLS = [
   'BZ=F','GC=F','PL=F','PA=F','USDZAR=X','MTF=F','^TNX',
-  'GFI.JO','ANG.JO','IMP.JO','AMS.JO','SOL.JO',
+  'GFI.JO','ANG.JO','IMP.JO','VAL.JO','SOL.JO',
   'FSR.JO','SBK.JO','CPI.JO','SHP.JO','NPN.JO',
   'PRX.JO','CFR.JO','AGL.JO','MTN.JO','SSW.JO',
 ];
@@ -160,7 +160,8 @@ export default function App() {
     usdZarChg:      assets.usdZar?.changePct     ?? 0,
     goldChg:        assets.gold?.changePct       ?? 0,
     us10yChg:       assets.us10y?.changePct ?? 0,
-    top40Chg:       sectors.top40?.chg           ?? 0,
+    // Prefer the real Top 40 (Satrix 40 ETF); fall back to the equal-weight watchlist average.
+    top40Chg:       assets.jseTop40?.isLive ? assets.jseTop40.changePct : (sectors.top40?.chg ?? 0),
     minersChg:      sectors['Gold Miners']?.chg  ?? 0,
     energyChg:      sectors.Energy?.chg          ?? 0,
     banksChg:       sectors.Banks?.chg           ?? 0,

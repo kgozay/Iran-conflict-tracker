@@ -30,7 +30,7 @@ Its primary job is to establish the current conflict regime immediately, quantif
 | [`src/hooks/useMarketData.js`](./src/hooks/useMarketData.js) | Central data engine; orchestrates multi-tier caching (`jse_cw_v7_cache`), parallel fetching across serverless routes, and coverage calculation. |
 | [`src/utils/scoring.js`](./src/utils/scoring.js) | Mathematical definition of the Conflict Impact Score (CIS), macro weights, sector baskets, and 11 confirmation signal triggers. |
 | [`src/utils/alerts.js`](./src/utils/alerts.js) | Automated market alert generation and threshold severity dots for macro KPIs. |
-| [`src/data/stocks.js`](./src/data/stocks.js) | Static definitions of the 7 macro commodities/yields and 25 JSE equity instruments across 7 sectors with sensitivity tags. |
+| [`src/data/stocks.js`](./src/data/stocks.js) | Static definitions of the 7 macro commodities/yields, the Satrix 40 Top 40 benchmark, and 41 JSE equities across 11 sectors with sensitivity tags. |
 | [`src/data/conflictEvents.js`](./src/data/conflictEvents.js) | Chronological database of Middle East conflict escalations mapped onto historical regime charts. |
 | [`src/widgets/RegimeBanner.jsx`](./src/widgets/RegimeBanner.jsx) | **The Lead Dominant Feature**: Multi-zone bipolar regime gauge, regime chips, driver attribution, and strategy playbook. |
 | [`src/widgets/KpiGrid.jsx`](./src/widgets/KpiGrid.jsx) | Primary macro KPI cards (Brent, USD/ZAR, Gold, US 10Y) with live intraday sparklines and read-through analysis. |
@@ -102,13 +102,18 @@ The application leads uncompromisingly with the **Conflict Impact Score (CIS) & 
   - `USDZAR=X` — USD/ZAR (`ZAR`)
   - `MTF=F` — Coal Futures (`$/t`)
   - `^TNX` — US 10-Year Bond Yield (`%`)
+  - `STX40.JO` — Satrix 40 ETF, the JSE Top 40 benchmark used as the CIS market input
 - **JSE Sectors & Key Tickers**:
-  - **Gold Miners** (`Haven Beta`): GFI, ANG, DRD, PAN
-  - **PGMs** (`PGM Beta`): IMP, AMS, NPH, SSW
+  - **Gold Miners** (`Haven Beta`): GFI, ANG, DRD, HAR, PAN
+  - **PGMs** (`PGM Beta`): IMP, VAL (Valterra, formerly Amplats/AMS), NPH, SSW
   - **Energy** (`Oil Tailwind`, `Coal Export`): SOL, EXX, TGA
   - **Banks** (`Domestic / Rates`): FSR, SBK, CPI, ABG, NED
-  - **Retailers** (`Domestic Cyclical / Defensive`): SHP, WHL, PPH, TFG, MRP, CLS, DCP
-  - **Industrials & Rand Hedges** (`Rand Hedge / Global Luxury / Industrial`): NPN, PRX, CFR, AGL, BHG, BVT, BAW, RLO
+  - **Retailers** (`Domestic Cyclical / Defensive`): SHP, WHL, PPH, TFG, TRU, MRP, CLS, DCP
+  - **Consumer Staples** (`Input Costs`, `Rand Hedge / Dividend`): TBS, AVI, BTI
+  - **Insurers** (`Domestic / Rates`): SLM, DSY
+  - **Property** (`Rates / Yield`): GRT, RDF
+  - **Industrials** (`Rand Hedge / Global Luxury / Industrial`): NPN, PRX, CFR, BVT, RLO (Barloworld delisted Jan 2026)
+  - **Mining** (`Global Commodity`): AGL, BHG
   - **Telecoms** (`EM FX Exposure`, `Defensive Yield`): MTN, VOD
 
 ## Visual Identity & Design System Tokens

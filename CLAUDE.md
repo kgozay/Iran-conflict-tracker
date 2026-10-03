@@ -32,7 +32,7 @@ There is no test suite. Verify logic changes manually via `vercel dev` or agains
 
 The **Conflict Impact Score (CIS)** is a heuristic in the range ±100:
 - **Macro score** (40%): Brent, USD/ZAR, Gold, US 10Y yield — directional, magnitude-weighted.
-- **JSE score** (35%): Weighted basket of sector averages (Top40 25%, Miners 20%, Banks 20%, Retailers 15%, Energy 10%, Industrials 10%), divided by 10.
+- **JSE score** (35%): Weighted basket of sector averages (Top40 25%, Miners 20%, Banks 20%, Retailers 15%, Energy 10%, Industrials 10%), divided by 10. `top40Chg` is the Satrix 40 ETF (`STX40.JO`, asset key `jseTop40`) when live, else the equal-weight watchlist average.
 - **Confirmation score** (25%): Binary bull/bear signal tests, each ±16 pts.
 
 Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (≤ 15), `MILD BULLISH` (≤ 40), `BULLISH RELIEF` (> 40).
@@ -53,7 +53,7 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
 
 ### Sector derivation
 
-`deriveSectors()` in `App.jsx` computes live sector averages from `stocks[]` (equal-weight, live names only). The `sectors.top40` key holds the overall JSE market average (not the actual Top40 index). The `rel` field on each sector is `sector.chg - mktAvg`.
+`deriveSectors()` in `App.jsx` computes live sector averages from `stocks[]` (equal-weight, live names only). The `sectors.top40` key holds the equal-weight watchlist average (the real Top 40 is `assets.jseTop40`). Sector lists in the UI (watchlist filters, drilldown tabs, sector breadth) derive from `SECTOR_ORDER` in `src/data/stocks.js`, so adding a sector there is enough. The `rel` field on each sector is `sector.chg - mktAvg`.
 
 ### Caching
 

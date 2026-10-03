@@ -31,6 +31,7 @@ function getImpactLine(assetKey, changePct) {
     platinum:  up ? 'PGM support: helps diversified miners and PGM names' : 'PGM softness: drag for platinum-linked shares',
     palladium: up ? 'Palladium support: watch PGM beta and auto demand read-through' : 'Palladium softness: weak read-through for PGM exposure',
     coal:      up ? 'Coal support: positive for coal/energy-linked earnings' : 'Coal weakness: weaker energy export tailwind',
+    jseTop40:  up ? 'JSE Top 40 higher: broad market risk appetite' : 'JSE Top 40 lower: broad de-risking in SA equities',
     us10y:     up ? 'Higher global discount rate: pressure on risk assets and EM funding' : 'Lower global discount rate: support for risk assets and EM flows',
   };
   return map[assetKey] || (up ? 'Positive market read-through' : 'Negative market read-through');
@@ -171,14 +172,14 @@ function KpiCard({ assetKey, asset, timeframe, sparklineData, sparkLoading }) {
   );
 }
 
-/* ── Secondary KPI strip (Platinum · Palladium · Coal) ──────────────── */
+/* ── Secondary KPI strip (Top 40 · Platinum · Palladium · Coal) ─────── */
 export function SecondaryKpiStrip({ assets, timeframe = '1D' }) {
-  const keys = ['platinum', 'palladium', 'coal'];
+  const keys = ['jseTop40', 'platinum', 'palladium', 'coal'];
   const present = keys.filter(k => assets?.[k]);
   if (!present.length) return null;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 glass rounded-xl overflow-hidden mb-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 glass rounded-xl overflow-hidden mb-4">
       {present.map((k, i) => {
         const asset = assets[k];
         const changePct = timeframe === '5D' ? asset.changePct5D

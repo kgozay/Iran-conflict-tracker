@@ -8,7 +8,8 @@ export function computeAlerts({ assets, sectors, stocks }) {
   const usdZar = assets.usdZar?.changePct  ?? 0;
   const gold   = assets.gold?.changePct    ?? 0;
   const us10y  = assets.us10y?.changePct ?? null;
-  const top40  = sectors.top40?.chg        ?? 0;
+  // Same market reading as the CIS: real Top 40 when available, else the watchlist average.
+  const top40  = assets.jseTop40?.isLive ? assets.jseTop40.changePct : (sectors.top40?.chg ?? 0);
   const banks  = sectors.Banks?.chg        ?? 0;
   const retail = sectors.Retailers?.chg    ?? 0;
   const miners = sectors['Gold Miners']?.chg ?? 0;
@@ -62,10 +63,10 @@ export function computeAlerts({ assets, sectors, stocks }) {
 
   if (top40 < -2)
     alerts.push({ id:'top40-red', lvl:'red', tag:'in', category:'DOMESTIC EQUITY', label:'MARKET SELLOFF',
-      text:`JSE market avg ${top40.toFixed(1)}% — red threshold (<-2%) breached.`, time:now });
+      text:`JSE market ${top40.toFixed(1)}% — red threshold (<-2%) breached.`, time:now });
   else if (top40 < -1)
     alerts.push({ id:'top40-amber', lvl:'amber', tag:'in', category:'DOMESTIC EQUITY', label:'MARKET AMBER',
-      text:`JSE market avg ${top40.toFixed(1)}% — amber threshold (<-1%) triggered.`, time:now });
+      text:`JSE market ${top40.toFixed(1)}% — amber threshold (<-1%) triggered.`, time:now });
 
   if (energy > 4)
     alerts.push({ id:'energy-hot', lvl:'green', tag:'ms', category:'ENERGY TAILWIND', label:'ENERGY RED-HOT',

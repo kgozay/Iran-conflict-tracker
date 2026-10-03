@@ -70,6 +70,43 @@ function changeColor(pct, inv) {
   return (pct >= 0) !== inv ? 'text-bull' : 'text-bear';
 }
 
+/* Live move for a stage-3 chip: tickers are read from the chip's parentheses,
+ * e.g. "Banks (SBK, FSR, NED, ABG) · NII Stress", and averaged over tracked names. */
+function chipMove(label, stocks) {
+  const tickers = [...label.matchAll(/\(([^)]+)\)/g)]
+    .flatMap(m => m[1].split(/[\s,/]+/))
+    .filter(Boolean);
+  const matched = (stocks ?? []).filter(st =>
+    tickers.includes(st.display) && st.isLive && Number.isFinite(st.changePct)
+  );
+  if (!matched.length) return null;
+  const avg = matched.reduce((a, st) => a + st.changePct, 0) / matched.length;
+  return {
+    avg,
+    detail: matched.map(st => `${st.display} ${st.changePct >= 0 ? '+' : ''}${st.changePct.toFixed(2)}%`).join(' · '),
+  };
+}
+
+function ExposureChip({ label, stocks, cls }) {
+  const move = chipMove(label, stocks);
+  return (
+    <span
+      className={clsx('inline-flex items-center gap-1.5 text-[10.5px] font-mono font-medium px-1.5 py-0.5 rounded border', cls)}
+      title={move ? `Live 1D: ${move.detail}` : undefined}
+    >
+      {label}
+      {move && (
+        <span className={clsx(
+          'font-semibold pl-1.5 border-l border-bd-x',
+          move.avg >= 0 ? 'text-bull' : 'text-bear',
+        )}>
+          {move.avg >= 0 ? '+' : ''}{move.avg.toFixed(2)}%
+        </span>
+      )}
+    </span>
+  );
+}
+
 /* ── SVG Pipeline Connector ─────────────────────────────────────────── */
 function PipelineConnector({ active, label }) {
   return (
@@ -117,6 +154,7 @@ function ChannelPipelineCard({
   expanded,
   onToggle,
   onOpenSector,
+  stocks,
   title,
   subtitle,
   isActive,
@@ -261,9 +299,7 @@ function ChannelPipelineCard({
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {stage3.winners.map((stk, si) => (
-                    <span key={si} className="text-[10.5px] font-mono font-medium px-1.5 py-0.5 rounded bg-bull/10 text-bull border border-bull/25">
-                      {stk}
-                    </span>
+                    <ExposureChip key={si} label={stk} stocks={stocks} cls="bg-bull/10 text-bull border-bull/25" />
                   ))}
                 </div>
               </div>
@@ -275,9 +311,7 @@ function ChannelPipelineCard({
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {stage3.losers.map((stk, si) => (
-                    <span key={si} className="text-[10.5px] font-mono font-medium px-1.5 py-0.5 rounded bg-bear/10 text-bear border border-bear/25">
-                      {stk}
-                    </span>
+                    <ExposureChip key={si} label={stk} stocks={stocks} cls="bg-bear/10 text-bear border-bear/25" />
                   ))}
                 </div>
               </div>
@@ -289,9 +323,7 @@ function ChannelPipelineCard({
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {stage3.neutral.map((stk, si) => (
-                    <span key={si} className="text-[10.5px] font-mono font-medium px-1.5 py-0.5 rounded bg-bg-h text-ts border border-bd">
-                      {stk}
-                    </span>
+                    <ExposureChip key={si} label={stk} stocks={stocks} cls="bg-bg-h text-ts border-bd" />
                   ))}
                 </div>
               </div>
@@ -465,7 +497,7 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
     { sector: 'Gold Miners', direction: 1 }, { sector: 'PGMs', direction: 1 },
   ]);
   const ratesEvidence = getChannelEvidence(us10yChg, 1.5, sectors, [
-    { sector: 'Banks', direction: -1 }, { sector: 'Retailers', direction: -1 }, { sector: 'Industrials', direction: -1 },
+    { sector: 'Banks', direction: -1 }, { sector: 'Property', direction: -1 }, { sector: 'Retailers', direction: -1 }, { sector: 'Industrials', direction: -1 },
   ]);
 
   const fmt = v => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : '—';
@@ -545,7 +577,7 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
       },
       stage3: {
           winners: ['Richemont (CFR) · Luxury Haven', 'BAT (BTI) · GBP Dividend', 'Naspers / Prosus (NPN/PRX)'],
-          losers: ['Mr Price (MRP) & Truworths (TRU)', 'Tiger Brands (TBS) & AVI'],
+          losers: ['Mr Price (MRP) & Truworths (TRU)', 'Tiger Brands & AVI (TBS, AVI)'],
           neutral: ['Telecoms (MTN, VOD) · Mixed FX'],
       },
       netImpact: {
@@ -584,7 +616,7 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
           ],
       },
       stage3: {
-          winners: ['Gold Fields (GFI) · Unhedged', 'AngloGold (ANG) · Tier-1', 'Harmony (HAR) · High Beta', 'Amplats (AMS) · PGM Bid'],
+          winners: ['Gold Fields (GFI) · Unhedged', 'AngloGold (ANG) · Tier-1', 'Harmony (HAR) · High Beta', 'Valterra (VAL) · PGM Bid'],
           losers: [],
           neutral: ['Impala Platinum (IMP)', 'Sibanye-Stillwater (SSW)'],
       },
@@ -756,6 +788,7 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
               expanded={openChannels.has(id)}
               onToggle={() => toggleChannel(id)}
               onOpenSector={onOpenSector}
+              stocks={stocks}
               {...props}
             />
           ))}

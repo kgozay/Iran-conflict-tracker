@@ -6,9 +6,10 @@ import {
 import clsx from 'clsx';
 import { Card, CardHeader } from '../widgets/Card.jsx';
 import StockCard from '../widgets/StockCard.jsx';
+import { SECTOR_ORDER } from '../data/stocks.js';
 import { CountUp, SpotlightCard } from '../widgets/Effects.jsx';
 
-const SECTOR_TABS = ['All','Gold Miners','PGMs','Energy','Banks','Retailers','Industrials','Mining','Telecoms'];
+const SECTOR_TABS = ['All', ...SECTOR_ORDER];
 
 const SECTOR_THESES = {
   All: 'Compare resource and energy names with domestic cyclicals to see which parts of the watchlist are absorbing the macro move.',
@@ -17,6 +18,9 @@ const SECTOR_THESES = {
   Energy: 'Oil and coal prices can support revenue, while input costs and company-specific exposures can offset that benefit.',
   Banks: 'Funding conditions, credit demand and domestic growth are useful checks on an oil or rates shock.',
   Retailers: 'Imported costs and household spending are the main channels to watch; individual chains have different product and currency mixes.',
+  'Consumer Staples': 'Food producers carry fuel, grain and packaging input costs; BAT earns offshore and behaves more like a rand hedge.',
+  Insurers: 'Bond yields drive investment returns and embedded values, while rand weakness and slower growth weigh on new business.',
+  Property: 'Listed property is the most rate-sensitive group: higher yields raise funding costs and compress valuations.',
   Industrials: 'Separate offshore earners from domestic demand exposures before reading the aggregate as one macro bet.',
   Mining: 'Commodity mix and USD revenue determine how much each diversified miner benefits from rand weakness.',
   Telecoms: 'Currency exposure, consumer demand and dividend expectations can produce different outcomes for MTN and Vodacom.',
@@ -247,6 +251,8 @@ export default function SectorDrilldown({
                     height={chartData.length > 12 ? 40 : 22}
                   />
                   <YAxis
+                    // Always include zero so all-negative or all-positive sectors still bar from the baseline
+                    domain={[min => Math.min(0, min), max => Math.max(0, max)]}
                     tickFormatter={v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`}
                     tick={{ fontFamily: 'JetBrains Mono', fontSize: 10, fill: 'var(--color-ts)' }}
                     axisLine={false} tickLine={false}
@@ -334,6 +340,7 @@ export default function SectorDrilldown({
             ))}
           </div>
         )}
+        <p className="text-[11.5px] text-tm m-0">* Market cap and P/E are static reference figures, not live data, and may be out of date.</p>
       </section>
     </div>
   );

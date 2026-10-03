@@ -1,6 +1,6 @@
 import { ALL_YAHOO_SYMBOLS } from '../data/stocks.js';
 
-const MACRO_KEYS = ['brent','usdZar','gold','platinum','palladium','coal','us10y'];
+const MACRO_KEYS = ['brent','usdZar','gold','platinum','palladium','coal','us10y','jseTop40'];
 
 function getJseSession(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-ZA', {

@@ -68,7 +68,7 @@ export default function Overview({
         />
         <div className="flex flex-col gap-[18px]">
           <AlertsFeed alerts={alerts} hasData={hasData} />
-          <HeatStrip sectors={sectors} onOpenSector={onOpenSector} />
+          <HeatStrip sectors={sectors} assets={assets} onOpenSector={onOpenSector} />
         </div>
       </div>
 

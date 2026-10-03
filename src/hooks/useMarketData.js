@@ -48,6 +48,7 @@ function applyQuotes(quotes, baseAssets, baseStocks) {
     'USDZAR=X': 'usdZar',
     'MTF=F':    'coal',
     '^TNX':     'us10y',
+    'STX40.JO': 'jseTop40',
   };
 
   const assets = { ...baseAssets };
@@ -91,6 +92,7 @@ function applyHistory(history, assets, stocks) {
     'USDZAR=X': 'usdZar',
     'MTF=F':    'coal',
     '^TNX':     'us10y',
+    'STX40.JO': 'jseTop40',
   };
 
   const nextAssets = { ...assets };

@@ -2,10 +2,11 @@ import React, { useState, useMemo } from 'react';
 import clsx from 'clsx';
 import { Card } from './Card.jsx';
 import { getSignal, SIGNAL_CLS } from '../utils/signals.js';
+import { SECTOR_ORDER } from '../data/stocks.js';
 import { exportWatchlistCSV } from '../utils/export.js';
 import { CheckIcon, DownloadIcon } from '../components/Icons.jsx';
 
-const SECTOR_FILTERS = ['ALL','Banks','Retailers','Gold Miners','PGMs','Energy','Industrials','Mining','Telecoms'];
+const SECTOR_FILTERS = ['ALL', ...SECTOR_ORDER];
 
 function fmtP(p) {
   if (p == null) return '—';
@@ -128,7 +129,7 @@ export default function Watchlist({ stocks, timeframe = '1D', sparklines }) {
                 f === filter ? 'text-ink bg-paper' : 'text-ts hover:text-tp',
               )}
               style={f === filter ? { color: 'var(--color-ink)' } : {}}>
-              {f === 'ALL' ? 'All' : f === 'Gold Miners' ? 'Gold' : f}
+              {f === 'ALL' ? 'All' : f === 'Gold Miners' ? 'Gold' : f === 'Consumer Staples' ? 'Staples' : f}
             </button>
           ))}
           <button type="button" onClick={handleCsv}

@@ -1,17 +1,11 @@
 import React from 'react';
 import clsx from 'clsx';
 import { Card } from './Card.jsx';
+import { SECTOR_ORDER } from '../data/stocks.js';
 
 const SECTOR_ROWS = [
-  { key: 'top40',        label: 'Watchlist avg', isMkt: true  },
-  { key: 'Gold Miners',  label: 'Gold Miners',   isMkt: false },
-  { key: 'PGMs',         label: 'PGMs',          isMkt: false },
-  { key: 'Energy',       label: 'Energy',        isMkt: false },
-  { key: 'Banks',        label: 'Banks',         isMkt: false },
-  { key: 'Retailers',    label: 'Retailers',     isMkt: false },
-  { key: 'Industrials',  label: 'Industrials',   isMkt: false },
-  { key: 'Mining',       label: 'Mining',        isMkt: false },
-  { key: 'Telecoms',     label: 'Telecoms',      isMkt: false },
+  { key: 'top40', label: 'Watchlist avg', isMkt: true },
+  ...SECTOR_ORDER.map(key => ({ key, label: key, isMkt: false })),
 ];
 
 const ROW_CLS = 'grid items-center gap-[14px] w-full text-left';
@@ -33,10 +27,14 @@ function Row({ onClick, ariaLabel, children }) {
   );
 }
 
-export default function HeatStrip({ sectors, onOpenSector }) {
-  const rows = SECTOR_ROWS
-    .map(r => ({ ...r, chg: sectors[r.key]?.chg ?? null }))
-    .filter(r => r.chg != null);
+export default function HeatStrip({ sectors, assets, onOpenSector }) {
+  const benchmark = assets?.jseTop40?.isLive && Number.isFinite(assets.jseTop40.changePct)
+    ? [{ key: 'jseTop40', label: 'JSE Top 40', isMkt: true, isRef: true, chg: +assets.jseTop40.changePct.toFixed(2) }]
+    : [];
+  const rows = [
+    ...benchmark,
+    ...SECTOR_ROWS.map(r => ({ ...r, chg: sectors[r.key]?.chg ?? null })),
+  ].filter(r => r.chg != null);
 
   if (!rows.length) return null;
 
@@ -57,7 +55,7 @@ export default function HeatStrip({ sectors, onOpenSector }) {
 
       {/* Rows */}
       <div className="flex flex-col gap-[3px]">
-        {rows.map(({ key, label, chg, isMkt }) => {
+        {rows.map(({ key, label, chg, isMkt, isRef }) => {
           const up  = chg >= 0;
           const col = isMkt ? 'text-warn' : up ? 'text-bull' : 'text-bear';
           const barCol = isMkt
@@ -69,7 +67,7 @@ export default function HeatStrip({ sectors, onOpenSector }) {
 
           return (
             <Row key={key}
-              onClick={onOpenSector ? () => onOpenSector(isMkt ? 'All' : key) : undefined}
+              onClick={onOpenSector && !isRef ? () => onOpenSector(isMkt ? 'All' : key) : undefined}
               ariaLabel={`${label} ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%. Open ${isMkt ? 'all sectors' : label} in sector drilldown`}>
 
               {/* Label */}

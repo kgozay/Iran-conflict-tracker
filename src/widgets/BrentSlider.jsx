@@ -15,6 +15,9 @@ const SECTORS = [
   { name: 'Watchlist average', brentSlope: -0.041, zarSlope: +0.12, goldSlope: +0.05 },
   { name: 'Banks',            brentSlope: -0.056, zarSlope: -0.35, goldSlope: -0.05 },
   { name: 'Retailers',        brentSlope: -0.068, zarSlope: -0.40, goldSlope: -0.05 },
+  { name: 'Consumer Staples', brentSlope: -0.040, zarSlope: -0.20, goldSlope: 0.00 },
+  { name: 'Insurers',         brentSlope: -0.045, zarSlope: -0.25, goldSlope: 0.00 },
+  { name: 'Property',         brentSlope: -0.060, zarSlope: -0.45, goldSlope: 0.00 },
   { name: 'Industrials',      brentSlope: -0.032, zarSlope: -0.15, goldSlope: 0.00 },
 ];
 
@@ -31,7 +34,7 @@ function getStockSlopes(stock) {
   if (stock.sector === 'Gold Miners') {
     return { brent: 0.018, zar: 0.35, gold: stock.display === 'SSW' ? 0.40 : 0.85 };
   }
-  // PGM Miners (IMP, AMS)
+  // PGM Miners (IMP, VAL, NPH, SSW)
   if (stock.sector === 'PGMs') {
     return { brent: 0.012, zar: 0.30, gold: 0.30 };
   }
@@ -42,6 +45,19 @@ function getStockSlopes(stock) {
   // Retailers
   if (stock.sector === 'Retailers') {
     return { brent: -0.068, zar: -0.40, gold: 0 };
+  }
+  // BAT: offshore earner, behaves like a rand hedge
+  if (stock.display === 'BTI') {
+    return { brent: -0.010, zar: 0.25, gold: 0 };
+  }
+  if (stock.sector === 'Consumer Staples') {
+    return { brent: -0.040, zar: -0.20, gold: 0 };
+  }
+  if (stock.sector === 'Insurers') {
+    return { brent: -0.045, zar: -0.25, gold: 0 };
+  }
+  if (stock.sector === 'Property') {
+    return { brent: -0.060, zar: -0.45, gold: 0 };
   }
   // Industrials (NPN, PRX, CFR, AGL, MTN)
   if (stock.sector === 'Industrials' || stock.sector === 'Telecoms') {

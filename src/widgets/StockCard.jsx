@@ -1,6 +1,7 @@
 import React from 'react';
 import clsx from 'clsx';
 import { getSignal, SIGNAL_CLS } from '../utils/signals.js';
+import { FUNDAMENTALS_NOTE } from '../data/stocks.js';
 
 function Sparkline({ ticker, points }) {
   const W = 200, H = 34;
@@ -91,12 +92,12 @@ export default function StockCard({ stock, sparkline, change, period = '1D' }) {
 
       {/* Metadata strip */}
       <div className="grid grid-cols-3 gap-1 mt-3 pt-3 border-t border-bd">
-        <div className="text-center">
-          <div className="font-mono text-[10px] text-tm uppercase tracking-[0.06em]">Mkt cap</div>
+        <div className="text-center" title={FUNDAMENTALS_NOTE}>
+          <div className="font-mono text-[10px] text-tm uppercase tracking-[0.06em]">Mkt cap*</div>
           <div className="font-mono text-[11px] text-ts mt-0.5">{stock.mktcap ?? '—'}</div>
         </div>
-        <div className="text-center">
-          <div className="font-mono text-[10px] text-tm uppercase tracking-[0.06em]">P/E</div>
+        <div className="text-center" title={FUNDAMENTALS_NOTE}>
+          <div className="font-mono text-[10px] text-tm uppercase tracking-[0.06em]">P/E*</div>
           <div className="font-mono text-[11px] text-ts mt-0.5">{stock.pe != null ? `${stock.pe}x` : '—'}</div>
         </div>
         <div className="text-center">
