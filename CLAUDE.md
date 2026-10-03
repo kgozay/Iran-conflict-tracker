@@ -10,9 +10,10 @@ npm run build      # Production build → dist/
 npm run preview    # Preview production build locally
 
 vercel dev         # Run locally WITH Vercel serverless functions (required to test /api/* routes)
+npm test           # node:test suite in tests/ — scoring, universe, sectors, alerts, coverage, fundamentals
 ```
 
-There is no test suite. Verify logic changes manually via `vercel dev` or against the deployed Vercel preview.
+Pure logic lives in `src/utils/` (and pure helpers exported from `api/*.js`) so it can be unit-tested without React or the network. UI and live-API behaviour still need checking via `vercel dev` or a Vercel preview.
 
 ## Architecture
 
@@ -27,6 +28,7 @@ There is no test suite. Verify logic changes manually via `vercel dev` or agains
    - `/api/treasury` — official US Treasury daily 10-year par-yield fallback when Yahoo omits `^TNX`.
 3. Results are merged in layers (`applyQuotes` → Treasury fallback → `applyHistory`) then stored in state and localStorage.
 4. `useSparklines` fetches `/api/sparklines` (intraday 5m data) separately, on mount and after each refresh.
+5. `useFundamentals` fetches `/api/fundamentals` (live P/E + market cap) on mount when its cache is >6h old. `mergeFundamentals` (`src/utils/fundamentals.js`) layers values over the static `pe`/`mktcap` in `stocks.js`: live this session → last live value <24h old (`†`) → static (`*`). Each stock carries `fundamentalsSource`.
 
 ### Scoring (`src/utils/scoring.js`)
 
@@ -49,16 +51,20 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
 | `api/quotes.js` | Yahoo Finance proxy — bulk crumb path first, per-symbol chart fallback |
 | `api/history.js` | 5D/20D historical changes via Yahoo chart endpoint |
 | `api/treasury.js` | Official US Treasury daily 10-year par-yield fallback |
+| `api/fundamentals.js` | Live P/E + market cap: `/v7/finance/quote` bulk, `/v10/quoteSummary` fallback (crumb auth). JSE market caps arrive in cents (`ZAc`) and are converted to rand |
+| `api/_lib/yahoo.js` | Shared Yahoo HTTP + cookie/crumb helpers (underscore folder is not deployed as a route) |
+| `src/utils/sectors.js` | `deriveSectors` — equal-weight sector averages used by `App.jsx` |
 | `api/morning-note.js` | Gemini 2.5 Flash AI morning note — requires `GEMINI_API_KEY` env var |
 
 ### Sector derivation
 
-`deriveSectors()` in `App.jsx` computes live sector averages from `stocks[]` (equal-weight, live names only). The `sectors.top40` key holds the equal-weight watchlist average (the real Top 40 is `assets.jseTop40`). Sector lists in the UI (watchlist filters, drilldown tabs, sector breadth) derive from `SECTOR_ORDER` in `src/data/stocks.js`, so adding a sector there is enough. The `rel` field on each sector is `sector.chg - mktAvg`.
+`deriveSectors()` in `src/utils/sectors.js` computes live sector averages from `stocks[]` (equal-weight, live names only). The `sectors.top40` key holds the equal-weight watchlist average (the real Top 40 is `assets.jseTop40`). Sector lists in the UI (watchlist filters, drilldown tabs, sector breadth) derive from `SECTOR_ORDER` in `src/data/stocks.js`, so adding a sector there is enough. The `rel` field on each sector is `sector.chg - mktAvg`.
 
 ### Caching
 
 - Market data: `jse_cw_v7_cache` in localStorage — fresh for 5 min, usable (stale) for 30 min.
 - Sparklines: `jse_cw_sparklines_v1` — 8-min TTL.
+- Fundamentals: `jse_cw_fundamentals_v1` — refetched after 6h, usable for 24h, then static figures.
 - CIS history: `jse_cw_cis_history_v1` — up to 200 readings (≈7 days at 5-min refresh).
 
 ### API / environment

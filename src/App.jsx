@@ -1,6 +1,8 @@
 import React, { Suspense, lazy, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import clsx from 'clsx';
-import { SECTOR_ORDER } from './data/stocks.js';
+import { JSE_STOCKS } from './data/stocks.js';
+import { deriveSectors } from './utils/sectors.js';
+import { mergeFundamentals } from './utils/fundamentals.js';
 import { computeCIS }    from './utils/scoring.js';
 import { computeAlerts } from './utils/alerts.js';
 import { buildDataHealth } from './utils/dataQuality.js';
@@ -9,6 +11,7 @@ import { useMarketData }  from './hooks/useMarketData.js';
 import { useToast }       from './hooks/useToast.js';
 import { useSparklines }  from './hooks/useSparklines.js';
 import { useCISHistory }  from './hooks/useCISHistory.js';
+import { useFundamentals } from './hooks/useFundamentals.js';
 import Sidebar            from './components/Sidebar.jsx';
 import TopBar             from './components/TopBar.jsx';
 import LoadingOverlay     from './components/LoadingOverlay.jsx';
@@ -20,32 +23,6 @@ const SectorDrilldown = lazy(() => import('./pages/SectorDrilldown.jsx'));
 
 function PageFallback() {
   return <div role="status" className="p-8 text-[13px] text-tm">Loading dashboard view…</div>;
-}
-
-function deriveSectors(stocks) {
-  const live = stocks.filter(s => s.isLive && s.changePct != null);
-  const sectors = {};
-
-  for (const sector of SECTOR_ORDER) {
-    const ss = live.filter(s => s.sector === sector);
-    if (!ss.length) continue;
-    const avg = ss.reduce((a, s) => a + s.changePct, 0) / ss.length;
-    sectors[sector] = { name: sector, chg: +avg.toFixed(2), rel: null };
-  }
-
-  if (live.length > 0) {
-    const mktAvg = live.reduce((a, s) => a + s.changePct, 0) / live.length;
-    sectors.top40 = { name: 'Watchlist average', chg: +mktAvg.toFixed(2), rel: 0 };
-    for (const key of Object.keys(sectors)) {
-      if (key !== 'top40') {
-        sectors[key].rel = +(sectors[key].chg - mktAvg).toFixed(2);
-      }
-    }
-  } else {
-    sectors.top40 = { name: 'Watchlist average', chg: null, rel: 0 };
-  }
-
-  return sectors;
 }
 
 const ALL_SPARK_SYMBOLS = [
@@ -127,10 +104,17 @@ export default function App() {
 
 
   const {
-    assets, stocks, history, sourceHealth,
+    assets, stocks: marketStocks, history, sourceHealth,
     status, lastFetch, progress,
     fetchLive, initFromCache,
   } = useMarketData();
+
+  // Live P/E and market cap layered over the static reference figures
+  const { liveFundamentals, cachedFundamentals, fetchFundamentals } = useFundamentals();
+  const stocks = useMemo(
+    () => mergeFundamentals(marketStocks, liveFundamentals, cachedFundamentals),
+    [marketStocks, liveFundamentals, cachedFundamentals]
+  );
 
   const { sparklines, sparkLoading, fetchSparklines } = useSparklines();
   const { toasts, addToast, removeToast } = useToast();
@@ -146,6 +130,7 @@ export default function App() {
     // runs, and an empty cache gets the foreground loading treatment.
     fetchLive(cacheState !== 'empty');
     fetchSparklines(ALL_SPARK_SYMBOLS);
+    fetchFundamentals(JSE_STOCKS.map(s => s.ticker));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sectors = useMemo(() => deriveSectors(stocks), [stocks]);

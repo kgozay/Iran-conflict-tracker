@@ -4,7 +4,7 @@ import { Card } from '../widgets/Card.jsx';
 import BrentSlider from '../widgets/BrentSlider.jsx';
 import CorrelationHeatmap from '../widgets/CorrelationHeatmap.jsx';
 import { CountUp, SpotlightCard } from '../widgets/Effects.jsx';
-import { getChannelEvidence } from '../utils/transmission.js';
+import { getChannelEvidence, chipMove } from '../utils/transmission.js';
 
 /* ── PATCH SUMMARY ─────────────────────────────────────────────────────
  * Two targeted FX additions to this page (everything else is unchanged):
@@ -68,23 +68,6 @@ function getAssetStatus(key, pct) {
 function changeColor(pct, inv) {
   if (pct == null) return 'text-tm';
   return (pct >= 0) !== inv ? 'text-bull' : 'text-bear';
-}
-
-/* Live move for a stage-3 chip: tickers are read from the chip's parentheses,
- * e.g. "Banks (SBK, FSR, NED, ABG) · NII Stress", and averaged over tracked names. */
-function chipMove(label, stocks) {
-  const tickers = [...label.matchAll(/\(([^)]+)\)/g)]
-    .flatMap(m => m[1].split(/[\s,/]+/))
-    .filter(Boolean);
-  const matched = (stocks ?? []).filter(st =>
-    tickers.includes(st.display) && st.isLive && Number.isFinite(st.changePct)
-  );
-  if (!matched.length) return null;
-  const avg = matched.reduce((a, st) => a + st.changePct, 0) / matched.length;
-  return {
-    avg,
-    detail: matched.map(st => `${st.display} ${st.changePct >= 0 ? '+' : ''}${st.changePct.toFixed(2)}%`).join(' · '),
-  };
 }
 
 function ExposureChip({ label, stocks, cls }) {

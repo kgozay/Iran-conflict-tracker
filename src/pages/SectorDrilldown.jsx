@@ -340,7 +340,10 @@ export default function SectorDrilldown({
             ))}
           </div>
         )}
-        <p className="text-[11.5px] text-tm m-0">* Market cap and P/E are static reference figures, not live data, and may be out of date.</p>
+        <p className="text-[11.5px] text-tm m-0">
+          Market cap and P/E are live from Yahoo Finance when available. † last live value (within 24 hours).
+          * static reference figure, may be out of date. n/m: no positive earnings.
+        </p>
       </section>
     </div>
   );

@@ -17,7 +17,7 @@ const pct   = v => v == null ? '' : v.toFixed(4);
 
 export function exportWatchlistCSV(stocks, timeframe = '1D') {
   const chgLabel = `${timeframe} Chg %`;
-  const headers = ['Name','Ticker','Sector','Conflict Sensitivity','Price',chgLabel,'Market Cap','Signal','Live','Source','Fetched'];
+  const headers = ['Name','Ticker','Sector','Conflict Sensitivity','Price',chgLabel,'Market Cap','P/E','Fundamentals Source','Signal','Live','Source','Fetched'];
   const rows = stocks.map(s => {
     const displayChg = s._chg ?? (
       timeframe === '5D' ? s.changePct5D :
@@ -29,7 +29,9 @@ export function exportWatchlistCSV(stocks, timeframe = '1D') {
       q(s.sensitivity || '—'),
       s.price?.toFixed(2) ?? '',
       pct(displayChg),
-      q(s.mktcap),
+      q(s.mktcap ?? ''),
+      s.pe ?? '',
+      s.fundamentalsSource ?? 'static',
       q(getSignal(displayChg) ?? '—'),
       s.isLive ? 'YES' : 'NO',
       q(s.source || 'Yahoo/static reference'),

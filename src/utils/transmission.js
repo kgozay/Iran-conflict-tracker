@@ -17,3 +17,20 @@ export function getChannelEvidence(changePct, threshold, sectors, expectations) 
 
   return { triggered, state, observations, available: available.length, consistent };
 }
+
+/* Live move for a stage-3 chip: tickers are read from the chip's parentheses,
+ * e.g. "Banks (SBK, FSR, NED, ABG) · NII Stress", and averaged over tracked names. */
+export function chipMove(label, stocks) {
+  const tickers = [...label.matchAll(/\(([^)]+)\)/g)]
+    .flatMap(m => m[1].split(/[\s,/]+/))
+    .filter(Boolean);
+  const matched = (stocks ?? []).filter(st =>
+    tickers.includes(st.display) && st.isLive && Number.isFinite(st.changePct)
+  );
+  if (!matched.length) return null;
+  const avg = matched.reduce((a, st) => a + st.changePct, 0) / matched.length;
+  return {
+    avg,
+    detail: matched.map(st => `${st.display} ${st.changePct >= 0 ? '+' : ''}${st.changePct.toFixed(2)}%`).join(' · '),
+  };
+}

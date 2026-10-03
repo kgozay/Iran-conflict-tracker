@@ -6,62 +6,20 @@
  *   Primary: /v8/finance/chart/{symbol}?interval=1d&range=5d — per symbol, in parallel.
  *            Does NOT require cookie+crumb, reliable from Vercel edge IPs,
  *            works for equities, commodities, FX, and the ^TNX US 10Y yield index.
- *   Fallback: /v8/finance/quote bulk (requires crumb) — tried FIRST as a fast path,
+ *   Fallback: /v7/finance/quote bulk (requires crumb) — tried FIRST as a fast path,
  *             chart endpoint tops up anything missing. Kept because when bulk works
  *             it costs 1 HTTP call instead of 40.
  *
  *   All requests use gzip decompression + redirect following.
  */
 
-const https = require('https');
-const zlib  = require('zlib');
+const { get, getOrRefreshCrumb, invalidateCrumb, authHeaders, mapWithConcurrency } = require('./_lib/yahoo.js');
 
 const CORS = {
   'Content-Type':                'application/json',
   'Access-Control-Allow-Origin': '*',
   'Cache-Control':               'public, max-age=60, s-maxage=60',
 };
-
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-
-/* ── HTTP GET with automatic gzip/deflate/br decompression ────────── */
-function get(url, reqHeaders, followRedirects) {
-  if (followRedirects === undefined) followRedirects = 5;
-  return new Promise((resolve, reject) => {
-    const options = {
-      headers: Object.assign({
-        'User-Agent':      UA,
-        'Accept':          'application/json, text/plain, */*',
-        'Accept-Language': 'en-US,en;q=0.9',
-      }, reqHeaders || {}),
-    };
-
-    const req = https.get(url, options, function(res) {
-      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && followRedirects > 0) {
-        res.resume();
-        return get(res.headers.location, reqHeaders, followRedirects - 1).then(resolve).catch(reject);
-      }
-
-      const enc = (res.headers['content-encoding'] || '').toLowerCase();
-      let stream = res;
-      if (enc === 'gzip')         stream = res.pipe(zlib.createGunzip());
-      else if (enc === 'deflate') stream = res.pipe(zlib.createInflate());
-      else if (enc === 'br')      stream = res.pipe(zlib.createBrotliDecompress());
-
-      const chunks = [];
-      stream.on('data', function(c) { chunks.push(c); });
-      stream.on('end', function() {
-        const body = Buffer.concat(chunks).toString('utf8');
-        try   { resolve({ status: res.statusCode, headers: res.headers, json: JSON.parse(body) }); }
-        catch { resolve({ status: res.statusCode, headers: res.headers, json: null, raw: body.slice(0, 500) }); }
-      });
-      stream.on('error', reject);
-    });
-
-    req.setTimeout(10000, function() { req.destroy(new Error('Yahoo Finance request timed out after 10s')); });
-    req.on('error', reject);
-  });
-}
 
 /* ─────────────────────────────────────────────────────────────────────
  * CHART ENDPOINT — primary path (no crumb required)
@@ -122,64 +80,13 @@ async function fetchChartOne(symbol) {
 }
 
 /* Run chart requests with bounded concurrency */
-async function fetchAllFromChart(symbols, concurrency) {
-  concurrency = concurrency || 8;
-  const results = {};
-  let idx = 0;
-
-  async function worker() {
-    while (idx < symbols.length) {
-      const mine = idx++;
-      const sym  = symbols[mine];
-      try {
-        const q = await fetchChartOne(sym);
-        if (q) results[sym] = q;
-      } catch (e) { /* per-symbol failure must not fail the batch */ }
-    }
-  }
-
-  const workers = [];
-  for (let i = 0; i < Math.min(concurrency, symbols.length); i++) workers.push(worker());
-  await Promise.all(workers);
-  return results;
+function fetchAllFromChart(symbols, concurrency) {
+  return mapWithConcurrency(symbols, concurrency || 8, fetchChartOne);
 }
 
 /* ─────────────────────────────────────────────────────────────────────
  * QUOTE ENDPOINT (bulk, crumb-auth) — optional fast path
  * ────────────────────────────────────────────────────────────────────── */
-let _crumbCache = null;
-const CRUMB_TTL = 55 * 60 * 1000;
-
-async function fetchCookies() {
-  const res = await get('https://finance.yahoo.com/', {
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-  });
-  const raw = res.headers['set-cookie'] || [];
-  if (!raw.length) return '';
-  return raw.map(c => c.split(';')[0].trim()).filter(Boolean).join('; ');
-}
-
-async function fetchCrumb(cookie) {
-  const res = await get('https://query2.finance.yahoo.com/v1/test/getcrumb',
-                        { Cookie: cookie, Accept: 'text/plain, */*' });
-  if (res.status !== 200) return '';
-  const crumb = (res.raw || (res.json != null ? String(res.json) : '')).trim();
-  return (crumb && crumb.length >= 2) ? crumb : '';
-}
-
-async function getOrRefreshCrumb() {
-  const now = Date.now();
-  if (_crumbCache && (now - _crumbCache.ts) < CRUMB_TTL) return _crumbCache;
-  try {
-    const cookie = await fetchCookies();
-    if (!cookie) return null;
-    const crumb = await fetchCrumb(cookie);
-    if (!crumb) return null;
-    _crumbCache = { cookie, crumb, ts: now };
-    return _crumbCache;
-  } catch (e) { return null; }
-}
-
 function normaliseQuote(q) {
   if (!q || q.regularMarketPrice == null) return null;
   return {
@@ -206,15 +113,11 @@ async function fetchBulkQuotes(symbols) {
 
   const FIELDS = 'regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketPreviousClose,regularMarketDayHigh,regularMarketDayLow,regularMarketVolume,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName,longName,currency,marketState';
   const encoded = encodeURIComponent(symbols.join(','));
-  const url = `https://query2.finance.yahoo.com/v8/finance/quote?symbols=${encoded}&fields=${FIELDS}&lang=en-US&region=US&corsDomain=finance.yahoo.com&crumb=${encodeURIComponent(auth.crumb)}`;
+  const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encoded}&fields=${FIELDS}&lang=en-US&region=US&corsDomain=finance.yahoo.com&crumb=${encodeURIComponent(auth.crumb)}`;
 
   try {
-    const res = await get(url, {
-      Cookie:  auth.cookie,
-      Referer: 'https://finance.yahoo.com/',
-      Origin:  'https://finance.yahoo.com',
-    });
-    if (res.status === 401) { _crumbCache = null; return null; }
+    const res = await get(url, authHeaders(auth));
+    if (res.status === 401) { invalidateCrumb(); return null; }
     if (res.status !== 200 || !res.json) return null;
     const results = res.json.quoteResponse && res.json.quoteResponse.result;
     if (!Array.isArray(results)) return null;

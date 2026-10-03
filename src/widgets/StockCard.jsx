@@ -42,12 +42,26 @@ function fmtP(p) {
   return p.toFixed(2);
 }
 
+/* Where the P/E and market cap came from: live this session (no marker), the last
+ * live fetch (†, dated tooltip) or the static reference figures (*). */
+function fundamentalsLabel(stock) {
+  if (stock.fundamentalsSource === 'live') {
+    return { mark: '', isLiveish: true, title: 'Live from Yahoo Finance' };
+  }
+  if (stock.fundamentalsSource === 'cached') {
+    const when = new Date(stock.fundamentalsAsOf).toLocaleString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return { mark: '†', isLiveish: true, title: `Last live value, ${when}` };
+  }
+  return { mark: '*', isLiveish: false, title: FUNDAMENTALS_NOTE };
+}
+
 export default function StockCard({ stock, sparkline, change, period = '1D' }) {
   const chg    = change !== undefined ? change : (stock.changePct ?? null);
   const isUp   = (chg ?? 0) >= 0;
   const signal = getSignal(chg);
   const sigCls = SIGNAL_CLS[signal] ?? SIGNAL_CLS.NEUTRAL;
   const points = sparkline?.points?.filter(value => Number.isFinite(value));
+  const fund   = fundamentalsLabel(stock);
 
   return (
     <div className="glass rounded-[14px] p-[16px_20px] transition-all hover:-translate-y-px">
@@ -92,13 +106,15 @@ export default function StockCard({ stock, sparkline, change, period = '1D' }) {
 
       {/* Metadata strip */}
       <div className="grid grid-cols-3 gap-1 mt-3 pt-3 border-t border-bd">
-        <div className="text-center" title={FUNDAMENTALS_NOTE}>
-          <div className="font-mono text-[10px] text-tm uppercase tracking-[0.06em]">Mkt cap*</div>
+        <div className="text-center" title={fund.title}>
+          <div className="font-mono text-[10px] text-tm uppercase tracking-[0.06em]">Mkt cap{fund.mark}</div>
           <div className="font-mono text-[11px] text-ts mt-0.5">{stock.mktcap ?? '—'}</div>
         </div>
-        <div className="text-center" title={FUNDAMENTALS_NOTE}>
-          <div className="font-mono text-[10px] text-tm uppercase tracking-[0.06em]">P/E*</div>
-          <div className="font-mono text-[11px] text-ts mt-0.5">{stock.pe != null ? `${stock.pe}x` : '—'}</div>
+        <div className="text-center" title={stock.pe == null && fund.isLiveish ? 'No positive earnings reported (P/E not meaningful)' : fund.title}>
+          <div className="font-mono text-[10px] text-tm uppercase tracking-[0.06em]">P/E{fund.mark}</div>
+          <div className="font-mono text-[11px] text-ts mt-0.5">
+            {stock.pe != null ? `${stock.pe}x` : fund.isLiveish ? 'n/m' : '—'}
+          </div>
         </div>
         <div className="text-center">
           <div className="font-mono text-[10px] text-tm uppercase tracking-[0.06em]">Signal</div>
