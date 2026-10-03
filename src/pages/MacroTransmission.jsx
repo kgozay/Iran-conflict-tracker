@@ -377,7 +377,7 @@ function MacroStrip({ assets, hasData }) {
     : (plat?.price ?? pal?.price ?? null);
 
   const items = [
-    { label:'Brent Crude',  key:'brent',     asset: assets.brent,     inv: false },
+    { label:'Brent Crude',  key:'brent',     asset: assets.brent,     inv: true  },
     { label:'USD / ZAR',    key:'usdZar',    asset: assets.usdZar,    inv: true  },
     { label:'Gold Spot',    key:'gold',      asset: assets.gold,      inv: false },
     { label:'Platinum',     key:'platinum',  asset: assets.platinum,  inv: false },
@@ -485,12 +485,12 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
       spotlightColor: hasData && brentChg != null && brentChg > 2 ? 'var(--color-bear-spotlight)' : undefined,
       stage1: {
         shortLabel: 'Brent',
-        colorCls: changeColor(brentChg, false),
+        colorCls: changeColor(brentChg, true),
           title: 'Brent Crude Oil',
           valueStr: fmt(brentChg),
           priceStr: formatPrice(brentPrc, 'brent'),
           pct: brentChg ?? 0,
-          inv: false,
+          inv: true,
           statusStr: !hasData ? 'STANDBY' : brentChg > 2 ? 'SHOCK ACTIVE' : 'NORMAL RANGE',
           statusCls: !hasData ? 'bg-bg-h text-tm border-bd' : brentChg > 2 ? 'bg-bear/15 text-bear border-bear/40' : 'bg-bg-h text-tm border-bd',
           driver: 'Middle Eastern chokepoint threat, tanker insurance spike & inventory draw',

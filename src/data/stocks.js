@@ -2,7 +2,7 @@
 // Icons are now rendered via the SVG library in components/Icons.jsx,
 // keyed off the object key below. No emoji strings.
 export const MACRO_SYMBOLS = {
-  brent:     { symbol: 'BZ=F',     name: 'Brent Crude',       unit: '$/bbl', invert: false },
+  brent:     { symbol: 'BZ=F',     name: 'Brent Crude',       unit: '$/bbl', invert: true  },
   gold:      { symbol: 'GC=F',     name: 'Gold',              unit: '$/oz',  invert: false },
   platinum:  { symbol: 'PL=F',     name: 'Platinum',          unit: '$/oz',  invert: false },
   palladium: { symbol: 'PA=F',     name: 'Palladium',         unit: '$/oz',  invert: false },
