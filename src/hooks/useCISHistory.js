@@ -92,5 +92,11 @@ export function useCISHistory() {
     }));
   }, [history]);
 
-  return { history, chartData, addReading, clearHistory, syncServer, serverStatus };
+  const serverInfo = useMemo(() => ({
+    status: serverStatus,
+    count: serverReadings.length,
+    lastTs: serverReadings.length ? serverReadings[serverReadings.length - 1].ts : null,
+  }), [serverStatus, serverReadings]);
+
+  return { history, chartData, addReading, clearHistory, syncServer, serverStatus, serverInfo };
 }

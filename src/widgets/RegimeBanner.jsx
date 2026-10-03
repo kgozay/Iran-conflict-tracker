@@ -79,7 +79,27 @@ function computeTrend(data) {
   return { dir: delta > 0 ? 'up' : 'down', delta };
 }
 
-export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth }) {
+/* Where the trend chart's readings come from: the shared server store or this browser only. */
+function HistorySourceNote({ info }) {
+  const status = info?.status ?? 'idle';
+  const last = info?.lastTs
+    ? new Date(info.lastTs).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : null;
+  const view = {
+    ok:           { dot: 'bg-bull', text: info?.count ? `Shared history on · ${info.count} server readings · last ${last} SAST` : 'Shared history on · first server reading pending' },
+    unconfigured: { dot: 'bg-tm',   text: 'This browser only · shared history store not configured' },
+    error:        { dot: 'bg-warn', text: 'This browser only · shared history unreachable' },
+    idle:         { dot: 'bg-tm',   text: 'Checking shared history…' },
+  }[status] ?? { dot: 'bg-tm', text: '' };
+  return (
+    <div className="mt-2 flex items-center gap-2 text-[10.5px] font-mono text-tm" role="status">
+      <span className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', view.dot)} aria-hidden="true" />
+      <span>{view.text}</span>
+    </div>
+  );
+}
+
+export default function RegimeBanner({ cis, hasData, cisChartData, cisServerInfo, dataHealth }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const rc       = cis.regimeClass ?? 'neutral';
@@ -469,6 +489,7 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
                 <RegimeHistoryChart data={cisChartData} events={visibleEvents} toneVar={toneVar} toneHex={toneHex} />
               </Suspense>
             )}
+            <HistorySourceNote info={cisServerInfo} />
           </div>
 
           {/* Right: Portfolio Hedging Playbook */}

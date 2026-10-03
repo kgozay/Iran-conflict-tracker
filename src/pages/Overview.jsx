@@ -31,7 +31,7 @@ function FetchPrompt({ onFetch }) {
 
 export default function Overview({
   assets, stocks, sectors, cis, alerts, timeframe,
-  status, hasData, onFetch, cisChartData,
+  status, hasData, onFetch, cisChartData, cisServerInfo,
   sparklines, sparkLoading, dataHealth, onOpenSector,
 }) {
   const isLoading = status === 'loading';
@@ -48,7 +48,7 @@ export default function Overview({
     <div className="p-4 sm:p-6 lg:p-[32px_36px] flex flex-col gap-5 sm:gap-6 animate-fadeUp">
 
       {/* Decision first: current regime, confidence, change and drivers */}
-      <RegimeBanner cis={cis} hasData={hasData} cisChartData={cisChartData} dataHealth={dataHealth} />
+      <RegimeBanner cis={cis} hasData={hasData} cisChartData={cisChartData} cisServerInfo={cisServerInfo} dataHealth={dataHealth} />
 
       {/* Hero macro KPIs: Brent · USD/ZAR · Gold · US 10Y */}
       <KpiGrid

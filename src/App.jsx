@@ -60,7 +60,7 @@ export default function App() {
 
   const {
     history: cisHistory, chartData: cisChartData, addReading: addCisReading,
-    syncServer: syncCisServer, serverStatus: cisServerStatus,
+    syncServer: syncCisServer, serverInfo: cisServerInfo,
   } = useCISHistory();
 
   /* ── Navigate wrapper with View Transitions API fallback ── */
@@ -195,7 +195,7 @@ export default function App() {
     timeframe, status, hasData, dataHealth, lastFetch,
     onFetch: handleFetch,
     sparklines, sparkLoading,
-    cisChartData, cisHistory, cisServerStatus,
+    cisChartData, cisHistory, cisServerInfo,
     onOpenSector: openSector,
     onNavigate: navigateTo,
     drillSector, setDrillSector,
