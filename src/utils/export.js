@@ -83,3 +83,19 @@ export function exportSnapshotJSON(assets, stocks, sectors, cis, alerts) {
   };
   downloadText(JSON.stringify(snapshot, null, 2), `jse-snapshot-${today()}.json`, 'application/json');
 }
+
+export function exportCISHistoryCSV(readings) {
+  const headers = ['Timestamp (UTC)','SAST date','SAST time','CIS','Regime','Top 40 price','Brent %','USD/ZAR %','Gold %','US 10Y %','Quote coverage %','Source'];
+  const num = v => Number.isFinite(v) ? v : '';
+  const rows = (readings || []).map(r => [
+    new Date(r.ts).toISOString(), q(r.date ?? ''), r.time ?? '',
+    r.total, q(r.regime ?? ''), num(r.top40),
+    num(r.brent), num(r.usdZar), num(r.gold), num(r.us10y), num(r.coverage),
+    r.source ?? 'browser',
+  ]);
+  downloadText(
+    [headers, ...rows].map(r => r.join(',')).join('\n'),
+    `jse-cis-history-${today()}.csv`,
+    'text/csv',
+  );
+}

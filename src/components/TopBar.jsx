@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import clsx from 'clsx';
-import { DownloadIcon, TableIcon, LineChartIcon, FileIcon, MenuIcon, RefreshIcon } from './Icons.jsx';
+import { DownloadIcon, TableIcon, LineChartIcon, FileIcon, MenuIcon, RefreshIcon, ChartIcon, BellIcon } from './Icons.jsx';
 
 const PAGE_META = {
   overview:  { kicker: 'Today',   pre: "Today's",      italic: 'transmission' },
@@ -53,6 +53,7 @@ export default function TopBar({
   page, status, progress,
   onFetch, timeframe, setTimeframe,
   onExport, onMenuClick, menuOpen, sidebarCollapsed, menuButtonRef,
+  notifyEnabled, notifySupported, onToggleNotify,
 }) {
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef(null);
@@ -147,6 +148,7 @@ export default function TopBar({
                   { label: 'Watchlist CSV',  key: 'watchlist-csv',  Icon: TableIcon     },
                   { label: 'Macro CSV',      key: 'macro-csv',      Icon: LineChartIcon },
                   { label: 'Snapshot JSON',  key: 'snapshot-json',  Icon: FileIcon      },
+                  { label: 'CIS history CSV', key: 'cis-history-csv', Icon: ChartIcon    },
                 ].map(({ label, key, Icon }) => (
                   <button key={key} type="button"
                     role="menuitem"
@@ -160,6 +162,18 @@ export default function TopBar({
               </div>
             )}
           </div>
+        )}
+
+        {notifySupported && onToggleNotify && (
+          <button type="button" onClick={onToggleNotify} aria-pressed={!!notifyEnabled}
+            aria-label={notifyEnabled ? 'Turn off alerts' : 'Turn on alerts for regime changes and red alerts'}
+            title={notifyEnabled ? 'Alerts on' : 'Alerts off'}
+            className={clsx(
+              'w-11 min-h-11 inline-flex items-center justify-center border rounded-lg transition-colors cursor-pointer',
+              notifyEnabled ? 'border-warn/50 text-warn bg-warn/10' : 'border-bd text-ts hover:text-tp hover:border-ts',
+            )}>
+            <BellIcon className="w-4 h-4" />
+          </button>
         )}
 
         <RefreshButton isLoading={isLoading} progress={progress} onFetch={onFetch} />

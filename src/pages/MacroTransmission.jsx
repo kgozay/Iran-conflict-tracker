@@ -3,8 +3,12 @@ import clsx from 'clsx';
 import { Card } from '../widgets/Card.jsx';
 import BrentSlider from '../widgets/BrentSlider.jsx';
 import CorrelationHeatmap from '../widgets/CorrelationHeatmap.jsx';
+import CrisisComparison from '../widgets/CrisisComparison.jsx';
+import CISBacktest from '../widgets/CISBacktest.jsx';
+import { useBackfill } from '../hooks/useBackfill.js';
 import { CountUp, SpotlightCard } from '../widgets/Effects.jsx';
 import { getChannelEvidence, chipMove } from '../utils/transmission.js';
+import { buildCISInput } from '../utils/cisInput.js';
 
 /* ── PATCH SUMMARY ─────────────────────────────────────────────────────
  * Two targeted FX additions to this page (everything else is unchanged):
@@ -456,8 +460,10 @@ function MacroStrip({ assets, hasData }) {
 }
 
 /* ── Page ───────────────────────────────────────────────────────────── */
-export default function MacroTransmission({ assets, alerts, hasData, history, stocks, sectors, onOpenSector }) {
+export default function MacroTransmission({ assets, alerts, hasData, history, stocks, sectors, cis, cisHistory, onOpenSector }) {
   const [activeTab, setActiveTab] = useState('channels');
+  // Rebuilt daily CIS history is heavy, so only fetch it once a view needs it.
+  const backfill = useBackfill(activeTab === 'crisis' || activeTab === 'backtest');
   const [userOpenChannels, setUserOpenChannels] = useState(null);
 
   const brentChg = assets.brent?.changePct;
@@ -656,6 +662,8 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
     { id: 'simulator',   label: 'Scenario simulator' },
     { id: 'analogues',   label: 'Alert thresholds' },
     { id: 'correlation', label: 'Correlations' },
+    { id: 'crisis',      label: 'Crisis comparison' },
+    { id: 'backtest',    label: 'Backtest' },
   ];
 
   const activeCount = channels.filter(c => c.isActive).length;
@@ -693,7 +701,7 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
       {/* Tab Selector */}
       <div className="flex justify-start">
         <div role="tablist" aria-label="Macro transmission views"
-          className="grid grid-cols-2 sm:flex sm:items-center w-full sm:w-auto bg-bg-c border border-bd rounded-xl p-[4px] gap-[4px] glass">
+          className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center w-full sm:w-auto bg-bg-c border border-bd rounded-xl p-[4px] gap-[4px] glass">
           {tabs.map(t => (
             <button
               key={t.id}
@@ -781,7 +789,12 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
       {/* Tab 2: Scenario simulator */}
       {activeTab === 'simulator' && (
         <div className="animate-fadeUp">
-          <BrentSlider liveBrent={assets.brent} stocks={stocks} />
+          <BrentSlider
+            liveBrent={assets.brent}
+            stocks={stocks}
+            cisInput={hasData ? buildCISInput(assets, sectors) : null}
+            liveCis={hasData ? cis : null}
+          />
         </div>
       )}
 
@@ -835,6 +848,18 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
       {activeTab === 'correlation' && (
         <div className="animate-fadeUp">
           <CorrelationHeatmap history={history} stocks={stocks} />
+        </div>
+      )}
+
+      {activeTab === 'crisis' && (
+        <div className="animate-fadeUp">
+          <CrisisComparison backfill={backfill} />
+        </div>
+      )}
+
+      {activeTab === 'backtest' && (
+        <div className="animate-fadeUp">
+          <CISBacktest backfill={backfill} cisHistory={cisHistory} />
         </div>
       )}
 

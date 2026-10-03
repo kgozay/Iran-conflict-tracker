@@ -4,6 +4,11 @@
 
 /* ── Theme tokens ───────────────────────────────────────────────────── */
 :root {
+  /* Chart series (categorical, fixed order; validated for CVD separation) */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
   /* Surfaces */
   --color-bg:    #09090b; /* deep obsidian charcoal */
   --color-bg-s:  rgba(255,255,255,0.025);   /* sidebar tint */
@@ -60,6 +65,10 @@
 }
 
 html[data-theme="light"] {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
   /* Surfaces */
   --color-bg:    #faf8f5; /* warm cream/sepia */
   --color-bg-s:  rgba(250, 248, 245, 0.90);   /* sidebar tint - more opaque to block underlying text */

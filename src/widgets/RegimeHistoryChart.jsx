@@ -3,18 +3,24 @@ import {
   AreaChart, Area, XAxis, YAxis, ReferenceArea, ReferenceLine, Label, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
+const SAST = { timeZone: 'Africa/Johannesburg' };
+const fmtTime = ts => new Date(ts).toLocaleTimeString('en-ZA', { ...SAST, hour: '2-digit', minute: '2-digit' });
+const fmtDate = ts => new Date(ts).toLocaleDateString('en-ZA', { ...SAST, month: 'short', day: 'numeric' });
+
 export default function RegimeHistoryChart({ data, events, toneVar, toneHex }) {
+  const span = data.length > 1 ? data[data.length - 1].ts - data[0].ts : 0;
+  const multiDay = span > 86_400_000;
   return (
     <div className="h-[180px] w-full relative">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 12, right: 8, left: -25, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 12, right: 18, left: -25, bottom: 0 }}>
           <defs>
             <linearGradient id="cisGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor={toneVar.includes('var') ? toneHex : toneVar} stopOpacity={0.25} />
               <stop offset="95%" stopColor={toneVar.includes('var') ? toneHex : toneVar} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fill: 'var(--color-tm)', fontSize: 9, fontFamily: 'monospace' }} />
+          <XAxis dataKey="ts" type="number" scale="time" domain={['dataMin', 'dataMax']} tickFormatter={multiDay ? fmtDate : fmtTime} minTickGap={24} tickLine={false} axisLine={false} tick={{ fill: 'var(--color-tm)', fontSize: 9, fontFamily: 'monospace' }} />
           <YAxis domain={[-100, 100]} tickLine={false} axisLine={false} tick={{ fill: 'var(--color-tm)', fontSize: 9, fontFamily: 'monospace' }} />
           <ReferenceArea y1={-100} y2={-40} fill="rgba(249, 112, 112, 0.08)" ifOverflow="hidden" />
           <ReferenceArea y1={-40} y2={-15} fill="rgba(232, 176, 74, 0.08)" ifOverflow="hidden" />
@@ -26,7 +32,7 @@ export default function RegimeHistoryChart({ data, events, toneVar, toneHex }) {
               <Label value={event.label} position="top" fill="var(--color-ts)" fontSize={8} fontFamily="monospace" offset={4} />
             </ReferenceLine>
           ))}
-          <Tooltip contentStyle={{ background: 'var(--color-bg-c)', border: '1px solid var(--color-bd)', borderRadius: 8, fontFamily: 'monospace', fontSize: 11, color: 'var(--color-tp)' }} labelFormatter={label => `Time: ${label}`} />
+          <Tooltip contentStyle={{ background: 'var(--color-bg-c)', border: '1px solid var(--color-bd)', borderRadius: 8, fontFamily: 'monospace', fontSize: 11, color: 'var(--color-tp)' }} labelFormatter={ts => `${fmtDate(ts)} · ${fmtTime(ts)} SAST`} formatter={v => [v, 'CIS']} />
           <Area type="monotone" dataKey="total" stroke={toneVar} strokeWidth={1.5} fillOpacity={1} fill="url(#cisGradient)" />
         </AreaChart>
       </ResponsiveContainer>

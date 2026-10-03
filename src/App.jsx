@@ -4,14 +4,16 @@ import { JSE_STOCKS } from './data/stocks.js';
 import { deriveSectors } from './utils/sectors.js';
 import { mergeFundamentals } from './utils/fundamentals.js';
 import { computeCIS }    from './utils/scoring.js';
+import { buildCISInput } from './utils/cisInput.js';
 import { computeAlerts } from './utils/alerts.js';
 import { buildDataHealth } from './utils/dataQuality.js';
-import { exportWatchlistCSV, exportMacroCSV, exportSnapshotJSON } from './utils/export.js';
+import { exportWatchlistCSV, exportMacroCSV, exportSnapshotJSON, exportCISHistoryCSV } from './utils/export.js';
 import { useMarketData }  from './hooks/useMarketData.js';
 import { useToast }       from './hooks/useToast.js';
 import { useSparklines }  from './hooks/useSparklines.js';
 import { useCISHistory }  from './hooks/useCISHistory.js';
 import { useFundamentals } from './hooks/useFundamentals.js';
+import { useNotifications } from './hooks/useNotifications.js';
 import Sidebar            from './components/Sidebar.jsx';
 import TopBar             from './components/TopBar.jsx';
 import LoadingOverlay     from './components/LoadingOverlay.jsx';
@@ -56,7 +58,10 @@ export default function App() {
   const contentRef = useRef(null);
   const startupRef = useRef(false);
 
-  const { chartData: cisChartData, addReading: addCisReading } = useCISHistory();
+  const {
+    history: cisHistory, chartData: cisChartData, addReading: addCisReading,
+    syncServer: syncCisServer, serverStatus: cisServerStatus,
+  } = useCISHistory();
 
   /* ── Navigate wrapper with View Transitions API fallback ── */
   const navigateTo = useCallback((newPage) => {
@@ -140,19 +145,7 @@ export default function App() {
     [assets, stocks, status, lastFetch, sparklines, sourceHealth]
   );
 
-  const cisInput = useMemo(() => ({
-    brentChg:       assets.brent?.changePct      ?? 0,
-    usdZarChg:      assets.usdZar?.changePct     ?? 0,
-    goldChg:        assets.gold?.changePct       ?? 0,
-    us10yChg:       assets.us10y?.changePct ?? 0,
-    // Prefer the real Top 40 (Satrix 40 ETF); fall back to the equal-weight watchlist average.
-    top40Chg:       assets.jseTop40?.isLive ? assets.jseTop40.changePct : (sectors.top40?.chg ?? 0),
-    minersChg:      sectors['Gold Miners']?.chg  ?? 0,
-    energyChg:      sectors.Energy?.chg          ?? 0,
-    banksChg:       sectors.Banks?.chg           ?? 0,
-    retailersChg:   sectors.Retailers?.chg       ?? 0,
-    industrialsChg: sectors.Industrials?.chg     ?? 0,
-  }), [assets, sectors]);
+  const cisInput = useMemo(() => buildCISInput(assets, sectors), [assets, sectors]);
 
   const cis    = useMemo(() => hasData ? computeCIS(cisInput) : EMPTY_CIS, [hasData, cisInput]);
   const alerts = useMemo(
@@ -163,9 +156,15 @@ export default function App() {
   // Log CIS reading to history on successful live fetch
   useEffect(() => {
     if (status === 'live' && hasData && lastFetch && cis.regime && cis.regime !== 'NO DATA') {
-      addCisReading(cis.total, cis.regime, cis.regimeClass, lastFetch.getTime());
+      addCisReading(cis.total, cis.regime, cis.regimeClass, lastFetch.getTime(),
+        assets.jseTop40?.isLive ? assets.jseTop40.price : null);
     }
-  }, [lastFetch, status, hasData, cis.total, cis.regime, cis.regimeClass, addCisReading]);
+  }, [lastFetch, status, hasData, cis.total, cis.regime, cis.regimeClass, addCisReading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Each live fetch also lets the server take a shared reading (throttled server-side)
+  useEffect(() => {
+    if (status === 'live' && lastFetch) syncCisServer(true);
+  }, [lastFetch, status, syncCisServer]);
 
   const handleFetch = useCallback(async (silentParam) => {
     const isSilent = silentParam === true;
@@ -178,19 +177,25 @@ export default function App() {
     }
   }, [fetchLive, addToast, fetchSparklines]);
 
+  const pollInBackground = useCallback(() => handleFetch(true), [handleFetch]);
+  const { notifyEnabled, notifySupported, toggleNotify } = useNotifications({
+    cis, alerts, hasData, addToast, onPoll: pollInBackground,
+  });
+
   const handleExport = useCallback((key) => {
     if (key === 'watchlist-csv') exportWatchlistCSV(stocks, timeframe);
     if (key === 'macro-csv')     exportMacroCSV(assets);
     if (key === 'snapshot-json') exportSnapshotJSON(assets, stocks, sectors, cis, alerts);
+    if (key === 'cis-history-csv') exportCISHistoryCSV(cisHistory);
     addToast('File downloaded', 'info', 2000);
-  }, [stocks, assets, sectors, cis, alerts, timeframe, addToast]);
+  }, [stocks, assets, sectors, cis, alerts, timeframe, cisHistory, addToast]);
 
   const shared = {
     assets, stocks, sectors, cis, alerts, history,
     timeframe, status, hasData, dataHealth, lastFetch,
     onFetch: handleFetch,
     sparklines, sparkLoading,
-    cisChartData,
+    cisChartData, cisHistory, cisServerStatus,
     onOpenSector: openSector,
     onNavigate: navigateTo,
     drillSector, setDrillSector,
@@ -236,6 +241,7 @@ export default function App() {
           sidebarCollapsed={sidebarCollapsed}
           menuButtonRef={menuButtonRef}
           theme={theme} setTheme={setTheme}
+          notifyEnabled={notifyEnabled} notifySupported={notifySupported} onToggleNotify={toggleNotify}
         />
         <main id="main-content" tabIndex="-1" className="flex-1 overflow-y-auto">
           <Suspense fallback={<PageFallback />}>

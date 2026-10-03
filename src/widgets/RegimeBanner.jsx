@@ -115,22 +115,10 @@ export default function RegimeBanner({ cis, hasData, cisChartData, dataHealth })
     const minTs = cisChartData[0].ts;
     const maxTs = cisChartData[cisChartData.length - 1].ts;
 
-    const mapped = CONFLICT_EVENTS.map(ev => {
-      const evTs = new Date(ev.date).getTime();
-      if (evTs >= minTs && evTs <= maxTs) {
-        let closestPoint = cisChartData[0];
-        let minDiff = Math.abs(closestPoint.ts - evTs);
-        for (const p of cisChartData) {
-          const diff = Math.abs(p.ts - evTs);
-          if (diff < minDiff) {
-            minDiff = diff;
-            closestPoint = p;
-          }
-        }
-        return { ...ev, xValue: closestPoint.time };
-      }
-      return null;
-    }).filter(Boolean);
+    // The chart's x axis is time, so an event sits at its own date.
+    const mapped = CONFLICT_EVENTS
+      .map(ev => ({ ...ev, xValue: new Date(`${ev.date}T00:00:00+02:00`).getTime() }))
+      .filter(ev => ev.xValue >= minTs && ev.xValue <= maxTs);
 
     const seen = new Set();
     return mapped.filter(ev => {

@@ -140,7 +140,7 @@ const setCors = function(res) {
 const ok  = function(res, body)   { setCors(res); return res.status(200).json(body); };
 const err = function(res, msg, c) { setCors(res); return res.status(c || 502).json({ error: msg }); };
 
-module.exports = async function(req, res) {
+async function handler(req, res) {
   if (req.method === 'OPTIONS') { setCors(res); return res.status(204).end(); }
 
   const qs      = typeof req.query === 'object' ? req.query : {};
@@ -200,4 +200,8 @@ module.exports = async function(req, res) {
     console.error('[quotes] Unhandled error:', e.message, e.stack);
     return err(res, 'Server error: ' + e.message);
   }
-};
+}
+
+module.exports = handler;
+module.exports.fetchBulkQuotes = fetchBulkQuotes;
+module.exports.fetchAllFromChart = fetchAllFromChart;

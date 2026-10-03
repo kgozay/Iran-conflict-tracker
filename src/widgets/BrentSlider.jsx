@@ -1,71 +1,7 @@
 import React, { useState } from 'react';
 import clsx from 'clsx';
 import { Card, CardHeader } from './Card.jsx';
-
-// Regression coefficients: JSE sector sensitivity to:
-// 1. Brent delta ($ vs $75 base)
-// 2. ZAR Shock (% Rand depreciation)
-// 3. Gold Shock (% Gold appreciation)
-const BASE_BRENT = 75;
-const SECTORS = [
-  { name: 'Energy / Sasol',   brentSlope: +0.082, zarSlope: +0.25, goldSlope: 0.00 },
-  { name: 'Coal Exporters',   brentSlope: +0.058, zarSlope: +0.20, goldSlope: 0.00 },
-  { name: 'Gold Miners',      brentSlope: +0.018, zarSlope: +0.35, goldSlope: +0.80 },
-  { name: 'PGM Miners',       brentSlope: +0.012, zarSlope: +0.30, goldSlope: +0.30 },
-  { name: 'Watchlist average', brentSlope: -0.041, zarSlope: +0.12, goldSlope: +0.05 },
-  { name: 'Banks',            brentSlope: -0.056, zarSlope: -0.35, goldSlope: -0.05 },
-  { name: 'Retailers',        brentSlope: -0.068, zarSlope: -0.40, goldSlope: -0.05 },
-  { name: 'Consumer Staples', brentSlope: -0.040, zarSlope: -0.20, goldSlope: 0.00 },
-  { name: 'Insurers',         brentSlope: -0.045, zarSlope: -0.25, goldSlope: 0.00 },
-  { name: 'Property',         brentSlope: -0.060, zarSlope: -0.45, goldSlope: 0.00 },
-  { name: 'Industrials',      brentSlope: -0.032, zarSlope: -0.15, goldSlope: 0.00 },
-];
-
-function getStockSlopes(stock) {
-  // Coal exporters
-  if (stock.display === 'EXX' || stock.display === 'TGA') {
-    return { brent: 0.058, zar: 0.20, gold: 0 };
-  }
-  // Sasol
-  if (stock.display === 'SOL') {
-    return { brent: 0.082, zar: 0.25, gold: 0 };
-  }
-  // Gold miners (GFI, ANG, SSW)
-  if (stock.sector === 'Gold Miners') {
-    return { brent: 0.018, zar: 0.35, gold: stock.display === 'SSW' ? 0.40 : 0.85 };
-  }
-  // PGM Miners (IMP, VAL, NPH, SSW)
-  if (stock.sector === 'PGMs') {
-    return { brent: 0.012, zar: 0.30, gold: 0.30 };
-  }
-  // Banks
-  if (stock.sector === 'Banks') {
-    return { brent: -0.056, zar: -0.35, gold: 0 };
-  }
-  // Retailers
-  if (stock.sector === 'Retailers') {
-    return { brent: -0.068, zar: -0.40, gold: 0 };
-  }
-  // BAT: offshore earner, behaves like a rand hedge
-  if (stock.display === 'BTI') {
-    return { brent: -0.010, zar: 0.25, gold: 0 };
-  }
-  if (stock.sector === 'Consumer Staples') {
-    return { brent: -0.040, zar: -0.20, gold: 0 };
-  }
-  if (stock.sector === 'Insurers') {
-    return { brent: -0.045, zar: -0.25, gold: 0 };
-  }
-  if (stock.sector === 'Property') {
-    return { brent: -0.060, zar: -0.45, gold: 0 };
-  }
-  // Industrials (NPN, PRX, CFR, AGL, MTN)
-  if (stock.sector === 'Industrials' || stock.sector === 'Telecoms') {
-    return { brent: -0.032, zar: -0.15, gold: 0 };
-  }
-  // Default JSE Top40 / Miners
-  return { brent: -0.041, zar: 0.12, gold: 0.05 };
-}
+import { BASE_BRENT, SECTORS, getStockSlopes, computeScenarioCIS } from '../utils/scenario.js';
 
 function getCellCls(pct) {
   if (pct >= 4)    return 'bg-bull-faint border-bull-faint text-bull font-semibold';
@@ -77,7 +13,9 @@ function getCellCls(pct) {
   return 'text-ts';
 }
 
-export default function BrentSlider({ liveBrent, stocks = [] }) {
+const REGIME_TEXT = { bear: 'text-bear', warn: 'text-warn', bull: 'text-bull', neutral: 'text-ts' };
+
+export default function BrentSlider({ liveBrent, stocks = [], cisInput = null, liveCis = null }) {
   const livePrice = liveBrent?.price ?? null;
   const initPrice = livePrice ? Math.round(livePrice) : 92;
 
@@ -87,6 +25,16 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
   const [gold, setGold] = useState(0); // % Gold appreciation shock
 
   const deltaBrent = brent - BASE_BRENT;
+
+  // Scenario CIS: the shock applied as an extra one-day move on top of today's
+  // live readings. The slider snaps to whole dollars, so its starting position
+  // counts as "no Brent shock".
+  const scenarioBrent = livePrice && brent === initPrice ? livePrice : brent;
+  const scenarioCis = cisInput
+    ? computeScenarioCIS(cisInput, { brent: scenarioBrent, livePrice, zar, gold })
+    : null;
+  const isShocked = scenarioBrent !== livePrice || zar !== 0 || gold !== 0;
+  const resetToLive = () => applyPresetValues(initPrice, 0, 0);
 
   // Sector calculations based on all three factors
   const scenarios = SECTORS.map(s => {
@@ -120,6 +68,11 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
   const topLosers   = [...sortedSims].reverse().filter(s => s.simPct < 0).slice(0, 3);
 
   // Preset triggers
+  function applyPresetValues(b, z, g) {
+    setBrent(b);
+    setZar(z);
+    setGold(g);
+  }
   const applyPreset = (b, z, g) => {
     setBrent(b);
     setZar(z);
@@ -216,6 +169,38 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
         </div>
       </div>
 
+      {/* Scenario CIS vs live CIS */}
+      {scenarioCis && (
+        <div className="glass-sub rounded-xl p-4 mb-4 flex flex-wrap items-center justify-between gap-4" aria-live="polite">
+          <div className="flex items-center gap-6">
+            <div>
+              <div className="text-[10.5px] text-tm uppercase font-semibold tracking-[0.05em]">Live CIS</div>
+              <div className={clsx('font-mono text-[22px] font-bold leading-tight', REGIME_TEXT[liveCis?.regimeClass] ?? 'text-ts')}>
+                {liveCis ? `${liveCis.total > 0 ? '+' : ''}${liveCis.total}` : '—'}
+              </div>
+              <div className="text-[10.5px] text-tm font-mono">{liveCis?.regime ?? 'NO DATA'}</div>
+            </div>
+            <span className="text-tm font-mono text-[18px]" aria-hidden="true">→</span>
+            <div>
+              <div className="text-[10.5px] text-purple-400 uppercase font-semibold tracking-[0.05em]">Scenario CIS</div>
+              <div className={clsx('font-mono text-[22px] font-bold leading-tight', REGIME_TEXT[scenarioCis.regimeClass] ?? 'text-ts')}>
+                {scenarioCis.total > 0 ? '+' : ''}{scenarioCis.total}
+              </div>
+              <div className="text-[10.5px] text-tm font-mono">{scenarioCis.regime}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <p className="text-[11px] text-tm max-w-[42ch] m-0">
+              The shock is added to today&apos;s moves as if it happened in one session, then scored with the same CIS formula.
+            </p>
+            <button type="button" onClick={resetToLive} disabled={!isShocked}
+              className="min-h-9 px-3 py-1 font-mono text-[11px] rounded-lg border border-purple-400/50 text-purple-400 bg-purple-600/10 hover:bg-purple-600/20 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+              Reset to live
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Preset Macro Scenarios Buttons */}
       <div className="flex gap-1.5 flex-wrap mb-4 pb-3.5 border-b border-bd">
         {[
@@ -224,7 +209,6 @@ export default function BrentSlider({ liveBrent, stocks = [] }) {
           { label: 'Mild Stress (Amber)', b: 92, z: 3, g: 5, cls: 'border-warn text-warn bg-warn/5 hover:bg-warn/10' },
           { label: 'Geopolitical Shock (Red)', b: 115, z: 8, g: 12, cls: 'border-bear text-bear bg-bear/5 hover:bg-bear/10' },
           { label: 'Systemic Crisis (Black Swan)', b: 135, z: 15, g: 20, cls: 'border-bear text-bear bg-bear/15 hover:bg-bear/20' },
-          livePrice && { label: 'Live Brent Reset', b: Math.round(livePrice), z: 0, g: 0, cls: 'border-ts text-ts hover:bg-bg-h' },
         ].filter(Boolean).map(s => (
           <button key={s.label} type="button" onClick={() => applyPreset(s.b, s.z, s.g)}
             className={clsx('min-h-9 px-3 py-1 font-mono text-[11px] rounded-lg border transition-all cursor-pointer font-medium hover:-translate-y-px', s.cls)}>

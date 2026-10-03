@@ -10,7 +10,7 @@ npm run build      # Production build → dist/
 npm run preview    # Preview production build locally
 
 vercel dev         # Run locally WITH Vercel serverless functions (required to test /api/* routes)
-npm test           # node:test suite in tests/ — scoring, universe, sectors, alerts, coverage, fundamentals
+npm test           # node:test suite in tests/ — scoring, universe, sectors, alerts, coverage, fundamentals, scenario, CIS series, server snapshot
 ```
 
 Pure logic lives in `src/utils/` (and pure helpers exported from `api/*.js`) so it can be unit-tested without React or the network. UI and live-API behaviour still need checking via `vercel dev` or a Vercel preview.
@@ -55,6 +55,10 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
 | `api/_lib/yahoo.js` | Shared Yahoo HTTP + cookie/crumb helpers (underscore folder is not deployed as a route) |
 | `src/utils/sectors.js` | `deriveSectors` — equal-weight sector averages used by `App.jsx` |
 | `api/morning-note.js` | Gemini 2.5 Flash AI morning note — requires `GEMINI_API_KEY` env var |
+| `api/cis-history.js` | Shared CIS history in Redis; `?record=1` takes a server-scored reading |
+| `api/cis-backfill.js` | Daily CIS rebuilt from historical closes since 2022 |
+| `api/daily-digest.js` | Cron email digest (Gemini + Resend) |
+| `src/utils/cisSeries.js` | Daily CIS rebuild, weekly trajectories, backtest, reading merge |
 
 ### Sector derivation
 
@@ -65,7 +69,9 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
 - Market data: `jse_cw_v7_cache` in localStorage — fresh for 5 min, usable (stale) for 30 min.
 - Sparklines: `jse_cw_sparklines_v1` — 8-min TTL.
 - Fundamentals: `jse_cw_fundamentals_v1` — refetched after 6h, usable for 24h, then static figures.
-- CIS history: `jse_cw_cis_history_v1` — up to 200 readings (≈7 days at 5-min refresh).
+- CIS history: `jse_cw_cis_history_v1` — up to 200 browser readings, merged with the server history when configured.
+- Historical daily CIS: `jse_cw_backfill_v1` — 12h.
+- Alerts preference: `jse_notify`.
 
 ### API / environment
 
@@ -95,219 +101,23 @@ Regime labels: `BEARISH SHOCK` (≤ -40), `MILD BEARISH` (≤ -15), `NEUTRAL` (�
 - `useMarketData.clearError` reverts to `'cached'` status when prior data exists (was always `'empty'`, which wiped the cached data view).
 - `BrentSlider` slider track label now shows live Brent price dynamically (was hardcoded `$92 NOW`).
 
-## Planned features (implementation guides)
+## Features added (2026-10)
 
-### 1. Regime bands on CIS history chart
+- **Scenario CIS** — `src/utils/scenario.js` holds the simulator sensitivities and `computeScenarioCIS(liveInput, { brent, livePrice, zar, gold })`, which adds the shock to today's live CIS inputs. `BrentSlider` shows Live → Scenario CIS with a "Reset to live" button. `buildCISInput(assets, sectors)` (`src/utils/cisInput.js`) is the single mapping from market data to `computeCIS` inputs, shared by `App.jsx` and the server.
+- **Conflict events** — `src/data/conflictEvents.js` covers 2024 → Sep 2026 (12-day war, snapback, 2026 war, ceasefire, MOU, Sep 2026 escalation). The CIS history chart uses a time x-axis, so events sit at their own date. Keep this list current.
+- **Shared CIS history** — `api/cis-history.js` stores server-scored readings in Redis (Upstash REST: `KV_REST_API_URL`/`KV_REST_API_TOKEN` or `UPSTASH_REDIS_REST_URL`/`_TOKEN`). `?record=1` takes a reading (throttled to one per 10 min via a lock key); each live dashboard fetch calls it, and Vercel Cron calls it daily at 15:30 UTC. Without a store it returns `{ configured: false }` and the app uses browser-only history. `useCISHistory` merges server + local readings; the chart shows the last 7 days. Optional `ALERT_EMAIL` emails on a regime change.
+- **Historical daily CIS** — `api/cis-backfill.js` rebuilds the CIS for every JSE session since 2022 from Yahoo daily closes (`computeDailyCISSeries` in `src/utils/cisSeries.js`), CDN-cached 6h. Feeds two Macro Transmission tabs:
+  - **Crisis comparison** (`CrisisComparison.jsx`) — weekly average CIS after each episode in `src/data/crisisReferences.js` (2026 war, 12-day war 2025, Israel–Gaza 2023, Russia–Ukraine 2022). Reference lines are calculated, not hand-entered.
+  - **Backtest** (`CISBacktest.jsx`, `backtestCIS`) — CIS vs forward 5/20-session Top 40 returns (correlation, hit rate, average forward return by regime), on the rebuilt history and on stored live readings once >25 days exist.
+- **Daily digest** — `api/daily-digest.js`, Vercel Cron 06:00 UTC Mon–Fri. Scores a live snapshot server-side (`api/_lib/market.js`), asks Gemini for a brief grounded only in those figures, and emails it via Resend REST with the figures appended (still sends figures-only if Gemini fails). Requires `CRON_SECRET`, `RESEND_API_KEY`, `DIGEST_EMAIL`; optional `DIGEST_FROM` (defaults to `onboarding@resend.dev`, which only delivers to the Resend account owner).
+- **Alerts** — bell button in `TopBar` (`useNotifications`): regime changes and new red alerts arrive as toasts when the tab is visible and system notifications when hidden; while on, data refreshes every 10 min.
+- **Export** — "CIS history CSV" in the export menu (`exportCISHistoryCSV`).
+- **PWA** — `public/manifest.webmanifest`, `public/icon.svg`, `public/sw.js` (network-first pages, cache-first `/assets/`, never caches `/api/`). Registered in `src/main.jsx` in production builds only.
 
-**File:** `src/widgets/CISHistoryChart.jsx`
-
-1. Import `ReferenceArea` from `recharts` alongside the existing imports.
-2. Inside the `<ComposedChart>` (or `<LineChart>`), add five `<ReferenceArea>` elements **before** the `<Line>` element so they render behind the data line:
-   ```jsx
-   <ReferenceArea y1={-100} y2={-40} fill="rgba(239,68,68,0.08)" ifOverflow="hidden" />
-   <ReferenceArea y1={-40}  y2={-15} fill="rgba(245,158,11,0.08)" ifOverflow="hidden" />
-   <ReferenceArea y1={-15}  y2={15}  fill="rgba(100,116,139,0.06)" ifOverflow="hidden" />
-   <ReferenceArea y1={15}   y2={40}  fill="rgba(34,197,94,0.06)"  ifOverflow="hidden" />
-   <ReferenceArea y1={40}   y2={100} fill="rgba(34,197,94,0.12)"  ifOverflow="hidden" />
-   ```
-3. Optionally add a `label={{ value: 'BEARISH SHOCK', position: 'insideTopRight', fontSize: 9, fill: 'rgba(239,68,68,0.5)' }}` prop to the first ReferenceArea (repeat for each band with its regime name and matching color).
-4. **Verify:** `npm run dev` → Overview page → CIS history chart shows colored background bands matching regime zones.
-
----
-
-### 2. Event markers on CIS history chart
-
-**New file:** `src/data/conflictEvents.js`
-**File:** `src/widgets/CISHistoryChart.jsx`
-
-1. Create `src/data/conflictEvents.js` exporting a static array:
-   ```js
-   export const CONFLICT_EVENTS = [
-     { date: '2024-04-01', label: 'Iran strikes Israel', type: 'escalation' },
-     { date: '2024-04-14', label: 'Israel retaliates', type: 'escalation' },
-     { date: '2024-05-10', label: 'Ceasefire talks', type: 'de-escalation' },
-     // add more milestones as needed
-   ];
-   ```
-   Types: `'escalation'` | `'de-escalation'` | `'neutral'`
-2. In `CISHistoryChart.jsx`, import `CONFLICT_EVENTS` and `ReferenceLine`, `Label` from `recharts`.
-3. Derive the earliest timestamp in the `data` prop: `const minTs = data[0]?.ts ?? 0`.
-4. Filter events: `const visible = CONFLICT_EVENTS.filter(e => new Date(e.date).getTime() >= minTs)`.
-5. Map visible events to `<ReferenceLine>` elements inside the chart:
-   ```jsx
-   {visible.map(ev => (
-     <ReferenceLine
-       key={ev.date}
-       x={new Date(ev.date).getTime()}
-       stroke={ev.type === 'escalation' ? '#ef4444' : ev.type === 'de-escalation' ? '#22c55e' : '#64748b'}
-       strokeDasharray="3 3"
-     >
-       <Label value={ev.label} angle={-90} position="insideTopLeft" fontSize={9} />
-     </ReferenceLine>
-   ))}
-   ```
-6. **Verify:** At least 3 events appear as dashed vertical lines with rotated labels on the chart.
-
----
-
-### 3. Correlation heatmap
-
-**New file:** `src/widgets/CorrelationHeatmap.jsx`
-**File:** `src/pages/MacroTransmission.jsx`
-
-1. Create `src/widgets/CorrelationHeatmap.jsx`. Define a `pearson(a, b)` function:
-   ```js
-   function pearson(a, b) {
-     const n = a.length;
-     if (n < 2) return 0;
-     const meanA = a.reduce((s, v) => s + v, 0) / n;
-     const meanB = b.reduce((s, v) => s + v, 0) / n;
-     const num = a.reduce((s, v, i) => s + (v - meanA) * (b[i] - meanB), 0);
-     const den = Math.sqrt(a.reduce((s, v) => s + (v - meanA) ** 2, 0) * b.reduce((s, v) => s + (v - meanB) ** 2, 0));
-     return den === 0 ? 0 : num / den;
-   }
-   ```
-2. Props: `{ history, macro }` — `history` is the 20D daily returns object keyed by symbol; `macro` contains Brent, Gold, USD/ZAR, and US 10Y series.
-3. Define an `ASSETS` array with display name + data key for: Brent, Gold, USD/ZAR, US 10Y, Top40, Miners, Banks, Retailers, Energy, Industrials (10 items).
-4. Build an N×N matrix of Pearson r values from the 20D return arrays for each pair.
-5. Render as a CSS grid (`grid-cols-[repeat(N,1fr)]`) where each cell background is:
-   - Positive r: `rgba(34,197,94, Math.abs(r))` 
-   - Negative r: `rgba(239,68,68, Math.abs(r))`
-   - Diagonal: `rgba(100,116,139,0.3)`
-6. Each cell shows `r.toFixed(2)` in `text-xs font-mono`.
-7. Add row/column headers with asset names (rotated 45° for columns).
-8. Add a legend row below: "■ Green = co-movement  ■ Red = inverse".
-9. In `MacroTransmission.jsx`, import and render `<CorrelationHeatmap history={history} macro={macro} />` below the transmission channel section.
-10. Guard with `if (!history || Object.keys(history).length === 0) return null`.
-11. **Verify:** Gold vs Miners shows r > 0.5; Gold vs USD/ZAR shows r < 0.
-
----
-
-### 4. Historical crisis comparison overlay
-
-**New file:** `src/data/crisisReferences.js`
-**New file:** `src/widgets/CrisisComparison.jsx`
-**File:** `src/pages/MacroTransmission.jsx`
-
-1. Create `src/data/crisisReferences.js`:
-   ```js
-   export const UKRAINE_2022 = [
-     { week: 0, cis: -8 }, { week: 1, cis: -42 }, { week: 2, cis: -38 },
-     { week: 3, cis: -31 }, { week: 4, cis: -22 }, { week: 5, cis: -18 },
-     { week: 6, cis: -10 }, { week: 7, cis: -5 },
-   ];
-   export const ISRAEL_GAZA_2023 = [
-     { week: 0, cis: -5 }, { week: 1, cis: -28 }, { week: 2, cis: -33 },
-     { week: 3, cis: -25 }, { week: 4, cis: -20 }, { week: 5, cis: -14 },
-     { week: 6, cis: -9 }, { week: 7, cis: -4 },
-   ];
-   // Values are approximate CIS-equivalent; adjust based on historical research
-   ```
-2. Create `src/widgets/CrisisComparison.jsx`:
-   - Read `jse_cw_cis_history_v1` from localStorage to get the current conflict trajectory.
-   - Align to week 0 = earliest recorded entry; aggregate to weekly averages (group by 7-day bins).
-   - Merge into a combined dataset: `[{ week, ukraine, israelGaza, current }]`.
-   - Render a Recharts `<LineChart>` with three `<Line>` elements (dashed for references, solid for current).
-   - XAxis: "Week N"; YAxis: range -60 to 20; tooltip shows all three values.
-   - Title: "Crisis trajectory comparison".
-3. Import and place `<CrisisComparison />` in `MacroTransmission.jsx` below the correlation heatmap (or as a new collapsible section).
-4. **Verify:** Three lines render; current line tracks recent CIS history from localStorage.
-
----
-
-### 5. Multi-asset scenario simulator
-
-**File:** `src/pages/MacroTransmission.jsx`
-
-1. Add local state:
-   ```js
-   const [scenarioOverrides, setScenarioOverrides] = useState({ brent: 0, zar: 0, gold: 0 });
-   ```
-2. Derive a `scenarioCIS` value whenever overrides or live data change:
-   ```js
-   const scenarioCIS = useMemo(() => {
-     if (!macro) return null;
-     const overridden = {
-       ...macro,
-       brent: { ...macro.brent, chg: (macro.brent?.chg ?? 0) + scenarioOverrides.brent },
-       zar:   { ...macro.zar,   chg: (macro.zar?.chg ?? 0)   + scenarioOverrides.zar },
-       gold:  { ...macro.gold,  chg: (macro.gold?.chg ?? 0)  + scenarioOverrides.gold },
-     };
-     return computeCIS(overridden, sectors);
-   }, [macro, sectors, scenarioOverrides]);
-   ```
-   Import `computeCIS` from `src/utils/scoring.js`.
-3. Extend the existing BrentSlider UI section with two additional sliders:
-   - **USD/ZAR**: label "ZAR shock", range -15 to +15 (%), step 0.5, `onChange` updates `scenarioOverrides.zar`
-   - **Gold**: label "Gold shock", range -20 to +20 (%), step 0.5, `onChange` updates `scenarioOverrides.gold`
-4. Display a "Scenario CIS" badge near the existing live CIS display:
-   ```jsx
-   {scenarioCIS !== null && (
-     <span className="px-2 py-1 rounded bg-purple-600/20 text-purple-400 text-sm font-mono">
-       Scenario CIS: {scenarioCIS.toFixed(1)}
-     </span>
-   )}
-   ```
-5. Add a `<button onClick={() => setScenarioOverrides({ brent: 0, zar: 0, gold: 0 })}>Reset</button>` next to the sliders.
-6. **Verify:** Moving any slider updates the Scenario CIS instantly with no network request; Reset zeroes all sliders and restores live CIS.
-
----
-
-### 6. Daily email digest via Vercel cron
-
-**New file:** `api/daily-digest.js`
-**File:** `vercel.json`
-
-1. Install Resend: `npm install resend` (save to `package.json` as a regular dependency, not devDependency — Vercel functions need it at runtime).
-2. Create `api/daily-digest.js` (CommonJS):
-   ```js
-   const { GoogleGenerativeAI } = require('@google/generative-ai');
-   const { Resend } = require('resend');
-
-   module.exports = async (req, res) => {
-     try {
-       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-       const date = new Date().toDateString();
-       const prompt = `You are an analyst writing a concise daily brief (200–300 words) on how the Iran-Israel conflict is affecting South African markets today (${date}). Cover: Brent oil impact, USD/ZAR pressure, JSE sector effects (miners, banks, retailers), and 1–2 key risk factors. Plain text, no markdown.`;
-       const result = await model.generateContent(prompt);
-       const body = result.response.text();
-
-       const resend = new Resend(process.env.RESEND_API_KEY);
-       await resend.emails.send({
-         from: 'digest@yourdomain.com', // replace with your verified Resend sender domain
-         to: process.env.DIGEST_EMAIL,
-         subject: `Iran Conflict Tracker — Daily Brief ${date}`,
-         text: body,
-       });
-       res.json({ ok: true });
-     } catch (err) {
-       console.error('daily-digest error:', err.message);
-       res.status(500).json({ ok: false, error: err.message });
-     }
-   };
-   ```
-3. Add or update `vercel.json` at the project root with a `crons` entry:
-   ```json
-   {
-     "crons": [
-       { "path": "/api/daily-digest", "schedule": "0 6 * * 1-5" }
-     ]
-   }
-   ```
-   This fires at 06:00 UTC Monday–Friday.
-4. Set the following in Vercel project environment variables:
-   - `GEMINI_API_KEY` — already exists
-   - `RESEND_API_KEY` — obtain from resend.com (free tier covers 3,000 emails/month)
-   - `DIGEST_EMAIL` — recipient address (e.g. `kgositaye@gmail.com`)
-5. Update the `from` address to a domain you have verified in Resend (or use Resend's shared domain for testing: `onboarding@resend.dev`).
-6. **Verify locally:** `vercel dev` → `GET http://localhost:3000/api/daily-digest` → check email arrives. **Verify deployed:** push to Vercel, check Vercel dashboard → Cron Jobs tab shows the schedule.
-
----
+Server helpers live in `api/_lib/` (`store.js`, `email.js`, `cron.js`, `market.js`); they load the ESM scoring code from `src/` with dynamic `import()`. `vercel.json` sets `maxDuration` for the new functions and the two crons (Hobby plans allow daily crons only).
 
 ### Global implementation notes
 
 - After implementing any widget, guard against empty/null data at the top of the component: `if (!data || !macro) return null`.
 - `npm run build` must pass without errors after each feature.
 - `vercel dev` is required to test all `/api/*` routes; `npm run dev` alone will not invoke serverless functions.
-- Features 1–4 are independent and can be implemented in any order. Feature 7 depends on `computeCIS` being importable (it already is). Feature 8 requires a Resend account setup before it can be fully tested.
