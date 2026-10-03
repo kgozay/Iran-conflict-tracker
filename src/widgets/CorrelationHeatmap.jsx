@@ -1,27 +1,13 @@
 import React, { useMemo } from 'react';
 import { Card, CardHeader } from './Card.jsx';
-
-function pearson(a, b) {
-  const n = Math.min(a.length, b.length);
-  if (n < 2) return 0;
-  const aSlice = a.slice(-n);
-  const bSlice = b.slice(-n);
-  const meanA = aSlice.reduce((s, v) => s + v, 0) / n;
-  const meanB = bSlice.reduce((s, v) => s + v, 0) / n;
-  const num = aSlice.reduce((s, v, i) => s + (v - meanA) * (bSlice[i] - meanB), 0);
-  const den = Math.sqrt(
-    aSlice.reduce((s, v) => s + (v - meanA) ** 2, 0) *
-    bSlice.reduce((s, v) => s + (v - meanB) ** 2, 0)
-  );
-  return den === 0 ? 0 : num / den;
-}
+import { averageDatedReturns, alignedCorrelation } from '../utils/correlation.js';
 
 const ASSETS = [
   { short: 'Brent',   name: 'Brent',      key: 'BZ=F',        type: 'macro'  },
   { short: 'Gold',    name: 'Gold',        key: 'GC=F',        type: 'macro'  },
   { short: 'ZAR',     name: 'USD/ZAR',     key: 'USDZAR=X',    type: 'macro'  },
   { short: 'US 10Y',  name: 'US 10Y',      key: '^TNX',        type: 'macro'  },
-  { short: 'JSE',     name: 'Top40',       key: 'top40',       type: 'sector' },
+  { short: 'JSE avg', name: 'Watchlist average', key: 'top40', type: 'sector' },
   { short: 'Miners',  name: 'Miners',      key: 'Gold Miners', type: 'sector' },
   { short: 'Banks',   name: 'Banks',       key: 'Banks',       type: 'sector' },
   { short: 'Retail',  name: 'Retailers',   key: 'Retailers',   type: 'sector' },
@@ -33,25 +19,17 @@ const N = ASSETS.length;
 
 function extractReturns(asset, history, stocks) {
   if (asset.type === 'macro') {
-    return history[asset.key]?.returns20D ?? [];
+    return new Map((history[asset.key]?.datedReturns20D ?? []).map(point => [point.date, point.value]));
   }
   const pool = asset.key === 'top40'
-    ? stocks.filter(s => s.isLive && history[s.ticker]?.returns20D)
-    : stocks.filter(s => s.sector === asset.key && s.isLive && history[s.ticker]?.returns20D);
-  if (!pool.length) return [];
-  const arrays = pool.map(s => history[s.ticker].returns20D);
-  const minLen = Math.min(...arrays.map(a => a.length));
-  const avg = [];
-  for (let i = 0; i < minLen; i++) {
-    let sum = 0;
-    for (const a of arrays) sum += a[a.length - minLen + i];
-    avg.push(sum / arrays.length);
-  }
-  return avg;
+    ? stocks.filter(s => history[s.ticker]?.datedReturns20D)
+    : stocks.filter(s => s.sector === asset.key && history[s.ticker]?.datedReturns20D);
+  return averageDatedReturns(pool.map(stock => history[stock.ticker].datedReturns20D), 0.7);
 }
 
 function cellColor(r, diagonal) {
   if (diagonal) return 'var(--color-bd)';
+  if (r == null) return 'var(--color-bg-e)';
   const alpha = 0.12 + Math.abs(r) * 0.55;
   return r >= 0
     ? `rgba(52,211,153,${alpha.toFixed(2)})`
@@ -61,19 +39,23 @@ function cellColor(r, diagonal) {
 const COL_TEMPLATE = `100px repeat(${N}, 1fr)`;
 
 export default function CorrelationHeatmap({ history, stocks }) {
-  if (!history || Object.keys(history).length === 0) return null;
-
   const matrix = useMemo(() => {
-    const returns = ASSETS.map(a => extractReturns(a, history, stocks));
+    const returns = ASSETS.map(a => extractReturns(a, history ?? {}, stocks ?? []));
     return ASSETS.map((_, i) =>
       ASSETS.map((__, j) => {
-        if (i === j) return { r: 1, text: '—', diag: true };
-        if (!returns[i].length || !returns[j].length) return { r: 0, text: '—', diag: false };
-        const r = pearson(returns[i], returns[j]);
-        return { r, text: r.toFixed(2), diag: false };
+        if (i === j) return { r: 1, text: '—', diag: true, count: returns[i].size };
+        const { value, count } = alignedCorrelation(returns[i], returns[j]);
+        return { r: value, text: value == null ? '—' : value.toFixed(2), diag: false, count };
       })
     );
   }, [history, stocks]);
+
+  const hasDatedHistory = Object.values(history ?? {}).some(item => item?.datedReturns20D?.length);
+  if (!hasDatedHistory) {
+    return <Card><CardHeader title="20D correlation" italic="heatmap" />
+      <p className="text-[13px] text-tm">Dated history is unavailable. Refresh data to calculate aligned correlations.</p>
+    </Card>;
+  }
 
   return (
     <Card>
@@ -110,6 +92,7 @@ export default function CorrelationHeatmap({ history, stocks }) {
                     backgroundColor: cellColor(cell.r, cell.diag),
                     color: cell.diag ? 'var(--color-tm)' : 'var(--color-tp)',
                   }}
+                  title={cell.diag ? `${asset.name}: ${cell.count} sessions` : `${asset.name} and ${ASSETS[j].name}: ${cell.count} shared sessions${cell.r == null ? ' (at least 10 required)' : ''}`}
                 >
                   {cell.text}
                 </div>
@@ -129,7 +112,7 @@ export default function CorrelationHeatmap({ history, stocks }) {
           <span className="inline-block w-[10px] h-[10px] rounded-[2px]" style={{ background: 'rgba(249,112,112,0.65)' }} />
           inverse
         </span>
-        <span className="ml-auto opacity-60">20 trading days · equal-weight sectors</span>
+        <span className="ml-auto opacity-60">Up to 20 daily returns · shared dates · ≥10 sessions · ≥70% basket coverage</span>
       </div>
     </Card>
   );

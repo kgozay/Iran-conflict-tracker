@@ -114,10 +114,17 @@ function buildPrompt(assets, sectors, cis, stocks, alerts, dataHealth) {
 
   const patterns = detectPatterns({ assets, sectors, stocks });
   const health   = dataHealth || {};
+  const snapshotTime = health.lastFetch && !Number.isNaN(new Date(health.lastFetch).getTime())
+    ? new Date(health.lastFetch).toLocaleString('en-ZA', {
+        timeZone: 'Africa/Johannesburg', day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      }) + ' SAST'
+    : 'unknown';
 
   return `You are a senior JSE equity strategist. Write the daily JSE Conflict Watch morning note — a concise sell-side style brief for an institutional PM tracking Iran/Middle East risk transmission into South African markets.
 
-DATA (${date} · ${time} SAST)
+NOTE GENERATED: ${date} · ${time} SAST
+DASHBOARD SNAPSHOT FETCHED: ${snapshotTime} (fetch time, not an exchange quote timestamp)
 CIS: ${cis.total ?? '—'} / ${cis.regime ?? 'N/A'} | Macro 40%: ${cis.components?.macro?.score?.toFixed(1)??'—'} | JSE 35%: ${cis.components?.jse?.score?.toFixed(1)??'—'} | Conf 25%: ${cis.components?.conf?.score?.toFixed(1)??'—'}
 Brent: ${fmt(b.price,2,'$','/bbl')} (${pct(b.changePct)}) | Gold: ${fmt(g.price,0,'$','/oz')} (${pct(g.changePct)}) | Platinum: ${fmt(pt.price,0,'$','/oz')} (${pct(pt.changePct)})
 USD/ZAR: R${fmt(u.price,3)} (${pct(u.changePct)}) | US 10Y: ${fmt(y.price,3,'','%')} (${pct(y.changePct)}) [${y.source||'unknown'}] | Coal: ${fmt(c.price,2,'$','/t')} (${pct(c.changePct)})
@@ -153,10 +160,10 @@ OUTPUT — write in this exact markdown structure:
 > **Open Call:** [One sharp sentence with a precise price threshold or catalyst to watch today.]
 
 ### Data Caveat
-[One sentence on coverage quality.]
+[One sentence on coverage quality and the dashboard snapshot time.]
 *— JSE Conflict Watch · ${date}*
 
-RULES: Use only the data above. No invented news or external facts. Every claim needs a number or named stock. If a value is n/a, skip it — do not fabricate.`;
+RULES: Use only the data above. No invented news or external facts. Every claim needs a number or named stock. If a value is n/a, skip it — do not fabricate. Do not call the prices live unless their exchange quote times are known.`;
 }
 
 /* ── Handler ──────────────────────────────────────────────────────── */

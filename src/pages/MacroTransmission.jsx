@@ -4,6 +4,7 @@ import { Card } from '../widgets/Card.jsx';
 import BrentSlider from '../widgets/BrentSlider.jsx';
 import CorrelationHeatmap from '../widgets/CorrelationHeatmap.jsx';
 import { CountUp, SpotlightCard } from '../widgets/Effects.jsx';
+import { getChannelEvidence } from '../utils/transmission.js';
 
 /* ── PATCH SUMMARY ─────────────────────────────────────────────────────
  * Two targeted FX additions to this page (everything else is unchanged):
@@ -114,7 +115,24 @@ function ChannelPipelineCard({
   stage2,
   stage3,
   netImpact,
+  evidence,
 }) {
+  const evidenceLabels = {
+    missing: 'MACRO DATA UNAVAILABLE',
+    idle: 'NO MACRO TRIGGER',
+    insufficient: 'AWAITING SECTOR DATA',
+    consistent: 'SECTOR MOVE CONSISTENT',
+    divergent: 'SECTOR MOVE DIVERGES',
+    mixed: 'MIXED SECTOR RESPONSE',
+  };
+  const evidenceCls = {
+    missing: 'bg-bg-h text-tm border-bd',
+    idle: 'bg-bg-h text-tm border-bd',
+    insufficient: 'bg-warn/12 text-warn border-warn/40',
+    consistent: 'bg-bull/12 text-bull border-bull/40',
+    divergent: 'bg-bear/12 text-bear border-bear/40',
+    mixed: 'bg-warn/12 text-warn border-warn/40',
+  };
   return (
     <SpotlightCard
       spotlightColor={spotlightColor ?? (isActive ? 'var(--color-bear-spotlight)' : 'var(--color-spotlight)')}
@@ -132,12 +150,10 @@ function ChannelPipelineCard({
         </div>
         <span className={clsx(
           'inline-flex items-center gap-1.5 text-[10px] font-mono font-semibold tracking-[0.06em] px-2.5 py-1 rounded-full border',
-          isActive
-            ? 'bg-bear/12 text-bear border-bear/40 shadow-[0_0_12px_rgba(249,112,112,0.15)]'
-            : 'bg-bg-h text-tm border-bd'
+          evidenceCls[evidence.state]
         )}>
-          <span className={clsx('w-2 h-2 rounded-full', isActive ? 'bg-bear animate-pulseFast shadow-[0_0_6px_rgba(249,112,112,0.6)]' : 'bg-tm')} />
-          {isActive ? 'SHOCK TRANSMITTING' : 'PIPELINE DORMANT'}
+          <span className={clsx('w-2 h-2 rounded-full', isActive ? 'bg-warn' : 'bg-tm')} />
+          {evidenceLabels[evidence.state]}
         </span>
       </div>
 
@@ -184,7 +200,7 @@ function ChannelPipelineCard({
         )}>
           <div>
             <div className="text-[9.5px] font-mono uppercase tracking-wider font-semibold text-tm mb-2">
-              Stage 02 · Economic Vector
+              Stage 02 · Potential Economic Channel
             </div>
             <div className="font-serif text-[17px] text-tp leading-tight mb-2">
               {stage2.vectorName}
@@ -210,12 +226,12 @@ function ChannelPipelineCard({
         )}>
           <div>
             <div className="text-[9.5px] font-mono uppercase tracking-wider font-semibold text-tm mb-2">
-              Stage 03 · JSE Consequence
+              Stage 03 · Expected JSE Exposure
             </div>
             {stage3.winners?.length > 0 && (
               <div className="mb-2">
                 <div className="text-[9.5px] font-mono uppercase tracking-wider text-bull font-semibold mb-1 flex items-center gap-1">
-                  <span>▲</span> Tailwind / Beneficiaries
+                  <span>▲</span> Expected tailwind
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {stage3.winners.map((stk, si) => (
@@ -229,7 +245,7 @@ function ChannelPipelineCard({
             {stage3.losers?.length > 0 && (
               <div className="mb-2">
                 <div className="text-[9.5px] font-mono uppercase tracking-wider text-bear font-semibold mb-1 flex items-center gap-1">
-                  <span>▼</span> Drag / Headwinds
+                  <span>▼</span> Expected headwind
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {stage3.losers.map((stk, si) => (
@@ -262,7 +278,7 @@ function ChannelPipelineCard({
       <div className="pt-2.5 border-t border-bd flex flex-wrap items-center justify-between gap-2 mt-0.5">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono font-medium text-tm tracking-[0.06em] uppercase">
-            Net JSE Sector Impact:
+            Expected sector impact:
           </span>
           <span className={clsx('text-[12.5px] font-semibold', netImpact.cls)}>
             {netImpact.verdict}
@@ -274,19 +290,18 @@ function ChannelPipelineCard({
           </span>
         )}
       </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ts" aria-label="Observed one-day sector moves">
+        <span className="font-medium text-tm">Observed 1D:</span>
+        {evidence.observations.map(item => (
+          <span key={item.sector} className="font-mono">
+            {item.sector} {item.changePct == null ? '—' : `${item.changePct >= 0 ? '+' : ''}${item.changePct.toFixed(2)}%`}
+          </span>
+        ))}
+        <span className="basis-full text-tm">Sector agreement describes co-movement, not proof of cause.</span>
+      </div>
     </SpotlightCard>
   );
 }
-
-/* ── Historical analogues ───────────────────────────────────────────── */
-const ANALOGUES = [
-  { event:'Gulf War I',     period:'Aug 1990 – Feb 1991', brent:'+74%', zar:'+22%', top40:'-14%', gold:'+8%',  miners:'+11%', regime:'BEARISH' },
-  { event:'Kosovo Crisis',  period:'Mar – Jun 1999',      brent:'+32%', zar:'+9%',  top40:'-7%',  gold:'+4%',  miners:'+6%',  regime:'BEARISH' },
-  { event:'Iraq War',       period:'Mar – May 2003',      brent:'+41%', zar:'+14%', top40:'+6%',  gold:'+12%', miners:'+18%', regime:'MIXED'   },
-  { event:'Libya Conflict', period:'Feb – Oct 2011',      brent:'+25%', zar:'+11%', top40:'-5%',  gold:'+9%',  miners:'+14%', regime:'BEARISH' },
-  { event:'Russia–Ukraine', period:'Feb – Sep 2022',      brent:'+58%', zar:'+18%', top40:'-9%',  gold:'+11%', miners:'+22%', regime:'BEARISH' },
-  { event:'Oct 7 Hamas',    period:'Oct – Dec 2023',      brent:'+12%', zar:'+8%',  top40:'-4%',  gold:'+7%',  miners:'+9%',  regime:'MIXED'   },
-];
 
 /* ── Alert status meta ──────────────────────────────────────────────── */
 const THEMATIC_META = {
@@ -390,7 +405,7 @@ function MacroStrip({ assets, hasData }) {
 }
 
 /* ── Page ───────────────────────────────────────────────────────────── */
-export default function MacroTransmission({ assets, alerts, hasData, history, stocks }) {
+export default function MacroTransmission({ assets, alerts, hasData, history, stocks, sectors }) {
   const [activeTab, setActiveTab] = useState('channels');
 
   const brentChg = assets.brent?.changePct;
@@ -403,6 +418,19 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
   const us10yPrc = assets.us10y?.price;
   const us10ySrc = assets.us10y?.source || 'fetching…';
 
+  const oilEvidence = getChannelEvidence(brentChg, 2, sectors, [
+    { sector: 'Energy', direction: 1 }, { sector: 'Banks', direction: -1 }, { sector: 'Retailers', direction: -1 },
+  ]);
+  const currencyEvidence = getChannelEvidence(zarChg, 0.8, sectors, [
+    { sector: 'Gold Miners', direction: 1 }, { sector: 'Banks', direction: -1 }, { sector: 'Retailers', direction: -1 },
+  ]);
+  const havenEvidence = getChannelEvidence(goldChg, 1, sectors, [
+    { sector: 'Gold Miners', direction: 1 }, { sector: 'PGMs', direction: 1 },
+  ]);
+  const ratesEvidence = getChannelEvidence(us10yChg, 1.5, sectors, [
+    { sector: 'Banks', direction: -1 }, { sector: 'Retailers', direction: -1 }, { sector: 'Industrials', direction: -1 },
+  ]);
+
   const fmt = (v, label) => v != null ? `${label ? label + ' ' : ''}${v>=0?'+':''}${v.toFixed(1)}%` : `${label ? label + ' ' : ''}(fetch data)`;
 
   const triggeredIds = new Set(alerts.map(a => a.id));
@@ -410,7 +438,7 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
 
   const tabs = [
     { id: 'channels',    label: 'Transmission Pipelines & Simulator' },
-    { id: 'analogues',   label: 'Historical Analogues & Alerts' },
+    { id: 'analogues',   label: 'Alert Thresholds' },
     { id: 'correlation', label: 'Correlation Heatmap' },
   ];
 
@@ -448,6 +476,7 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
           <div className="flex flex-col gap-4">
             <ChannelPipelineCard
               title="Oil Price Shock Transmission"
+              evidence={oilEvidence}
               subtitle="Strait of Hormuz supply disruption & bunker fuel freight premia"
               isActive={hasData && brentChg != null && brentChg > 2}
               spotlightColor={hasData && brentChg != null && brentChg > 2 ? 'var(--color-bear-spotlight)' : undefined}
@@ -483,6 +512,7 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
 
             <ChannelPipelineCard
               title="Currency Transmission & Risk-Off"
+              evidence={currencyEvidence}
               subtitle="Emerging Market portfolio liquidation & US Dollar haven flight"
               isActive={hasData && zarChg != null && zarChg > 0.8}
               spotlightColor={hasData && zarChg != null && zarChg > 0.8 ? 'var(--color-bear-spotlight)' : undefined}
@@ -518,6 +548,7 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
 
             <ChannelPipelineCard
               title="Safe Haven & Precious Metals Transmission"
+              evidence={havenEvidence}
               subtitle="Global flight from fiat debasement & sovereign reserve asset bidding"
               isActive={hasData && goldChg != null && goldChg > 1}
               spotlightColor={hasData && goldChg != null && goldChg > 1 ? 'var(--color-bull-spotlight)' : undefined}
@@ -553,6 +584,7 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
 
             <ChannelPipelineCard
               title="Global Discount Rate & Duration Compression"
+              evidence={ratesEvidence}
               subtitle="US Treasury yield surge & international cost of equity expansion"
               isActive={hasData && us10yChg != null && us10yChg > 1.5}
               spotlightColor={hasData && us10yChg != null && us10yChg > 1.5 ? 'var(--color-bear-spotlight)' : undefined}
@@ -594,63 +626,10 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
         </div>
       )}
 
-      {/* Tab 2: Historical Analogues & Alerts
-          (Both Card panels below pick up SpotlightCard automatically via
-          the patched Card.jsx — `spotlight={false}` opts out if needed.) */}
+      {/* Alert thresholds are calculated from the current market snapshot. */}
       {activeTab === 'analogues' && (
-        <div className="grid grid-cols-1 xl:grid-cols-[1.55fr_1fr] gap-[18px] items-start animate-fadeUp">
-          {/* Historical analogues — table-heavy card; spotlight={false} keeps
-              the hover halo from competing with row highlights. */}
+        <div className="animate-fadeUp">
           <Card spotlight={false}>
-            <div className="flex items-baseline justify-between mb-[18px]">
-              <div className="font-serif text-[22px] text-tp leading-[1.1]">
-                Historical <span className="italic text-warn">analogues</span>
-              </div>
-              <span className="text-[11px] text-tm">SA market reaction · reference data</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[12px]">
-                <thead>
-                  <tr>
-                    {['Event','Period','Brent','USD/ZAR','Watchlist avg','Gold','SA Miners','Regime'].map(h => (
-                      <th key={h} className="text-left text-[10px] font-medium text-tm tracking-[0.06em] uppercase pb-3 px-3 border-b border-bd whitespace-nowrap">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {ANALOGUES.map((row, i) => {
-                    const t40Up  = row.top40.startsWith('+');
-                    const regCls = row.regime === 'BEARISH'
-                      ? 'bg-bear/12 text-bear border-bear/40'
-                      : row.regime === 'MIXED'
-                        ? 'bg-warn/12 text-warn border-warn/40'
-                        : 'bg-bull/12 text-bull border-bull/40';
-                    return (
-                      <tr key={row.event} className={clsx('hover:bg-bg-h transition-colors', i < ANALOGUES.length - 1 && 'border-b border-bd')}>
-                        <td className="py-[14px] px-3 font-medium text-tp whitespace-nowrap">{row.event}</td>
-                        <td className="py-[14px] px-3 text-ts text-[11.5px] whitespace-nowrap">{row.period}</td>
-                        <td className="py-[14px] px-3 font-mono font-semibold text-bull">{row.brent}</td>
-                        <td className="py-[14px] px-3 font-mono font-semibold text-bear">{row.zar}</td>
-                        <td className={clsx('py-[14px] px-3 font-mono font-semibold', t40Up ? 'text-bull' : 'text-bear')}>{row.top40}</td>
-                        <td className="py-[14px] px-3 font-mono font-semibold text-bull">{row.gold}</td>
-                        <td className="py-[14px] px-3 font-mono font-semibold text-bull">{row.miners}</td>
-                        <td className="py-[14px] px-3">
-                          <span className={clsx('font-mono text-[9.5px] font-semibold tracking-[0.04em] px-[9px] py-[3px] rounded-full border', regCls)}>
-                            {row.regime}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-
-          {/* Alert status — uses Card default (spotlight on) */}
-          <Card>
             <div className="flex items-baseline justify-between mb-[18px]">
               <div className="font-serif text-[22px] text-tp leading-[1.1]">
                 Alert <span className="italic text-warn">status</span>
@@ -661,6 +640,7 @@ export default function MacroTransmission({ assets, alerts, hasData, history, st
                 </span>
               )}
             </div>
+            <p className="text-[11.5px] text-tm mb-4">Thresholds use the current 1D market snapshot. Historical comparisons are omitted until their sources and calculation windows can be verified.</p>
             <div className="flex flex-col max-h-[420px] overflow-y-auto">
               {Object.entries(THEMATIC_META).map(([id, sig], i, arr) => {
                 const triggered  = triggeredIds.has(id);

@@ -23,17 +23,19 @@ import { CountUp, SpotlightCard } from '../widgets/Effects.jsx';
 
 const SECTOR_TABS = ['All','Gold Miners','PGMs','Energy','Banks','Retailers','Industrials','Mining','Telecoms'];
 
-const SECTOR_READS = {
-  All:           '**Full JSE** | In an Iran conflict escalation scenario, the JSE splits sharply. Miners and energy names benefit from commodity tailwinds while domestic banks, retailers and industrials face ZAR weakness and consumer spending pressure. Offshore dual-listed names act as a partial anchor.',
-  'Gold Miners': '**Gold miners** are the standout conflict beneficiaries. Rising gold prices combined with ZAR weakness create a double tailwind — USD gold prices up and ZAR-translated revenues elevated simultaneously. Anglo Gold Ashanti and Gold Fields are the most sensitive to this dynamic.',
-  PGMs:          '**PGM miners** benefit moderately. Platinum and palladium get a safe-haven bid but autocatalyst demand concerns from potential global slowdown partially offset the move. Impala Platinum and Anglo American Platinum lead; Sibanye-Stillwater typically lags on balance-sheet concerns.',
-  Energy:        '**Energy-linked stocks** are primary conflict beneficiaries. Sasol is the key name — oil price elevation directly feeds into Secunda synfuels margins. Exxaro and Thungela benefit from coal price spillover. Risk is a sharp reversal on any de-escalation signal.',
-  Banks:         '**Banks face pressure** in oil-shock conflict scenarios. ZAR weakness tightens financial conditions while higher global yields can raise funding costs and compress valuations. Watch USD/ZAR, credit conditions, and the US 10Y together.',
-  Retailers:     '**Retailers are the most exposed** domestic sector. The transmission is direct: ZAR weakness → import cost inflation → margin squeeze → lower consumer spending. Lower-income retailers (Pepkor, Shoprite) are most vulnerable. TFG and Mr Price have some offshore revenue offset.',
-  Industrials:   '**Industrials split** between offshore and domestic. Naspers and Richemont have international earnings that buffer against ZAR weakness. Domestic industrials like Barloworld and Bidvest are more exposed to local demand conditions and input cost pressures.',
-  Mining:        '**Diversified miners** benefit from commodity price elevation broadly. Anglo American and BHP have gold, copper and iron ore exposure that generally responds positively to geopolitical risk. Dollar-denominated revenues insulate them from ZAR weakness.',
-  Telecoms:      '**Telecoms are defensive** but not immune. MTN faces FX headwinds on its pan-African USD-reporting business. Vodacom\'s domestic SA exposure creates consumer spend sensitivity. Neither a winner nor a major loser — expect relative performance close to the market.',
+const SECTOR_THESES = {
+  All: 'Compare resource and energy names with domestic cyclicals to see which parts of the watchlist are absorbing the macro move.',
+  'Gold Miners': 'Gold prices and USD/ZAR can affect rand revenue; operating costs and company exposure can change the equity response.',
+  PGMs: 'Metal prices, industrial demand and the rand can pull PGM equities in different directions.',
+  Energy: 'Oil and coal prices can support revenue, while input costs and company-specific exposures can offset that benefit.',
+  Banks: 'Funding conditions, credit demand and domestic growth are useful checks on an oil or rates shock.',
+  Retailers: 'Imported costs and household spending are the main channels to watch; individual chains have different product and currency mixes.',
+  Industrials: 'Separate offshore earners from domestic demand exposures before reading the aggregate as one macro bet.',
+  Mining: 'Commodity mix and USD revenue determine how much each diversified miner benefits from rand weakness.',
+  Telecoms: 'Currency exposure, consumer demand and dividend expectations can produce different outcomes for MTN and Vodacom.',
 };
+
+const signed = value => `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -57,14 +59,14 @@ const SPOT = {
   'text-tm':   'var(--color-bg-s)',
 };
 
-export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
+export default function SectorDrilldown({ stocks, sectors, hasData, onFetch, sparklines }) {
   const [active, setActive] = useState('All');
 
   const filtered     = useMemo(() =>
     active === 'All' ? stocks : stocks.filter(s => s.sector === active),
     [stocks, active]
   );
-  const liveFiltered = filtered.filter(s => s.isLive);
+  const liveFiltered = filtered.filter(s => s.isLive && Number.isFinite(s.changePct));
 
   const stats = useMemo(() => {
     if (!liveFiltered.length) return { avg: null, bulls: 0, bears: 0 };
@@ -81,8 +83,10 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
     [liveFiltered]
   );
 
-  const sectorInfo = sectors[active] ?? null;
-  const readText   = SECTOR_READS[active] ?? SECTOR_READS.All;
+  const marketAvg = sectors.top40?.chg ?? null;
+  const best = chartData[0] ?? null;
+  const worst = chartData[chartData.length - 1] ?? null;
+  const relative = stats.avg != null && marketAvg != null ? +(stats.avg - marketAvg).toFixed(2) : null;
   const avgColor   = stats.avg == null ? 'text-tm' : stats.avg >= 0 ? 'text-bull' : 'text-bear';
 
   if (!hasData) {
@@ -220,31 +224,33 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
         {/* Sector read card — uses Card default (spotlight on) */}
         <Card>
           <CardHeader title="Sector" italic="read" />
-          {/* PATCH: drop-cap (magazine touch) on the read paragraph */}
-          <div className="font-sans text-[13.5px] leading-[1.7] text-ts mag-dropcap">
-            {readText.split(/(\*\*[^*]+\*\*)/).map((part, i) =>
-              part.startsWith('**') && part.endsWith('**')
-                ? <span key={i} className="text-warn font-semibold">{part.slice(2, -2)}</span>
-                : <span key={i}>{part}</span>
-            )}
+          <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-tm mb-2">Observed 1D move</div>
+          {stats.avg == null ? (
+            <p className="font-sans text-[13.5px] leading-[1.7] text-ts">No current constituent returns are available for this selection.</p>
+          ) : (
+            <div className="font-sans text-[13.5px] leading-[1.7] text-ts space-y-2">
+              <p>{active === 'All' ? 'This watchlist' : active} averages <strong className={avgColor}>{signed(stats.avg)}</strong> across {liveFiltered.length} priced names. {stats.bulls} advanced, {stats.bears} declined or were flat.</p>
+              {relative != null && active !== 'All' && <p>That is <strong className={relative >= 0 ? 'text-bull' : 'text-bear'}>{signed(relative)}</strong> versus the equal-weight watchlist average.</p>}
+              {best && worst && best.name !== worst.name && <p>Strongest: <strong className="text-tp">{best.name} {signed(best.val)}</strong>. Weakest: <strong className="text-tp">{worst.name} {signed(worst.val)}</strong>.</p>}
+            </div>
+          )}
+          <div className="mt-4 pt-4 border-t border-bd">
+            <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-tm mb-2">Expected sensitivity</div>
+            <p className="font-sans text-[12.5px] leading-[1.65] text-tm">{SECTOR_THESES[active] ?? SECTOR_THESES.All}</p>
           </div>
-          {sectorInfo?.chg != null && (
+          {stats.avg != null && (
             <div className="mt-4 pt-4 border-t border-bd">
               <div className="font-sans text-[10px] font-medium tracking-[0.08em] uppercase text-tm mb-2">
-                Live aggregate
+                Data context
               </div>
               <div className="flex justify-between font-sans text-[13px] mb-1.5">
-                <span className="text-ts">Avg 1D change</span>
-                <span className={clsx('font-mono font-semibold', sectorInfo.chg >= 0 ? 'text-bull' : 'text-bear')}>
-                  {sectorInfo.chg >= 0 ? '+' : ''}<CountUp to={sectorInfo.chg} decimals={2} suffix="%" />
-                </span>
+                <span className="text-ts">Constituents priced</span>
+                <span className="font-mono text-tp">{liveFiltered.length} / {filtered.length}</span>
               </div>
-              {sectorInfo.rel != null && (
+              {marketAvg != null && active !== 'All' && (
                 <div className="flex justify-between font-sans text-[13px]">
-                  <span className="text-ts">vs market avg</span>
-                  <span className={clsx('font-mono', sectorInfo.rel >= 0 ? 'text-bull' : 'text-bear')}>
-                    {sectorInfo.rel >= 0 ? '+' : ''}<CountUp to={sectorInfo.rel} decimals={2} suffix="%" />
-                  </span>
+                  <span className="text-ts">Equal-weight watchlist avg</span>
+                  <span className="font-mono text-tp">{signed(marketAvg)}</span>
                 </div>
               )}
             </div>
@@ -259,7 +265,7 @@ export default function SectorDrilldown({ stocks, sectors, hasData, onFetch }) {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {filtered.map(s => <StockCard key={s.ticker} stock={s} />)}
+          {filtered.map(s => <StockCard key={s.ticker} stock={s} sparkline={sparklines?.[s.ticker]} />)}
         </div>
       )}
     </div>

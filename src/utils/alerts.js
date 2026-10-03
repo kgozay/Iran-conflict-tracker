@@ -74,7 +74,7 @@ export function computeAlerts({ assets, sectors, stocks }) {
     alerts.push({ id:'energy-amber', lvl:'green', tag:'ms', category:'ENERGY TAILWIND', label:'ENERGY BULLISH',
       text:`Energy basket +${energy.toFixed(1)}% — oil price tailwind active.`, time:now });
 
-  return alerts.slice(0, 9);
+  return alerts;
 }
 
 export function getAssetAlertLevel(key, changePct) {

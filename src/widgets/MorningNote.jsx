@@ -1,6 +1,7 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import clsx from 'clsx';
 import { CopyIcon, CheckIcon, SparkleIcon, RefreshIcon } from '../components/Icons.jsx';
+import { morningNoteSignature, loadMorningNote, saveMorningNote } from '../utils/morningNoteCache.js';
 
 /* ── Inline markdown: **bold**, *italic*, `code` ─────────────────── */
 function renderInline(text, baseKey = 0) {
@@ -212,50 +213,41 @@ function renderMarkdown(text) {
 
 /* ── Component ───────────────────────────────────────────────────── */
 export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasData, dataHealth }) {
-  const [note, setNote]       = useState(null);
+  const signature = useMemo(() => morningNoteSignature({
+    assets, sectors, cis, stocks, alerts, dataHealth,
+  }), [assets, sectors, cis, stocks, alerts, dataHealth]);
+  const [brief, setBrief]     = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
-  const [meta, setMeta]       = useState(null);
   const [copied, setCopied]   = useState(false);
   const abortRef = useRef(null);
+  const currentSignatureRef = useRef(signature);
+  currentSignatureRef.current = signature;
+  const note = hasData && brief?.signature === signature ? brief.note : null;
+  const meta = note ? brief.meta : null;
 
-  /* ── localStorage cache helpers ─────────────────────────────── */
-  function cacheKey() {
-    const today = new Date().toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg' });
-    const score = cis?.total ?? 'na';
-    return `jse_morning_note_${today}_${score}`;
-  }
-
-  function loadCache() {
-    try {
-      const raw = localStorage.getItem(cacheKey());
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch { return null; }
-  }
-
-  function saveCache(data) {
-    try { localStorage.setItem(cacheKey(), JSON.stringify(data)); } catch { /* quota full */ }
-  }
-
-  // Restore from cache on first render
-  React.useEffect(() => {
-    const cached = loadCache();
-    if (cached) {
-      setNote(cached.note);
-      setMeta({ ...cached.meta, cached: true });
+  // A market refresh invalidates the visible brief and any request in flight.
+  useEffect(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setLoading(false);
+    setError(null);
+    setCopied(false);
+    if (!hasData || !signature) {
+      setBrief(null);
+      return;
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const cached = loadMorningNote(localStorage, signature);
+    setBrief(cached ? { ...cached, meta: { ...cached.meta, cached: true } } : null);
+  }, [hasData, signature]);
 
   const generate = useCallback(async (forceRefresh = false) => {
-    if (!hasData) return;
+    if (!hasData || !signature) return;
 
-    // Serve from localStorage if available and not forcing refresh
     if (!forceRefresh) {
-      const cached = loadCache();
+      const cached = loadMorningNote(localStorage, signature);
       if (cached) {
-        setNote(cached.note);
-        setMeta({ ...cached.meta, cached: true });
+        setBrief({ ...cached, meta: { ...cached.meta, cached: true } });
         setError(null);
         return;
       }
@@ -264,7 +256,7 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
     if (abortRef.current) abortRef.current.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
-    setLoading(true); setError(null); setNote(null); setMeta(null);
+    setLoading(true); setError(null); setBrief(null);
     try {
       const res  = await fetch('/api/morning-note', {
         method:  'POST',
@@ -274,17 +266,24 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
-      const metaObj = { model: data.model, tokens_in: data.tokens_in, tokens_out: data.tokens_out, timestamp: data.timestamp };
-      setNote(data.note);
-      setMeta(metaObj);
-      saveCache({ note: data.note, meta: metaObj });
+      if (currentSignatureRef.current !== signature || ctrl.signal.aborted) return;
+      const metaObj = {
+        model: data.model, tokens_in: data.tokens_in, tokens_out: data.tokens_out,
+        timestamp: data.timestamp || new Date().toISOString(), snapshotAt: dataHealth.lastFetch,
+      };
+      const entry = { signature, note: data.note, meta: metaObj };
+      setBrief(entry);
+      saveMorningNote(localStorage, entry);
     } catch (e) {
       if (e.name === 'AbortError') return;
-      setError(e.message);
+      if (currentSignatureRef.current === signature) setError(e.message);
     } finally {
-      setLoading(false);
+      if (abortRef.current === ctrl) {
+        abortRef.current = null;
+        setLoading(false);
+      }
     }
-  }, [assets, sectors, cis, stocks, alerts, dataHealth, hasData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [assets, sectors, cis, stocks, alerts, dataHealth, hasData, signature]);
 
   async function handleCopy() {
     if (!note) return;
@@ -295,9 +294,14 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
     } catch { /* clipboard unavailable */ }
   }
 
-  const genTs = meta?.timestamp
-    ? new Date(meta.timestamp).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit' }) + ' SAST'
+  const formatSAST = value => value
+    ? new Date(value).toLocaleString('en-ZA', {
+        timeZone: 'Africa/Johannesburg', day: '2-digit', month: 'short',
+        hour: '2-digit', minute: '2-digit',
+      }) + ' SAST'
     : null;
+  const genTs = formatSAST(meta?.timestamp);
+  const snapshotTs = formatSAST(meta?.snapshotAt);
 
   return (
     <div className="relative glass rounded-[16px] p-[28px_32px] overflow-hidden">
@@ -316,7 +320,9 @@ export default function MorningNote({ assets, sectors, cis, stocks, alerts, hasD
             </span>
           </div>
           <div className="text-[12px] text-tm mt-1.5">
-            {genTs ? `Generated ${genTs} · structured analyst brief` : 'Sell-side style brief — transmission channels, stock ratings, portfolio positioning'}
+            {genTs
+              ? `Generated ${genTs}${snapshotTs ? ` · Based on dashboard snapshot fetched ${snapshotTs}` : ''}`
+              : 'Sell-side style brief — transmission channels, stock ratings, portfolio positioning'}
           </div>
         </div>
         <div className="flex items-center gap-2">

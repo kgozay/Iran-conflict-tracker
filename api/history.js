@@ -81,9 +81,18 @@ async function fetchHistoryOne(symbol) {
       const meta = result.meta || {};
       const ind  = result.indicators && result.indicators.quote && result.indicators.quote[0];
       const closesRaw = (ind && ind.close) ? ind.close : [];
-
-      // Strip nulls (exchange holidays, missing bars)
-      const closes = closesRaw.filter(v => v != null);
+      const timestamps = result.timestamp || [];
+      const exchangeTimeZone = meta.exchangeTimezoneName || 'UTC';
+      const dateFormat = new Intl.DateTimeFormat('en-CA', {
+        timeZone: exchangeTimeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+      });
+      const datedCloses = closesRaw.flatMap((close, i) => {
+        if (close == null || timestamps[i] == null) return [];
+        const parts = dateFormat.formatToParts(new Date(timestamps[i] * 1000));
+        const part = type => parts.find(item => item.type === type)?.value;
+        return [{ date: `${part('year')}-${part('month')}-${part('day')}`, close }];
+      });
+      const closes = datedCloses.map(point => point.close);
       if (closes.length < 2) continue;
 
       const price     = meta.regularMarketPrice ?? closes[closes.length - 1];
@@ -101,9 +110,12 @@ async function fetchHistoryOne(symbol) {
           : null;
 
       const returns20D = [];
-      const slice20D = closes.slice(Math.max(0, n - 21));
+      const datedReturns20D = [];
+      const slice20D = datedCloses.slice(Math.max(0, n - 21));
       for (let i = 1; i < slice20D.length; i++) {
-        returns20D.push((slice20D[i] - slice20D[i-1]) / slice20D[i-1]);
+        const value = (slice20D[i].close - slice20D[i-1].close) / slice20D[i-1].close;
+        returns20D.push(value);
+        datedReturns20D.push({ date: slice20D[i].date, value });
       }
 
       return {
@@ -114,6 +126,7 @@ async function fetchHistoryOne(symbol) {
         changePct5D:  pct(close5D,  price),
         changePct20D: pct(close20D, price),
         returns20D,
+        datedReturns20D,
         barsAvailable: n,
       };
     } catch (e) { /* try next host */ }

@@ -1,35 +1,19 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import clsx from 'clsx';
 import { getSignal, SIGNAL_CLS } from '../utils/signals.js';
 
-function seededRng(seed) {
-  let s = seed;
-  return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
-}
-
-function Sparkline({ ticker, chg }) {
-  const svg = useMemo(() => {
-    const seed = ticker.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    const rng  = seededRng(seed);
-    const PTS = 24, W = 200, H = 34;
-    const data = [];
-    let v = 100;
-    for (let i = 0; i < PTS; i++) {
-      v += (chg / PTS) * 0.8 + (rng() - 0.5) * 1.8;
-      data.push(v);
-    }
-    const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
-    const pts = data.map((d, i) =>
-      `${i === 0 ? 'M' : 'L'} ${((i / (PTS - 1)) * W).toFixed(1)},${(H - ((d - min) / range) * H).toFixed(1)}`
-    ).join(' ');
-    return { line: pts, fill: `${pts} L ${W},${H} L 0,${H} Z`, W, H };
-  }, [ticker, chg]);
-
-  const col = chg >= 0 ? '52,211,153' : '249,112,112';
-  const id  = `s_${ticker.replace(/[^a-z0-9]/gi, '_')}`;
+function Sparkline({ ticker, points }) {
+  const W = 200, H = 34;
+  const min = Math.min(...points), max = Math.max(...points), range = max - min || 1;
+  const line = points.map((value, i) =>
+    `${i === 0 ? 'M' : 'L'} ${((i / (points.length - 1)) * W).toFixed(1)},${(H - ((value - min) / range) * H).toFixed(1)}`
+  ).join(' ');
+  const fill = `${line} L ${W},${H} L 0,${H} Z`;
+  const col = points[points.length - 1] >= points[0] ? '52,211,153' : '249,112,112';
+  const id = `s_${ticker.replace(/[^a-z0-9]/gi, '_')}`;
 
   return (
-    <svg viewBox={`0 0 ${svg.W} ${svg.H}`} preserveAspectRatio="none"
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Intraday price trend"
       className="w-full block mt-2.5" style={{ height: 32 }}>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
@@ -37,11 +21,11 @@ function Sparkline({ ticker, chg }) {
           <stop offset="100%" stopColor={`rgb(${col})`} stopOpacity="0"    />
         </linearGradient>
       </defs>
-      <path d={svg.fill} fill={`url(#${id})`} />
-      <path d={svg.line} stroke={`rgb(${col})`} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" fill="none" />
+      <path d={fill} fill={`url(#${id})`} />
+      <path d={line} stroke={`rgb(${col})`} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" fill="none" />
       {/* Terminal dot */}
       {(() => {
-        const pts = svg.line.split(' ').filter(p => p.includes(','));
+        const pts = line.split(' ').filter(p => p.includes(','));
         const last = pts[pts.length - 1]?.split(',');
         if (!last) return null;
         return <circle cx={last[0]} cy={last[1]} r="2.5" fill={`rgb(${col})`} />;
@@ -57,11 +41,12 @@ function fmtP(p) {
   return p.toFixed(2);
 }
 
-export default function StockCard({ stock }) {
+export default function StockCard({ stock, sparkline }) {
   const chg    = stock.changePct ?? null;
   const isUp   = (chg ?? 0) >= 0;
   const signal = getSignal(chg);
   const sigCls = SIGNAL_CLS[signal] ?? SIGNAL_CLS.NEUTRAL;
+  const points = sparkline?.points?.filter(value => Number.isFinite(value));
 
   return (
     <div className="glass rounded-[14px] p-[16px_20px] transition-all hover:opacity-90 hover:-translate-y-px">
@@ -92,11 +77,11 @@ export default function StockCard({ stock }) {
       </div>
 
       {/* Sparkline */}
-      {chg != null
-        ? <Sparkline ticker={stock.ticker} chg={chg} />
+      {points?.length >= 3
+        ? <Sparkline ticker={stock.ticker} points={points} />
         : (
           <div className="h-8 mt-2.5 flex items-center justify-center border border-dashed border-bd rounded-lg">
-            <span className="font-mono text-[9px] text-tm">awaiting data</span>
+            <span className="font-mono text-[9px] text-tm">Intraday chart unavailable</span>
           </div>
         )
       }
